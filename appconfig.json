@@ -1,0 +1,3 @@
+{
+	"msg-broker-url": "amqp://localhost"
+}

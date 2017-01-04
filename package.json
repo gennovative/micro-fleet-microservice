@@ -3,18 +3,27 @@
   "private": true,
   "version": "0.1.0",
   "description": "Core abstract classes, functional helpers and other global utilities.",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --reporter spec ./dist/test/**/*.js"
+  },
   "dependencies": {
-    "bcrypt-nodejs": "^0.0.3",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
-    "@types/bcrypt-nodejs": "^0.0.30",
+    "@types/chai": "^3.4.34",
+    "@types/mocha": "^2.2.35",
     "@types/node": "^6.0.55",
+    "chai": "^3.5.0",
+    "del": "^2.2.2",
     "gulp": "^3.9.1",
     "gulp-clean": "^0.3.2",
     "gulp-debug": "^3.0.0",
+    "gulp-istanbul": "^1.1.1",
+    "gulp-mocha": "^3.0.1",
     "gulp-tslint": "^7.0.1",
     "gulp-typescript": "^3.1.3",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.2.0",
     "tslint": "^4.2.0",
     "typescript": "^2.1.4",
     "vinyl-buffer": "^1.0.0",
