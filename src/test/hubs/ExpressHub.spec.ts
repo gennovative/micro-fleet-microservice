@@ -1,6 +1,6 @@
 import * as http from 'http';
 import { expect } from 'chai';
-import { ExpressHub } from '../../app/hubs/ExpressHub';
+import { ExpressHub } from '../../app';
 
 const PORT = 34567;
 

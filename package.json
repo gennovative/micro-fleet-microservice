@@ -1,8 +1,9 @@
 {
   "name": "back-lib-gennova-core",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Core abstract classes, functional helpers and other global utilities.",
+  "main": "./dist/app/index.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha --reporter spec ./dist/test/**/*.js"
   },
