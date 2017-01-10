@@ -1,7 +1,8 @@
 "use strict";
-var ConfigurationAdapter_1 = require("./adapters/ConfigurationAdapter");
-exports.ConfigurationAdapter = ConfigurationAdapter_1.ConfigurationAdapter;
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+__export(require("./adapters/ConfigurationAdapter"));
+__export(require("./hubs/ExpressHub"));
 const SettingKeys = require('./constants/SettingKeys');
 exports.SettingKeys = SettingKeys;
-var ExpressHub_1 = require("./hubs/ExpressHub");
-exports.ExpressHub = ExpressHub_1.ExpressHub;
