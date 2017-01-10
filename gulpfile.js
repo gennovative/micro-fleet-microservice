@@ -1,56 +1,93 @@
-const gulp = require("gulp"),
+const 
 	del = require("del"),
+	cache = require('gulp-cached'),
+	debug = require("gulp-debug"),
+	istanbul = require('gulp-istanbul'),
+	gulp = require("gulp"),
+	mocha = require('gulp-mocha'),
+	remapIstanbul = require('remap-istanbul/lib/gulpRemapIstanbul'),
+    sequence = require('gulp-watch-sequence'),
+	sourcemaps = require('gulp-sourcemaps'),
 	tsc = require("gulp-typescript"),
 	tsProject = tsc.createProject("tsconfig.json"),
-	debug = require("gulp-debug"),
 	tslint = require('gulp-tslint'),
-	buffer = require('vinyl-buffer'),
-	source = require('vinyl-source-stream'),
-	mocha = require('gulp-mocha'),
-	istanbul = require('gulp-istanbul');
+	watch = require('gulp-watch')
+	;
 
 const DIST_FOLDER = 'dist';
 
 /**
- * Remove build directory.
+ * Removes `dist` folder.
  */
-gulp.task('clean', () => {
+gulp.task('clean', function() {
 	return del.sync([DIST_FOLDER]);
 });
 
 
+/**
+ * Checks coding convention.
+ */
+const srcToLint = ['src/**/*.ts', '!node_modules/**/*.*'];
+let lintCode = function() {
+	return gulp.src(srcToLint)
+		.pipe(cache('linting'))
+		.pipe(tslint({
+			formatter: "verbose"
+		}))
+		.pipe(tslint.report())
+};
+gulp.task('tslint', ['clean'], lintCode);
+gulp.task('tslint-hot', lintCode);
+
 
 /**
- * Compile TypeScript sources in build directory.
+ * Compiles TypeScript sources and writes to `dist` folder.
  */
 const TS_FILES = ['src/**/*.ts', 'typings/**/*.d.ts', '!node_modules/**/*.*'];
-gulp.task('compile', () => {
+let compile = function () {
 
 	var onError = function (err) {
 		console.error(err.toString());
 		this.emit('end');
 	};
 
-	return gulp.src(TS_FILES)
+	return gulp.src(TS_FILES)	
 		.on('error', onError)
 		.on('failed', onError)
+		.pipe(cache('compiling'))
+		.pipe(debug())
+		.pipe(sourcemaps.init())
 		.pipe(tsProject(tsc.reporter.fullReporter(true)))
+		.pipe(sourcemaps.write('.'))
 		.pipe(gulp.dest(DIST_FOLDER));
-});
+};
+gulp.task('compile', ['tslint'], compile);
+gulp.task('compile-hot', ['tslint-hot'], compile);
 
-const TEST_FILES = ['dist/test/**/*.js'];
-gulp.task('pre-test', ['compile'], function () {
-	return gulp.src(TEST_FILES)
+
+/**
+ * Prepares coverage report before running test cases.
+ */
+const JS_FILES = ['dist/**/*.js', '!dist/test/**/*.*'];
+let preTest = function () {
+	return gulp.src(JS_FILES)
 		// Covering files
-		.pipe(istanbul())
+		.pipe(istanbul({includeUntested: true}))
 		// Force `require` to return covered files
 		.pipe(istanbul.hookRequire());
-});
+};
+gulp.task('pre-test', ['compile'], preTest);
+gulp.task('pre-test-standalone', preTest);
 
-gulp.task('test', ['pre-test'], () => {
-	gulp.src(TEST_FILES)
+
+/**
+ * Runs all test cases.
+ */
+const TEST_FILES = ['dist/test/**/*.js'];
+let runTest = function () {
+	return gulp.src(TEST_FILES)
 		// gulp-mocha needs filepaths so you can't have any plugins before it
-		.pipe(mocha({reporter: 'spec'}))
+		.pipe(mocha({reporter: 'spec'}))	
 		// Creating the reports after tests ran
 		.pipe(istanbul.writeReports())
 		// Enforce a coverage of at least 90%
@@ -58,36 +95,78 @@ gulp.task('test', ['pre-test'], () => {
 		.once('error', () => {
 			process.exit(1);
 		});
-});
+};
+gulp.task('run-test', ['pre-test'], runTest);
+gulp.task('run-test-standalone', ['pre-test-standalone'], runTest);
+
 
 /**
- * Lint
+ * Remaps coverage reports from transpiled code to original TypeScript code.
  */
-const srcToLint = ['src/**/*.ts', '!node_modules/**/*.*'];
-gulp.task("tslint", () =>
-	gulp.src(srcToLint)
-		.pipe(tslint({
-			formatter: "verbose"
-		}))
-		.pipe(tslint.report())
-);
+let remap = function () {
+	return gulp.src(['coverage/coverage-final.json'])
+		.pipe(remapIstanbul({
+			fail: true,
+			reports: {
+				'json': 'coverage/coverage-remapped.json',
+				'html': 'coverage/remapped-report'
+			}
+		}));
+};
+gulp.task('remap-istanbul', ['run-test'], remap);
+gulp.task('remap-istanbul-standalone', ['run-test-standalone'], remap);
+
+gulp.task('test-full', ['pre-test', 'run-test', 'remap-istanbul']);
+
 
 /**
- * Copy all resources that are not TypeScript files into build directory.
+ * Copies all resources that are not TypeScript files into `dist` directory.
  */
 const RESRC_FILES = ['src/**/*', '!./**/*.ts'];
 gulp.task('resources', () => {
 	return gulp.src(RESRC_FILES)
+		.pipe(cache('resourcing'))
+		.pipe(debug())
 		.pipe(gulp.dest(DIST_FOLDER));
 });
 
-
-gulp.task('watch', ['tslint'], () => {
-    return gulp.watch(TS_FILES, ['tslint', 'compile']);
-});
 
 
 /*
  * Default task which is automatically called by "gulp" command.
  */
-gulp.task("default", ['clean', 'tslint', 'resources', 'test']);
+gulp.task('default', [
+	'clean',
+	'tslint',
+	'compile',
+	'resources',
+	'test-full']);
+
+/*
+ * gulp watch
+ */
+gulp.task('watch', ['clean', 'tslint', 'compile', 'resources'], () => {
+	let queue = sequence(1000); // 1 sec
+
+	watch(RESRC_FILES, {
+		name: 'watch-resource',
+		emitOnGlob: false
+	}, queue.getHandler('resources'));
+
+	watch(TS_FILES, {
+		name: 'watch-code',
+		emitOnGlob: false
+	}, queue.getHandler('tslint-hot', 'compile-hot'));
+});
+
+/*
+ * gulp test
+ */
+gulp.task('test', [
+	'pre-test-standalone',
+	'run-test-standalone',
+	'remap-istanbul-standalone']);
+
+gulp.task('clean-cache', function () {
+	cache.caches = {};
+});

@@ -8,3 +8,5 @@ class ConfigurationAdapter {
     }
 }
 exports.ConfigurationAdapter = ConfigurationAdapter;
+
+//# sourceMappingURL=ConfigurationAdapter.js.map
