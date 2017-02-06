@@ -1,6 +1,5 @@
 import { expect } from 'chai';
-import C = require('../../app/constants/SettingKeys');
-import { ConfigurationAdapter } from '../../app/adapters/ConfigurationAdapter';
+import { ConfigurationAdapter, SettingKeys as C } from '../../app';
 
 describe('ConfigurationAdapter', () => {
 	describe('get ms broker url', () => {
