@@ -4,6 +4,7 @@ function __export(m) {
 }
 __export(require("./adapters/ConfigurationAdapter"));
 __export(require("./hubs/ExpressHub"));
+__export(require("./microservice/MicroServiceBase"));
 const SettingKeys = require('./constants/SettingKeys');
 exports.SettingKeys = SettingKeys;
 

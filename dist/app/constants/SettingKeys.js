@@ -1,6 +1,8 @@
 "use strict";
 module.exports = {
-    MSG_BROKER_URL: 'msg-broker-url'
+    CONFIG_SERVICE_ADDRESSES: 'CFG_SVC',
+    MESSAGE_BROKER_URL: 'MSG_BRK',
+    SERVICE_NAME: 'SVC_NAME'
 };
 
 //# sourceMappingURL=SettingKeys.js.map
