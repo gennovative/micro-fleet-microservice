@@ -1,107 +1,197 @@
 import { expect } from 'chai';
-import { ConfigurationAdapter, SettingKeys as C } from '../../app';
+import { ConfigurationAdapter, SettingKeys as S } from '../../app';
 
 describe('ConfigurationAdapter', () => {
-	describe('get', () => {
-		it('should read appconfig.json and return value', () => {
-			let configAdapter = new ConfigurationAdapter(),
-				value = configAdapter.get(C.CONFIG_SERVICE_ADDRESSES),
-				appConfigs = require('../../../appconfig.json');
-			expect(value).to.equals(appConfigs[C.CONFIG_SERVICE_ADDRESSES]);
-		});
+	
+	describe('init', () => {
+		it('should load file config', async () => {
+			// Arrange
+			let configAdapter = new ConfigurationAdapter();
 
-		it('should read settings from environment variable', () => {
-			process.env[C.CONFIG_SERVICE_ADDRESSES] = '127.0.0.1';
+			// Act
+			let result = await configAdapter.init();
+
+			// Assert
+			expect(result).to.be.true;
+			expect(configAdapter['_fileSettings']).to.be.not.null;
+		});
+		
+		it('should not load file settings if cannot load file', async () => {
+			// Arrange
 			let configAdapter = new ConfigurationAdapter();
 			configAdapter['_configFilePath'] = 'dummy.json';
 
-			let value = configAdapter.get(C.CONFIG_SERVICE_ADDRESSES);
-			expect(value).to.equals(process.env[C.CONFIG_SERVICE_ADDRESSES]);
+			// Act
+			let result = await configAdapter.init();
+
+			// Assert
+			expect(result).to.be.true;
+			expect(configAdapter['_fileSettings']).to.be.empty;
+		});
+	});
+
+	describe('get enableRemote', () => {
+		it('should return value of `enableRemote`', () => {
+			// Arrange
+			let configAdapter = new ConfigurationAdapter();
+
+			// Act and assert
+			configAdapter['_enableRemote'] = false;
+			expect(configAdapter.enableRemote).to.be.false;
+			
+			configAdapter['_enableRemote'] = true;
+			expect(configAdapter.enableRemote).to.be.true;
+
+		});
+	});
+	
+	describe('set enableRemote', () => {
+		it('should set value for `enableRemote`', () => {
+			// Arrange
+			let configAdapter = new ConfigurationAdapter();
+
+			// Act and assert
+			configAdapter.enableRemote = false;
+			expect(configAdapter['_enableRemote']).to.be.false;
+			
+			configAdapter.enableRemote = true;
+			expect(configAdapter['_enableRemote']).to.be.true;
+
+		});
+	});
+
+	describe('get', () => {
+		it('should read appconfig.json and return value', async () => {
+			// Arrange
+			let configAdapter = new ConfigurationAdapter(),
+				appConfigs = require('../../../appconfig.json'),
+				value;
+
+			// Act
+			await configAdapter.init();
+			value = configAdapter.get(S.CONFIG_SERVICE_ADDRESSES);
+
+			// Assert
+			expect(value).to.equals(appConfigs[S.CONFIG_SERVICE_ADDRESSES]);
 		});
 
-		it('should read settings from fetched Configuration Service', () => {
+		it('should read settings from environment variable', async () => {
+			// Arrange
+			process.env[S.CONFIG_SERVICE_ADDRESSES] = '127.0.0.1';
+			let configAdapter = new ConfigurationAdapter();
+			configAdapter['_configFilePath'] = 'dummy.json';
+
+			// Act
+			await configAdapter.init();
+			let value = configAdapter.get(S.CONFIG_SERVICE_ADDRESSES);
+			
+			// Assert
+			expect(value).to.equals(process.env[S.CONFIG_SERVICE_ADDRESSES]);
+		});
+
+		it('should read settings from fetched Configuration Service', async () => {
+			// Arrange
 			let settings = { // Mock fetched config
-					[C.MESSAGE_BROKER_URL]: '127.0.0.1/rabbitmq'
+					[S.MESSAGE_BROKER_URL]: '127.0.0.1/rabbitmq'
 				},
 				configAdapter = new ConfigurationAdapter(),
 				value;
 			
-			configAdapter['_settings'] = settings;
-			value = configAdapter.get(C.MESSAGE_BROKER_URL);
+			configAdapter['_remoteSettings'] = settings;
+			
+			// Act
+			await configAdapter.init();
+			value = configAdapter.get(S.MESSAGE_BROKER_URL);
 
-			expect(value).to.equals(settings[C.MESSAGE_BROKER_URL]);
+			// Assert
+			expect(value).to.equals(settings[S.MESSAGE_BROKER_URL]);
 		});
 		
-		it('should return `undefined` if cannot find setting for specified key', () => {
+		it('should return `null` if cannot find setting for specified key', async () => {
+			// Arrange
 			let configAdapter = new ConfigurationAdapter(),
-				value = configAdapter.get(C.MESSAGE_BROKER_URL);
+				value;
 
-			expect(value).to.be.undefined;
+			// Act
+			await configAdapter.init();
+			value = configAdapter.get(S.MESSAGE_BROKER_URL);
+
+			// Assert
+			expect(value).to.be.null;
 		});
 	});
 
 	describe('fetch', () => {
-		it('should reject if there is no address for Configuration Service', (done) => {
+		it('should reject if there is no address for Configuration Service', async () => {
+			// Arrange
 			let configAdapter = new ConfigurationAdapter(),
 				isSuccess = false;
 
 			// Make it no way to accidentially get a meaningful address.
 			configAdapter['_configFilePath'] = 'dummy.json';
-			configAdapter['_settings'] = {};
-			process.env[C.CONFIG_SERVICE_ADDRESSES] = '';
+			configAdapter['_remoteSettings'] = {};
+			process.env[S.CONFIG_SERVICE_ADDRESSES] = '';
 
-			configAdapter.fetch()
-				.then(() => {
-					isSuccess = true;
-					expect(isSuccess).to.be.false;
-					done();
-				})
-				.catch(err => {
-					expect(isSuccess).to.be.false;
-					expect(err).to.be.not.null;
-					done();
-				});
+			// Act then assert
+			await configAdapter.init();
+			try {
+				await configAdapter.fetch();
+				isSuccess = true;
+				expect(isSuccess).to.be.false;
+			} catch (err) {
+				expect(isSuccess).to.be.false;
+				expect(err).to.equal('No address for Configuration Service!');
+			}
 		});
 
-		it('should try each address in the list until success', (done) => {
+		it('should try each address in the list until success', async () => {
+			// Arrange
 			// Mock config service addresses
-			let addresses = ['127.0.0.1', '127.0.0.2'];
-			process.env[C.CONFIG_SERVICE_ADDRESSES] = `${addresses[0]};${addresses[1]}`;
+			let addresses = ['127.0.0.1', '127.0.0.2', '127.0.0.3'];
+			process.env[S.CONFIG_SERVICE_ADDRESSES] = `${addresses[0]};${addresses[1]};${addresses[2]}`;
 
 			// Mock fetched config
-			let fetchedConfig = {
+			let successConfig = {
 					success: true,
 					settings: {
-						[C.MESSAGE_BROKER_URL]: '127.0.0.1/rabbitmq'
+						[S.MESSAGE_BROKER_URL]: '127.0.0.1/rabbitmq'
 					}
+				},
+				failConfig = {
+					success: false
 				};
 
 			// Mock function to make request to config service.
 			let requestFn = function(options) {
 				return new Promise((resolve, reject) => {
-					// Force to fail on first address attempt.
 					if (options.uri == addresses[0]) {
+						// Force to throw error on first address attempt.
 						reject('Connection rejected!');
+					} else if (options.uri == addresses[1]) {
+						// Force to fail on second attempt.
+						resolve(failConfig);
 					} else {
-						resolve(fetchedConfig);
+						resolve(successConfig);
 					}
 				});
 			};
 
-			let configAdapter = new ConfigurationAdapter(requestFn),
+			let configAdapter = new ConfigurationAdapter(),
 				value;
-			configAdapter.fetch()
-				.then(() => {
-					value = configAdapter.get(C.MESSAGE_BROKER_URL);
-					expect(value).to.equals(fetchedConfig.settings[C.MESSAGE_BROKER_URL]);
-					done();
-				});
+			configAdapter['_requestMaker'] = requestFn;
+
+			// Act then assert
+			await configAdapter.init();
+			await configAdapter.fetch();
+			value = configAdapter.get(S.MESSAGE_BROKER_URL);
+			expect(value).to.equals(successConfig.settings[S.MESSAGE_BROKER_URL]);
 		});
 
-		it('should reject if no address in the list is accessible and private _settings must be an empty object', (done) => {
+		it('should reject if no address in the list is accessible and private _settings must be an empty object', async () => {
+			// Arrange
 			// Mock config service addresses
 			let addresses = ['127.0.0.1', '127.0.0.2'];
-			process.env[C.CONFIG_SERVICE_ADDRESSES] = `${addresses[0]};${addresses[1]}`;
+			process.env[S.CONFIG_SERVICE_ADDRESSES] = `${addresses[0]};${addresses[1]}`;
 
 			// Mock function to make request to config service.
 			let requestFn = function(options) {
@@ -110,20 +200,21 @@ describe('ConfigurationAdapter', () => {
 				});
 			};
 
-			let configAdapter = new ConfigurationAdapter(requestFn),
+			let configAdapter = new ConfigurationAdapter(),
 				isSuccess = false, value;
-			configAdapter.fetch()
-				.then(() => {
-					isSuccess = true;
-					expect(isSuccess).to.be.false;
-					done();
-				})
-				.catch(err => {
-					expect(isSuccess).to.be.false;
-					expect(configAdapter['_settings']).to.be.empty;
-					expect(err).to.be.not.null;
-					done();
-				});
+			configAdapter['_requestMaker'] = requestFn;
+
+			// Act then assert
+			await configAdapter.init();
+			try {
+				await configAdapter.fetch();
+				isSuccess = true;
+				expect(isSuccess).to.be.false;
+			} catch (err) {
+				expect(isSuccess).to.be.false;
+				expect(configAdapter['_remoteSettings']).to.be.empty;
+				expect(err).to.be.not.null;
+			}
 		});
 	});
 });

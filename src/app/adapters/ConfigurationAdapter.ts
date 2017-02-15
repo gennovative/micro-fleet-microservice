@@ -1,38 +1,66 @@
-import request from 'request-promise';
-const SettingKeys = require('../constants/SettingKeys');
+import * as request from 'request-promise';
+import { IAdapter } from './IAdapter';
+import { injectable } from '../utils/DependencyContainer';
+import { SettingKeys as S } from '../constants/SettingKeys';
+
+export interface IConfigurationAdapter extends IAdapter {
+	enableRemote: boolean;
+	get(key: string): string;
+	fetch(): Promise<boolean>;
+}
 
 /**
  * Provides settings from package
  */
-export class ConfigurationAdapter {
+@injectable()
+export class ConfigurationAdapter implements IConfigurationAdapter {
 	private _configFilePath = `${process.cwd()}/appconfig.json`;
 	private _startupPath: string;
-	private _staticSettings;
+	private _fileSettings;
 	private _requestMaker;
-	private _settings;
+	private _remoteSettings;
+	private _enableRemote: boolean;
 
-	constructor(requestMaker?) {
-		this._staticSettings = require(this._configFilePath);
-		this._requestMaker = requestMaker || request;
-		this._settings = {};
+	constructor() {
+		this._remoteSettings = {};
+		this._requestMaker = request;
+		this._enableRemote = false;
 	}
-	
+
+	get enableRemote(): boolean {
+		return this._enableRemote;
+	}
+
+	set enableRemote(value: boolean) {
+		this._enableRemote = value;
+	}
+
+	public init(): Promise<boolean> {
+		try {
+			this._fileSettings = require(this._configFilePath);
+		} catch (ex) {
+			this._fileSettings = {};
+		}
+		return Promise.resolve(true);
+	}
+
 	/**
-	 * Attempts to get settings from environmetal variable, `appconfig.json` file,
-	 * or from cached Configuration Service.
+	 * Attempts to get settings from cached Configuration Service, environmetal variable,
+	 * and `appconfig.json` file, respectedly.
 	 */
 	public get(key: string): string {
-		return this._settings[key] || process.env[key] || this._staticSettings[key];
+		let value = (this._remoteSettings[key] || process.env[key] || this._fileSettings[key]);
+		return (value ? value : null);
 	}
 
 	/**
 	 * Attempts to fetch settings from remote Configuration Service.
 	 */
 	public async fetch(): Promise<boolean> {
-		let addressRaw = this.get(SettingKeys.CONFIG_SERVICE_ADDRESSES);
+		let addressRaw = this.get(S.CONFIG_SERVICE_ADDRESSES);
 
 		if (!addressRaw || !addressRaw.length) { throw 'No address for Configuration Service!'; }
-		
+
 		let addressList: string[] = addressRaw.split(';'),
 			i = 0;
 		for (; i < addressList.length; i++) {
@@ -45,8 +73,9 @@ export class ConfigurationAdapter {
 		throw 'Cannot connect to any address of Configuration Service!';
 	}
 
+
 	private async attemptFetch(address: string): Promise<boolean> {
-		let serviceName = this.get(SettingKeys.SERVICE_NAME),
+		let serviceName = this.get(S.SERVICE_NAME),
 			options = {
 				uri: address,
 				qs: {
@@ -58,11 +87,12 @@ export class ConfigurationAdapter {
 		try {
 			let json = await this._requestMaker(options);
 			if (json.success) {
-				this._settings = json.settings;
+				this._remoteSettings = json.settings;
+				return true;
 			}
-			return true;
 		} catch (err) {
-			return false;
+			// TODO: Writing logs
 		}
+		return false;
 	}
 }
