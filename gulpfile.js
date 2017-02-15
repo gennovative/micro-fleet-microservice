@@ -90,9 +90,8 @@ let runTest = function () {
 		.pipe(mocha({reporter: 'spec'}))	
 		// Creating the reports after tests ran
 		.pipe(istanbul.writeReports())
-		// Enforce a coverage of at least 90%
-		.pipe(istanbul.enforceThresholds({ thresholds: { global: 90 } }))
-		.once('error', () => {
+		.once('error', function (err) {
+			console.log(err.toString());
 			process.exit(1);
 		});
 };
