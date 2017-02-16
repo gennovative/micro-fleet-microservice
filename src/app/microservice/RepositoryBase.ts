@@ -1,5 +1,6 @@
-import { QueryBuilderSingle } from 'objection';
+import { QueryBuilder } from 'objection';
 import { EntityBase } from './EntityBase';
+import { Guard } from '../utils/Guard';
 
 export abstract class RepositoryBase<TEntity extends EntityBase> {
 
@@ -8,8 +9,8 @@ export abstract class RepositoryBase<TEntity extends EntityBase> {
 		return newEnt;
 	}
 
-	public async delete(ent: TEntity): Promise<number> {
-		let affectedRows = await this.query().deleteById(ent.id);
+	public async delete(id: number): Promise<number> {
+		let affectedRows = await this.query().deleteById(id);
 		return affectedRows;
 	}
 
@@ -18,10 +19,17 @@ export abstract class RepositoryBase<TEntity extends EntityBase> {
 		return foundEnt;
 	}
 
-	public async update(ent: TEntity): Promise<number> {
-		let affectedRows = await this.query().where('id', ent.id).update(ent);
+	public async patch(entity: Partial<TEntity>): Promise<number> {
+		Guard.assertDefined('entity.id', entity.id);
+		let affectedRows = await this.query().where('id', entity.id).patch(<TEntity>entity);
 		return affectedRows;
 	}
 
-	public abstract query(): QueryBuilderSingle<TEntity>;
+	public async update(entity: TEntity): Promise<number> {
+		Guard.assertDefined('entity.id', entity.id);
+		let affectedRows = await this.query().where('id', entity.id).update(entity);
+		return affectedRows;
+	}
+
+	public abstract query(): QueryBuilder<TEntity>;
 }

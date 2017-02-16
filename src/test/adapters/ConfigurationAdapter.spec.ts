@@ -92,7 +92,7 @@ describe('ConfigurationAdapter', () => {
 		it('should read settings from fetched Configuration Service', async () => {
 			// Arrange
 			let settings = { // Mock fetched config
-					[S.MESSAGE_BROKER_URL]: '127.0.0.1/rabbitmq'
+					[S.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq'
 				},
 				configAdapter = new ConfigurationAdapter(),
 				value;
@@ -101,10 +101,10 @@ describe('ConfigurationAdapter', () => {
 			
 			// Act
 			await configAdapter.init();
-			value = configAdapter.get(S.MESSAGE_BROKER_URL);
+			value = configAdapter.get(S.MSG_BROKER_HOST);
 
 			// Assert
-			expect(value).to.equals(settings[S.MESSAGE_BROKER_URL]);
+			expect(value).to.equals(settings[S.MSG_BROKER_HOST]);
 		});
 		
 		it('should return `null` if cannot find setting for specified key', async () => {
@@ -114,7 +114,7 @@ describe('ConfigurationAdapter', () => {
 
 			// Act
 			await configAdapter.init();
-			value = configAdapter.get(S.MESSAGE_BROKER_URL);
+			value = configAdapter.get(S.MSG_BROKER_HOST);
 
 			// Assert
 			expect(value).to.be.null;
@@ -154,7 +154,7 @@ describe('ConfigurationAdapter', () => {
 			let successConfig = {
 					success: true,
 					settings: {
-						[S.MESSAGE_BROKER_URL]: '127.0.0.1/rabbitmq'
+						[S.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq'
 					}
 				},
 				failConfig = {
@@ -183,8 +183,8 @@ describe('ConfigurationAdapter', () => {
 			// Act then assert
 			await configAdapter.init();
 			await configAdapter.fetch();
-			value = configAdapter.get(S.MESSAGE_BROKER_URL);
-			expect(value).to.equals(successConfig.settings[S.MESSAGE_BROKER_URL]);
+			value = configAdapter.get(S.MSG_BROKER_HOST);
+			expect(value).to.equals(successConfig.settings[S.MSG_BROKER_HOST]);
 		});
 
 		it('should reject if no address in the list is accessible and private _settings must be an empty object', async () => {

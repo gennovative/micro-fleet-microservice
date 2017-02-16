@@ -10,6 +10,7 @@ import { Types as T } from '../constants/Types';
 
 export interface IDatabaseAdapter extends IAdapter {
 	clientName: string;
+	destroy(): Promise<void>;
 }
 
 /**
@@ -26,7 +27,6 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 	) {
 		this._clientName = 'pg';
 		this._knex = knex;
-		console.log('KNEXT: ' + typeof knex);
 	}
 
 	public get clientName(): string {
@@ -39,14 +39,49 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 
 	public init(): Promise<boolean> {
 		let cfgAdt = this._configAdapter,
-			k = this._knex({client: this._clientName, connection: {
-					host: cfgAdt.get(S.CONNECTION_HOST),
-					user: cfgAdt.get(S.CONNECTION_USER),
-					password: cfgAdt.get(S.CONNECTION_PASSWORD),
-					database: cfgAdt.get(S.CONNECTION_DATABASE),
-				}
-			});
+			settings = {
+				client: this._clientName,
+				useNullAsDefault: true,
+				connection: this.buildConnSettings()
+			},
+			k = this._knex(settings);
+
 		Model.knex(k);
 		return Promise.resolve(true);
+	}
+
+	public destroy(): Promise<void> {
+		// Casting from Bluebird Promise to Node native Promise
+		// This cast is for compiler, hence no effect to runtime performance.
+		return <Promise<void>><any>(Model.knex().destroy());
+	}
+
+	private buildConnSettings(): any {
+		let cfgAdt = this._configAdapter,
+			value: string;
+
+		// 1st priority: connect to a local file.
+		value = cfgAdt.get(S.DB_FILE);
+		if (value && value.length) {
+			return { filename: value };
+		}
+
+		// 2nd priority: connect with a connection string.
+		value = cfgAdt.get(S.DB_CONN_STRING);
+		if (value && value.length) {
+			return value;
+		}
+
+		// Last priority: connect with host credentials.
+		value = cfgAdt.get(S.DB_HOST);
+		if (value && value.length) {
+			return {
+				host: cfgAdt.get(S.DB_HOST),
+				user: cfgAdt.get(S.DB_USER),
+				password: cfgAdt.get(S.DB_PASSWORD),
+				database: cfgAdt.get(S.DB_NAME),
+			};
+		}
+		throw 'No database settings!';
 	}
 }

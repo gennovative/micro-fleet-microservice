@@ -27,7 +27,7 @@ export class DependencyContainer {
 
 	public bind<TInterface>(identifier: string | symbol, constructor: interfaces.Newable<TInterface>): BindingScope<TInterface> {
 		this.assertNotDisposed();
-		Guard.assertDefined(constructor);
+		Guard.assertDefined('constructor', constructor);
 		
 		let binding, scope;
 		binding = this._container.bind<TInterface>(identifier).to(constructor);
