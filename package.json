@@ -1,7 +1,7 @@
 {
   "name": "back-lib-gennova-core",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Core abstract classes, functional helpers and other global utilities.",
   "main": "./dist/app/index.js",
   "scripts": {
