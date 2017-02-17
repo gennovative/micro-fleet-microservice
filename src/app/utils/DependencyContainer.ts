@@ -29,7 +29,13 @@ export class DependencyContainer {
 		this.assertNotDisposed();
 		Guard.assertDefined('constructor', constructor);
 		
-		let binding, scope;
+		let container = this._container,
+			binding, scope;
+		
+		if (container.isBound(identifier)) {
+			container.unbind(identifier);
+		}
+
 		binding = this._container.bind<TInterface>(identifier).to(constructor);
 		scope = new BindingScope<TInterface>(binding);
 
@@ -41,6 +47,7 @@ export class DependencyContainer {
 		try {
 			return this._container.get<T>(identifier);
 		} catch (ex) {
+			console.log('Resolve Error: ' + ex);
 			return null;
 		}
 	}

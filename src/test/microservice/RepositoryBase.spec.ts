@@ -52,7 +52,9 @@ class UserRepo extends RepositoryBase<UserEntity> {
 let dbAdapter: IDatabaseAdapter,
 	cachedEnt: UserEntity;
 
-describe('RepositoryBase', () => {
+// Commented. Because these tests make real connection to SqlLite file.
+// Change `describe.skip(...)` to `describe(...)` to enable these tests.
+describe.skip('RepositoryBase', () => {
 	
 	beforeEach('Initialize db adapter', async () => {
 		dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
@@ -152,7 +154,7 @@ describe('RepositoryBase', () => {
 			let affectedRows = -1,
 				exception = null;
 			try {
-				affectedRows = await usrRepo.patch({ age: newAge /* id: NOT PROVIDED */});
+				affectedRows = await usrRepo.patch({ age: newAge });
 			} catch (ex) {
 				exception = ex;
 			}

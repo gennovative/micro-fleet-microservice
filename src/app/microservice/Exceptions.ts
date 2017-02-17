@@ -4,7 +4,8 @@ export class Exception implements Error {
 	private _stack: string;
 
 	constructor(protected _message?: string, protected _isCritical?: boolean) {
-		
+		this._stack = '';
+		this._name = '';
 	}
 
 	public get name(): string {
@@ -32,9 +33,12 @@ export class Exception implements Error {
 	}
 
 	public toString(): string {
-		// Ex: [Critical] A big mess has happened!
-		//	   [Minor] An error has occured!
-		return `[${ (this._isCritical ? 'Critical' : 'Minor') }] ${ this._message ? this._message : 'An error has occured!' }`;
+		// Ex 1: [Critical] A big mess has happened!
+		//		 <stacktrace here>
+		//
+		// Ex 2: [Minor]
+		//		 <stacktrace here>
+		return `[${ (this._isCritical ? 'Critical' : 'Minor') }] ${ this._message ? this._message : '' } \n ${this._stack}`;
 	}
 }
 
