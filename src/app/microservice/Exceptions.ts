@@ -6,6 +6,7 @@ export class Exception implements Error {
 	constructor(protected _message?: string, protected _isCritical?: boolean) {
 		this._stack = '';
 		this._name = '';
+		Error.captureStackTrace(this, Exception);
 	}
 
 	public get name(): string {

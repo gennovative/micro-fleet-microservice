@@ -10,7 +10,7 @@ import { Types as T } from '../constants/Types';
 
 export interface IDatabaseAdapter extends IAdapter {
 	clientName: string;
-	destroy(): Promise<void>;
+	dispose(): Promise<void>;
 }
 
 /**
@@ -37,23 +37,27 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 		this._clientName = value;
 	}
 
-	public init(): Promise<boolean> {
-		let cfgAdt = this._configAdapter,
-			settings = {
-				client: this._clientName,
-				useNullAsDefault: true,
-				connection: this.buildConnSettings()
-			},
-			k = this._knex(settings);
-
-		Model.knex(k);
-		return Promise.resolve(true);
+	public init(): Promise<void> {
+		return new Promise<void>(resolve => {
+			let cfgAdt = this._configAdapter,
+				settings = {
+					client: this._clientName,
+					useNullAsDefault: true,
+					connection: this.buildConnSettings()
+				},
+				k = this._knex(settings);
+			Model.knex(k);
+			resolve();
+		});
 	}
 
-	public destroy(): Promise<void> {
+	public async dispose(): Promise<void> {
 		// Casting from Bluebird Promise to Node native Promise
 		// This cast is for compiler, hence no effect to runtime performance.
-		return <Promise<void>><any>(Model.knex().destroy());
+		await Model.knex().destroy();
+		this._configAdapter = null;
+		this._knex = null;
+		this._clientName = null;
 	}
 
 	private buildConnSettings(): any {

@@ -29,8 +29,12 @@ class MockConfigAdapter implements IConfigurationAdapter {
 		return Promise.resolve(true);
 	}
 
-	public init(): Promise<boolean> {
-		return Promise.resolve(true);
+	public init(): Promise<void> {
+		return Promise.resolve();
+	}
+
+	public dispose(): Promise<void> {
+		return Promise.resolve();
 	}
 }
 
@@ -63,7 +67,7 @@ describe.skip('RepositoryBase', () => {
 	});
 
 	afterEach('Tear down db adapter', async () => {
-		await dbAdapter.destroy();
+		await dbAdapter.dispose();
 	});
 
 	describe('create', () => {
