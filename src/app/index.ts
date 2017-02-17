@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+export * from './adapters/IAdapter';
 export * from './adapters/ConfigurationAdapter';
 export * from './adapters/DatabaseAdapter';
 export * from './adapters/MessageBrokerAdapter';

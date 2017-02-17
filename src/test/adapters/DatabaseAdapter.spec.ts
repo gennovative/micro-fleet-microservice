@@ -60,6 +60,7 @@ class MockConfigAdapter implements IConfigurationAdapter {
 }
 
 describe('KnexDatabaseAdapter', () => {
+
 	describe('get clientName', () => {
 		it('should return value of `clientName`', () => {
 			// Arrange
@@ -85,9 +86,8 @@ describe('KnexDatabaseAdapter', () => {
 	describe('init', () => {
 		it('should configure database connection with Knex', async () => {
 			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter()),
-				spyKnex = chai.spy();
-			dbAdapter['_knex'] = spyKnex;
+			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
+			dbAdapter['_knex'] = chai.spy();
 
 			// Act
 			let result = await dbAdapter.init();
@@ -101,10 +101,12 @@ describe('KnexDatabaseAdapter', () => {
 		it('should configure ObjectionJS with Knex', async () => {
 			// Arrange
 			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
-			chai.spy.on(Model, 'knex');
+			dbAdapter['_knex'] = chai.spy();
+			Model['knex'] = <any>chai.spy();
 
 			// Act
 			let result = await dbAdapter.init();
+
 			// Assert
 			expect(result).to.be.true;
 			expect(Model.knex).to.be.spy;
@@ -121,7 +123,7 @@ describe('KnexDatabaseAdapter', () => {
 						filename: CONN_FILE
 					}
 				};
-			chai.spy.on(dbAdapter, '_knex');
+			dbAdapter['_knex'] = chai.spy();
 
 			// Act
 			let result = await dbAdapter.init();
@@ -140,7 +142,7 @@ describe('KnexDatabaseAdapter', () => {
 					useNullAsDefault: true,
 					connection: CONN_STRING
 				};
-			chai.spy.on(dbAdapter, '_knex');
+			dbAdapter['_knex'] = chai.spy();
 
 			// Act
 			let result = await dbAdapter.init();
@@ -164,7 +166,7 @@ describe('KnexDatabaseAdapter', () => {
 						database: CONN_DB,
 					}
 				};
-			chai.spy.on(dbAdapter, '_knex');
+			dbAdapter['_knex'] = chai.spy();
 
 			// Act
 			let result = await dbAdapter.init();
@@ -180,7 +182,7 @@ describe('KnexDatabaseAdapter', () => {
 			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter('')),
 				exception = null,
 				result = false;
-			chai.spy.on(dbAdapter, '_knex');
+			dbAdapter['_knex'] = chai.spy();
 
 			// Act
 			try {

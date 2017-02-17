@@ -1,10 +1,14 @@
 import * as http from 'http';
 import { expect } from 'chai';
-import { ExpressHub } from '../../app';
+import { ExpressHub, IMicroWeb } from '../../app';
 
 const PORT = 34567;
 
-describe('ExpressHub', () => {
+// TODO: Should give more details or comments to demonstrate how to use ExpressHub.
+
+// Skipped. Because these tests start real HTTP server.
+// Change `describe.skip(...)` to `describe(...)` to enable these tests.
+describe.skip('ExpressHub', () => {
 	describe('listen', () => {
 		it('should answer requests to specified port', (done) => {
 			let hub = new ExpressHub();
@@ -16,13 +20,15 @@ describe('ExpressHub', () => {
 			});
 		});
 	});
-	/*
+
 	describe('use', () => {
 		it('should answer requests to specified path', (done) => {
-			let hub = new ExpressHub();
-			hub.use(require('./MicroWeb.dummy'));
+			let hub = new ExpressHub(),
+				microweb: IMicroWeb = require('./MicroWeb.dummy');
+			hub.use(microweb);
 			hub.listen(PORT, (err, server: http.Server) => {
-				http.get(`http://localhost:${PORT}/dummy`, res => {
+				// Ex: http://localhost:3000/dummy
+				http.get(`http://localhost:${PORT}/${microweb.name}`, res => {
 					let str = '';
 
 					// another chunk of data has been recieved, so append it to `str`
@@ -41,5 +47,4 @@ describe('ExpressHub', () => {
 			});
 		});
 	});
-	//*/
 });
