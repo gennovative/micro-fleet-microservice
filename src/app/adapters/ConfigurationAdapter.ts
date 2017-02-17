@@ -15,7 +15,6 @@ export interface IConfigurationAdapter extends IAdapter {
 @injectable()
 export class ConfigurationAdapter implements IConfigurationAdapter {
 	private _configFilePath = `${process.cwd()}/appconfig.json`;
-	private _startupPath: string;
 	private _fileSettings;
 	private _requestMaker;
 	private _remoteSettings;
@@ -27,21 +26,34 @@ export class ConfigurationAdapter implements IConfigurationAdapter {
 		this._enableRemote = false;
 	}
 
-	get enableRemote(): boolean {
+	public get enableRemote(): boolean {
 		return this._enableRemote;
 	}
 
-	set enableRemote(value: boolean) {
+	public set enableRemote(value: boolean) {
 		this._enableRemote = value;
 	}
 
-	public init(): Promise<boolean> {
-		try {
-			this._fileSettings = require(this._configFilePath);
-		} catch (ex) {
-			this._fileSettings = {};
-		}
-		return Promise.resolve(true);
+	public init(): Promise<void> {
+		return new Promise<void>(resolve => {
+			try {
+				this._fileSettings = require(this._configFilePath);
+			} catch (ex) {
+				this._fileSettings = {};
+			}
+			resolve();
+		});
+	}
+
+	public dispose(): Promise<void> {
+		return new Promise<void>(resolve => {
+			this._configFilePath = null;
+			this._fileSettings = null;
+			this._remoteSettings = null;
+			this._requestMaker = null;
+			this._enableRemote = null;
+			resolve();
+		});
 	}
 
 	/**

@@ -33,6 +33,7 @@ export abstract class MicroServiceBase {
 			this.onStarting();
 		} catch (ex) {
 			this.onError(ex);
+			console.error('An error occured on starting, the application has to stop now.');
 			this.stop();
 			return;
 		}
@@ -40,6 +41,7 @@ export abstract class MicroServiceBase {
 		this.initAdapters()
 			.then(() => {
 				this._isStarted = true;
+				this.handleGracefulShutdown();
 				this.onStarted();
 			})
 			.catch(err => {
@@ -51,31 +53,42 @@ export abstract class MicroServiceBase {
 	 * Gracefully stops this application and exit 
 	 */
 	public stop(exitProcess: boolean = true): void {
-		try {
-			this.onStopping();
-			this._isStarted = false;
-			this.onStopped();
-		} catch (ex) {
-			this.onError(ex);
-		} finally {
-			exitProcess &&
-				/* istanbul ignore next: only useful on production */ 
-				this.exitProcess();
-		}
+		(async () => {
+			try {
+				this.onStopping();
+				this._depContainer.dispose();
+				await this.disposeAdapters();
+				this._isStarted = false;
+				this.onStopped();
+			} catch (ex) {
+				this.onError(ex);
+			} finally {
+				exitProcess &&
+					/* istanbul ignore next: only useful on production */ 
+					this.exitProcess();
+			}
+		})();
 	}
 	
-	protected addDbAdapter(): void {
+	/**
+	 * @return Total number of adapters that have been added so far.
+	 */
+	protected addAdapter(adapter: IAdapter): number {
+		return this._adapters.push(adapter);
+	}
+	
+	// TODO: Should ha addAdapterFromContainer
+
+	protected addDbAdapter(): IDatabaseAdapter {
 		let dbAdt = this._depContainer.resolve<IDatabaseAdapter>(T.DB_ADAPTER);
 		this.addAdapter(dbAdt);
-	}
-	
-	protected addAdapter(adapter: IAdapter): void {
-		this._adapters.push(adapter);
+		return dbAdt;
 	}
 
-	protected addConfigAdapter(): void {
-		this._configAdapter = this._depContainer.resolve<IConfigurationAdapter>(T.CONFIG_ADAPTER);
-		this.addAdapter(this._configAdapter);
+	protected addConfigAdapter(): IConfigurationAdapter {
+		let cfgAdt = this._configAdapter = this._depContainer.resolve<IConfigurationAdapter>(T.CONFIG_ADAPTER);
+		this.addAdapter(cfgAdt);
+		return cfgAdt;
 	}
 
 	protected registerDependencies(): void {
@@ -130,17 +143,63 @@ export abstract class MicroServiceBase {
 		// If remote config is disabled or
 		// if remote config is enanbed and fetching successfully.
 		if (!cfgAdt.enableRemote || await cfgAdt.fetch()) {
-			initPromises = this._adapters.map(adt => adt.init);
+			initPromises = this._adapters.map(adt => adt.init());
 		} else {
 			throw new CriticalException('Fail to fetch configuration!');
 		}
 
 		await Promise.all(initPromises);
 	}
+
+	private async disposeAdapters(): Promise<void> {
+		let disposePromises = this._adapters.map(adt => {
+			// let adtName = adt.constructor.toString().substring(0, 20);
+			// console.log('DISPOSING: ' + adtName);
+			return adt.dispose(); 
+		});
+		await Promise.all(disposePromises);
+	}
 	
 	private exitProcess() {
-		/* istanbul ignore next */
+		console.log('Application has been shutdown, the process exits now!');
 		process.exit(); // TODO: Should emit an exit code to also stop Docker instance
 	}
 	
+	/**
+	 * Gracefully shutdown the application when user presses Ctrl-C in Console/Terminal,
+	 * or when the OS is trying to stop the service process.
+	 * 
+	 */
+	private handleGracefulShutdown() {
+		let handler = () => {
+			console.log('Gracefully shutdown...');
+			this.stop();
+		};
+
+		// SIGINT is the interrupt signal.
+		// The Terminal/Console sends it to the foreground process when the user presses Ctrl-C.
+		process.on('SIGINT', handler);
+
+		// SIGTERM is the termination signal.
+		// Sent by `kill` command, or Upstart, or Heroku dynos, or Docker to shutdown the process.
+		// After a period (~10 sec), if the process is still running, SIGKILL will be sent to force immediate termination.
+		process.on('SIGTERM', handler);
+		
+		// Windows has no such signals, so we need to fake SIGINT:
+		/* istanbul ignore else */
+		if (process.platform === 'win32') {
+			const readLine = require('readline');
+			let rl = readLine.createInterface({
+				input: process.stdin,
+				output: process.stdout
+			});
+			
+			// When pressing Ctrl-C
+			// Read more: https://nodejs.org/api/readline.html#readline_event_sigint
+			rl.on('SIGINT', () => {
+				/* istanbul ignore next */
+				process.emit('SIGINT');
+			});
+		}
+	}
 }

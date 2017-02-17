@@ -1,5 +1,6 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
+import * as _ from 'lodash';
 import { Model } from 'objection';
 
 import { KnexDatabaseAdapter, IConfigurationAdapter, SettingKeys as S } from '../../app';
@@ -14,7 +15,7 @@ const expect = chai.expect,
 	CONN_USER = 'dbUser',
 	CONN_PASS = 'secret',
 	CONN_DB = 'randomDb',
-	CONN_FILE = './database-adapter-test.sqlite',
+	CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`,
 	CONN_STRING = 'msql://localhost@user:pass',
 	CLIENT_NAME = 'postgres';
 
@@ -54,8 +55,12 @@ class MockConfigAdapter implements IConfigurationAdapter {
 		return Promise.resolve(true);
 	}
 
-	public init(): Promise<boolean> {
-		return Promise.resolve(true);
+	public init(): Promise<void> {
+		return Promise.resolve();
+	}
+
+	public dispose(): Promise<void> {
+		return Promise.resolve();
 	}
 }
 
@@ -87,49 +92,60 @@ describe('KnexDatabaseAdapter', () => {
 		it('should configure database connection with Knex', async () => {
 			// Arrange
 			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
+			
+			// Replace with spy function
 			dbAdapter['_knex'] = chai.spy();
 
 			// Act
-			let result = await dbAdapter.init();
+			await dbAdapter.init();
 
 			// Assert
-			expect(result).to.be.true;
 			expect(dbAdapter['_knex']).to.be.spy;
 			expect(dbAdapter['_knex']).to.have.been.called.once;
 		});
 		
 		it('should configure ObjectionJS with Knex', async () => {
 			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
-			dbAdapter['_knex'] = chai.spy();
-			Model['knex'] = <any>chai.spy();
+			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
+				modelKnex = Model.knex;
+			
+			dbAdapter.clientName = 'sqlite3';
+			// Spy on this method, because we need the real function be called.
+			chai.spy.on(dbAdapter, '_knex');
+			chai.spy.on(Model, 'knex');
 
 			// Act
-			let result = await dbAdapter.init();
+			await dbAdapter.init();
 
 			// Assert
-			expect(result).to.be.true;
 			expect(Model.knex).to.be.spy;
 			expect(Model.knex).to.have.been.called.once;
+			
+			// Give back original function, because this is global library.
+			Model['knex'] = modelKnex;
 		});
 		
 		it('should configure connection with file name settings', async () => {
 			// Arrange
 			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
-				expectedSettings = {
+				expectedSettings;
+			
+			dbAdapter.clientName = 'sqlite3';
+			expectedSettings = {
 					client: dbAdapter.clientName, 
 					useNullAsDefault: true,
 					connection: { 
 						filename: CONN_FILE
 					}
 				};
-			dbAdapter['_knex'] = chai.spy();
+			
+			// Spy on this method, because we need the real function be called.
+			chai.spy.on(dbAdapter, '_knex');
 
 			// Act
-			let result = await dbAdapter.init();
+			await dbAdapter.init();
 
 			// Assert
-			expect(result).to.be.true;
 			expect(dbAdapter['_knex']).to.be.spy;
 			expect(dbAdapter['_knex']).to.have.been.called.with(expectedSettings);
 		});
@@ -145,10 +161,9 @@ describe('KnexDatabaseAdapter', () => {
 			dbAdapter['_knex'] = chai.spy();
 
 			// Act
-			let result = await dbAdapter.init();
+			await dbAdapter.init();
 
 			// Assert
-			expect(result).to.be.true;
 			expect(dbAdapter['_knex']).to.be.spy;
 			expect(dbAdapter['_knex']).to.have.been.called.with(expectedSettings);
 		});
@@ -169,10 +184,9 @@ describe('KnexDatabaseAdapter', () => {
 			dbAdapter['_knex'] = chai.spy();
 
 			// Act
-			let result = await dbAdapter.init();
+			await dbAdapter.init();
 
 			// Assert
-			expect(result).to.be.true;
 			expect(dbAdapter['_knex']).to.be.spy;
 			expect(dbAdapter['_knex']).to.have.been.called.with(expectedSettings);
 		});
@@ -181,20 +195,42 @@ describe('KnexDatabaseAdapter', () => {
 			// Arrange
 			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter('')),
 				exception = null,
-				result = false;
+				isSuccess = false;
 			dbAdapter['_knex'] = chai.spy();
 
 			// Act
 			try {
-				result = await dbAdapter.init();
+				await dbAdapter.init();
+				isSuccess = true;
 			} catch (ex) {
 				exception = ex;
 			}
 
 			// Assert
-			expect(result).to.be.false;
+			expect(isSuccess).to.be.false;
 			expect(exception).to.be.not.null;
 			expect(exception).to.equal('No database settings!');
+		});
+	});
+	
+	describe('dispose', () => {
+		it('should release all resources', async () => {
+			// Arrange
+
+			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
+				callMe = chai.spy();
+
+			// Act
+			dbAdapter.clientName = 'sqlite3';
+			await dbAdapter.init();
+			await dbAdapter.dispose();
+
+			// Assert
+			_.forOwn(dbAdapter, (value, key) => {
+				callMe();
+				expect(dbAdapter[key], key).to.be.null;
+			});
+			expect(callMe).to.be.called;
 		});
 	});
 });

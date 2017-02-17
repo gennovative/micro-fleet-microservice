@@ -1,5 +1,5 @@
 {
-  "name": "back-lib-gennova-core",
+  "name": "back-lib-gennova-foundation",
   "private": true,
   "version": "0.2.0",
   "description": "Core abstract classes, functional helpers and other global utilities.",

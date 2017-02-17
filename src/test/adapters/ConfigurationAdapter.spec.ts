@@ -1,5 +1,10 @@
-import { expect } from 'chai';
+import * as chai from 'chai';
+import * as spies from 'chai-spies';
+import * as _ from 'lodash';
 import { ConfigurationAdapter, SettingKeys as S } from '../../app';
+
+chai.use(spies);
+const expect = chai.expect;
 
 describe('ConfigurationAdapter', () => {
 	
@@ -9,10 +14,9 @@ describe('ConfigurationAdapter', () => {
 			let configAdapter = new ConfigurationAdapter();
 
 			// Act
-			let result = await configAdapter.init();
+			await configAdapter.init();
 
-			// Assert
-			expect(result).to.be.true;
+			// Assert			
 			expect(configAdapter['_fileSettings']).to.be.not.null;
 		});
 		
@@ -22,10 +26,9 @@ describe('ConfigurationAdapter', () => {
 			configAdapter['_configFilePath'] = 'dummy.json';
 
 			// Act
-			let result = await configAdapter.init();
+			await configAdapter.init();
 
 			// Assert
-			expect(result).to.be.true;
 			expect(configAdapter['_fileSettings']).to.be.empty;
 		});
 	});
@@ -122,7 +125,7 @@ describe('ConfigurationAdapter', () => {
 	});
 
 	describe('fetch', () => {
-		it('should reject if there is no address for Configuration Service', async () => {
+		it('should throw error if there is no address for Configuration Service', async () => {
 			// Arrange
 			let configAdapter = new ConfigurationAdapter(),
 				isSuccess = false;
@@ -215,6 +218,24 @@ describe('ConfigurationAdapter', () => {
 				expect(configAdapter['_remoteSettings']).to.be.empty;
 				expect(err).to.be.not.null;
 			}
+		});
+	});
+	
+	describe('dispose', () => {
+		it('should release all resources', async () => {
+			// Arrange
+			let configAdapter = new ConfigurationAdapter(),
+				callMe = chai.spy();
+
+			// Act
+			await configAdapter.dispose();
+
+			// Assert
+			_.forOwn(configAdapter, (value, key) => {
+				callMe();
+				expect(configAdapter[key], key).to.be.null;
+			});
+			expect(callMe).to.be.called;
 		});
 	});
 });

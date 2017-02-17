@@ -18,7 +18,7 @@ export class MessageBrokerAdapter implements IMessageBrokerAdapter {
 	) {
 	}
 	
-	public init(): Promise<boolean> {
+	public init(): Promise<void> {
 		let cfgAdt = this._configAdapter;
 		// Read more: https://github.com/yamalight/microwork
 		/*
@@ -28,6 +28,10 @@ export class MessageBrokerAdapter implements IMessageBrokerAdapter {
 			reconnectTimeout: cfgAdt.get(S.MSG_BROKER_RECONN_TIMEOUT)
 		});
 		//*/
-		return Promise.resolve(true);
+		return Promise.resolve();
+	}
+
+	public dispose(): Promise<void> {
+		return Promise.resolve();
 	}
 }

@@ -1,7 +1,7 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
-import { MicroServiceBase, IAdapter, IConfigurationAdapter, 
-	Types, CriticalException, injectable } from '../../app';
+import { MicroServiceBase, IAdapter, IConfigurationAdapter, IDatabaseAdapter,
+	Types, CriticalException, injectable, SettingKeys as S } from '../../app';
 
 chai.use(spies);
 const expect = chai.expect;
@@ -22,9 +22,18 @@ interface ICustomAdapter extends IAdapter { }
 
 @injectable()
 class CustomAdapter implements ICustomAdapter {	
-	public init(): Promise<boolean> {
-		// Do some async stuff here
-		return Promise.resolve(true);
+	public init(): Promise<void> {
+		return new Promise<void>(resolve => {
+			// Do some async stuff here
+			resolve();
+		});
+	}
+
+	public dispose(): Promise<void> {
+		return new Promise<void>(resolve => {
+			// Do some async stuff here
+			resolve();
+		});
 	}
 }
 
@@ -33,7 +42,8 @@ class CustomAdapter implements ICustomAdapter {
 const BEHAV_FALSE = 'behav_false',
 	BEHAV_THROW = 'behav_throw',
 	ERROR_RANDOM = new CriticalException('A random error!'),
-	ERROR_FAIL = new CriticalException('Fail to fetch configuration!');
+	ERROR_FAIL = new CriticalException('Fail to fetch configuration!'),
+	CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`;
 
 @injectable()
 class MockConfigService implements IConfigurationAdapter {
@@ -44,12 +54,19 @@ class MockConfigService implements IConfigurationAdapter {
 		return true;
 	}
 
-	public init(): Promise<boolean> {
-		return Promise.resolve(true);
+	public init(): Promise<void> {
+		return Promise.resolve();
+	}
+
+	public dispose(): Promise<void> {
+		return Promise.resolve();
 	}
 
 	public get(key: string): string {
-		return null;
+		switch (key) {
+			case S.DB_FILE: return CONN_FILE;
+			default: return null;
+		}
 	}
 
 	public async fetch(): Promise<boolean> {
@@ -73,7 +90,6 @@ class TestMarketingService extends MicroServiceBase {
 		this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility);
 		this._depContainer.bind<ICustomAdapter>(CUSTOM_ADT, CustomAdapter);
 		this._depContainer.bind<IConfigurationAdapter>(Types.CONFIG_ADAPTER, MockConfigService).asSingleton();
-		let adt = this._depContainer.resolve<IConfigurationAdapter>(Types.CONFIG_ADAPTER);
 	}
 
 	protected /* override */ onStarting(): void {
@@ -162,6 +178,7 @@ describe('MicroServiceBase', () => {
 			let service = new TestMarketingService();
 			
 			service['onError'] = function() {
+				// Assert
 				expect(service['onError']).to.be.spy;
 				expect(service['onError']).to.be.called.once;
 				expect(service['onError']).to.be.called.with(ERROR_RANDOM);
@@ -190,6 +207,8 @@ describe('MicroServiceBase', () => {
 					// Save and execute original `onError` method,
 					// to make it covered.
 					original(error);
+
+					// Assert
 					expect(service['onError']).to.be.spy;
 					expect(service['onError']).to.be.called.once;
 					expect(service['onError']).to.be.called.with(ERROR_RANDOM);
@@ -221,6 +240,7 @@ describe('MicroServiceBase', () => {
 			let service = new TestMarketingService();
 			
 			service['onError'] = function() {
+				// Assert
 				expect(service['onError']).to.be.spy;
 				expect(service['onError']).to.be.called.once;
 				expect(service['onError']).to.be.called.with(ERROR_RANDOM);
@@ -228,6 +248,24 @@ describe('MicroServiceBase', () => {
 			};
 
 			chai.spy.on(service, 'onError');
+			
+			service['onStarting'] = () => {
+				service['_adapters'].forEach((adt: IAdapter, idx) => {
+					if (adt['clientName']) {
+						// Search for database adapter and
+						// tell it to work with testing Sqlite3 file.
+						adt['clientName'] = 'sqlite3';
+					}
+				});
+			};
+
+			service['onStarted'] = (function(original) {
+				return () => {
+					original();
+					service.stop(false);
+				};
+			})(service['onStarted']);
+			
 			
 			service['onStopping'] = (function(original) {
 				return () => {
@@ -237,14 +275,6 @@ describe('MicroServiceBase', () => {
 					throw ERROR_RANDOM;
 				};
 			})(service['onStopping']);
-
-			service['onStarted'] = (function(original) {
-				return () => {
-					original();
-					service.stop(false);
-				};
-			})(service['onStarted']);
-			
 			// Act
 			service.start();
 		});
@@ -271,10 +301,120 @@ describe('MicroServiceBase', () => {
 			};
 
 			service['onStopped'] = function() {
+				// Assert
 				expect(callMe).to.be.called.once;
 				done();
 			};
 
+			// Act
+			service.start();
+		});
+	});
+
+	describe('stop', () => {
+		it('should dispose all adapters', (done) => {
+			// Arrange
+			let service = new TestMarketingService(),
+				adpArr = [];
+
+			service['onStarting'] = (function(original) {
+				return () => {
+					// Save and execute original `onStarting` method,
+					// to make it covered.
+					original.apply(service);
+
+					adpArr = service['_adapters'];
+					adpArr.forEach((adt: IAdapter, idx) => {
+						if (adt['clientName']) {
+							// Search for database adapter and
+							// tell it to work with testing Sqlite3 file.
+							adt['clientName'] = 'sqlite3';
+						}
+					});
+				};
+			})(service['onStarting']);
+
+			service['onStarted'] = () => {
+				// Transform all dispose functions to spies
+				adpArr.forEach((adt: IAdapter, idx) => {
+					//console.log(`SPY ${idx}:` + adt.constructor.toString().substring(0, 20));
+					chai.spy.on(adt, 'dispose');
+				});
+
+				expect(service.isStarted, 'Service should be started by now').to.be.true;
+				// When the service is fully started, stop it.
+				service.stop(false);
+			};
+
+			service['onStopped'] = () => {
+				expect(service.isStarted, 'Service should be stopped by now').to.be.false;
+				adpArr.forEach((adt, idx) => {
+					let adtName = adt.constructor.toString().substring(0, 20);
+					expect(adt.dispose).to.be.spy;
+					expect(adt.dispose, adtName).to.be.called.once;
+				});
+				done();
+			};
+
+			service.start();
+			
+		});
+
+		it('should catch all errors with onError event and exit process', (done) => {
+			// Arrange
+			let service = new PlainService(),
+				exitProcess = process.exit;
+						
+			process.exit = chai.spy('process.exit', () => {
+				// Assert
+				expect(process.exit).to.be.spy;
+				expect(process.exit).to.be.called.once;
+				
+				// Give back original function, because this is global function.
+				process.exit = exitProcess;
+				done();
+			});
+			
+			service['onError'] = chai.spy((error) => {
+				// Assert
+				expect(service['onError']).to.be.spy;
+				expect(service['onError']).to.be.called.once;
+				expect(service['onError']).to.be.called.with(ERROR_RANDOM);
+			});
+
+			service['onStarted'] = () => {
+				service.stop();
+			};
+
+			service['disposeAdapters'] = () => {
+				return new Promise<void>((resolve, reject) => {
+					reject(ERROR_RANDOM);
+				});
+			};
+
+			// Act
+			service.start();
+		});
+
+		it.skip('should gracefully shutdown on SIGTERM', (done) => {
+			// Arrange
+			let service = new PlainService(),
+				exitProcess = process.exit;
+			
+			process.exit = chai.spy('process.exit', () => {
+				// Assert
+				expect(process.exit).to.be.spy;
+				expect(process.exit).to.be.called.once;
+				
+				// Give back original function, because this is global function.
+				process.exit = exitProcess;
+				done();
+			});
+
+			service['onStarted'] = () => {
+				process.emit('SIGTERM');
+			};
+			
 			// Act
 			service.start();
 		});
