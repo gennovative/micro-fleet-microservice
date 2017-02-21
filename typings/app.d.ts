@@ -1,4 +1,4 @@
-declare module 'back-lib-gennova-foundation' {
+declare module 'back-lib-gennova-foundation/src/app/adapters/IAdapter' {
 	export interface IAdapter {
 	    /**
 	     * Initializes this adapter.
@@ -11,6 +11,8 @@ declare module 'back-lib-gennova-foundation' {
 	    dispose(): Promise<void>;
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/microservice/Exceptions' {
 	export class Exception implements Error {
 	    protected _message: string;
 	    protected _isCritical: boolean;
@@ -33,11 +35,15 @@ declare module 'back-lib-gennova-foundation' {
 	    constructor(argName: string, message?: string);
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/utils/Guard' {
 	export class Guard {
 	    private constructor();
 	    static assertDefined(name: string, target: any): void;
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/utils/DependencyContainer' {
 	import { injectable, inject, interfaces } from 'inversify';
 	export { injectable, inject };
 	export class BindingScope<T> {
@@ -55,6 +61,8 @@ declare module 'back-lib-gennova-foundation' {
 	    private assertNotDisposed();
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/constants/SettingKeys' {
 	export class SettingKeys {
 	    static CONFIG_SERVICE_ADDRESSES: string;
 	    static DB_HOST: string;
@@ -69,6 +77,9 @@ declare module 'back-lib-gennova-foundation' {
 	    static SERVICE_NAME: string;
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter' {
+	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
 	export interface IConfigurationAdapter extends IAdapter {
 	    enableRemote: boolean;
 	    get(key: string): string;
@@ -99,12 +110,18 @@ declare module 'back-lib-gennova-foundation' {
 	    private attemptFetch(address);
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/constants/Types' {
 	export class Types {
 	    static CONFIG_ADAPTER: symbol;
 	    static DB_ADAPTER: symbol;
 	    static BROKER_ADAPTER: symbol;
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter' {
+	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
+	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
 	export interface IDatabaseAdapter extends IAdapter {
 	    clientName: string;
 	    dispose(): Promise<void>;
@@ -123,6 +140,10 @@ declare module 'back-lib-gennova-foundation' {
 	    private buildConnSettings();
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter' {
+	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
+	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
 	export interface IMessageBrokerAdapter extends IAdapter {
 	}
 	export class MessageBrokerAdapter implements IMessageBrokerAdapter {
@@ -133,6 +154,8 @@ declare module 'back-lib-gennova-foundation' {
 	    dispose(): Promise<void>;
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/hubs/ExpressHub' {
 	/// <reference types="node" />
 	import * as core from 'express-serve-static-core';
 	import * as http from 'http';
@@ -156,12 +179,20 @@ declare module 'back-lib-gennova-foundation' {
 	    listen(port?: number, callback?: Function): http.Server;
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/microservice/EntityBase' {
 	import { Model } from 'objection';
 	export abstract class EntityBase extends Model {
 	    static readonly tableName: string;
 	    id: number;
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBase' {
+	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
+	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
+	import { IDatabaseAdapter } from 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter';
+	import { DependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
 	export abstract class MicroServiceBase {
 	    protected _configAdapter: IConfigurationAdapter;
 	    protected _depContainer: DependencyContainer;
@@ -217,7 +248,10 @@ declare module 'back-lib-gennova-foundation' {
 	    private handleGracefulShutdown();
 	}
 
+}
+declare module 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase' {
 	import { QueryBuilder } from 'objection';
+	import { EntityBase } from 'back-lib-gennova-foundation/src/app/microservice/EntityBase';
 	export abstract class RepositoryBase<TEntity extends EntityBase> {
 	    create(ent: TEntity): Promise<TEntity>;
 	    delete(id: number): Promise<number>;
@@ -226,5 +260,22 @@ declare module 'back-lib-gennova-foundation' {
 	    update(entity: TEntity): Promise<number>;
 	    abstract query(): QueryBuilder<TEntity>;
 	}
+
+}
+declare module 'back-lib-gennova-foundation' {
+	import 'reflect-metadata';
+	export * from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
+	export * from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
+	export * from 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter';
+	export * from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
+	export * from 'back-lib-gennova-foundation/src/app/hubs/ExpressHub';
+	export * from 'back-lib-gennova-foundation/src/app/microservice/EntityBase';
+	export * from 'back-lib-gennova-foundation/src/app/microservice/Exceptions';
+	export * from 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBase';
+	export * from 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase';
+	export * from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
+	export * from 'back-lib-gennova-foundation/src/app/utils/Guard';
+	export * from 'back-lib-gennova-foundation/src/app/constants/SettingKeys';
+	export * from 'back-lib-gennova-foundation/src/app/constants/Types';
 
 }

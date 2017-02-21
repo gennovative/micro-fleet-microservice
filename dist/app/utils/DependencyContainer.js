@@ -14,6 +14,7 @@ class BindingScope {
         this._binding.inTransientScope();
     }
 }
+exports.BindingScope = BindingScope;
 class DependencyContainer {
     constructor() {
         this._container = new inversify_1.Container();
