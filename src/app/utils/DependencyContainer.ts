@@ -3,7 +3,7 @@ import { Guard } from './Guard';
 
 export { injectable, inject };
 
-class BindingScope<T> {
+export class BindingScope<T> {
 	
 	constructor(private _binding: interfaces.BindingInWhenOnSyntax<T>) {
 		

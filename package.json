@@ -4,6 +4,7 @@
   "version": "0.2.0",
   "description": "Core abstract classes, functional helpers and other global utilities.",
   "main": "./dist/app/index.js",
+  "types": "./typings/back-lib-gennova-foundation.d.ts",
   "scripts": {
     "test": "./node_modules/.bin/mocha --reporter spec ./dist/test/**/*.js"
   },
