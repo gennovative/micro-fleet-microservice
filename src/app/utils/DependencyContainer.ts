@@ -2,7 +2,7 @@ import { injectable, inject, Container, interfaces } from 'inversify';
 import { Guard } from './Guard';
 
 
-class BindingScope<T> {
+export class BindingScope<T> {
 	
 	constructor(private _binding: interfaces.BindingInWhenOnSyntax<T>) {
 		

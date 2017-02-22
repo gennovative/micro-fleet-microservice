@@ -4,6 +4,7 @@
   "version": "0.2.0",
   "description": "Core abstract classes, functional helpers and other global utilities.",
   "main": "./dist/app/index.js",
+  "types": "./typings/app.d.ts",
   "scripts": {
     "test": "./node_modules/.bin/mocha --reporter spec ./dist/test/**/*.js"
   },
@@ -34,6 +35,7 @@
     "chai": "^3.5.0",
     "chai-spies": "^0.7.1",
     "del": "^2.2.2",
+    "dts-generator": "^2.1.0",
     "gulp": "^3.9.1",
     "gulp-cached": "^1.1.1",
     "gulp-clean": "^0.3.2",

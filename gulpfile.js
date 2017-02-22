@@ -2,6 +2,7 @@ const
 	del = require("del"),
 	cache = require('gulp-cached'),
 	debug = require("gulp-debug"),
+	dts = require('dts-generator'),
 	istanbul = require('gulp-istanbul'),
 	gulp = require("gulp"),
 	mocha = require('gulp-mocha'),
@@ -129,6 +130,24 @@ gulp.task('resources', () => {
 		.pipe(gulp.dest(DIST_FOLDER));
 });
 
+/**
+ * Generates TypeScript definition file (.d.ts)
+ */
+const DEF_FILE = './typings/app.d.ts';
+gulp.task('definition', (done) => {
+	let pkg = require('./package.json'),
+	config = {
+		name: pkg['name'],
+		project: './',
+		out: DEF_FILE,
+		sendMessage: console.log,
+		verbose: true,
+		exclude: ['src/test/**/*.*', 'typings/**/*.*', 'node_modules/**/*.*', 'dist/**/*.*', 'coverage/**/*.*', '.git/**/*.*']
+	};
+	del.sync([DEF_FILE]);
+	dts.default(config).then(done);
+});
+
 
 
 /*
@@ -140,6 +159,12 @@ gulp.task('default', [
 	'compile',
 	'resources',
 	'test-full']);
+
+gulp.task('release', [
+	'clean',
+	'compile',
+	'resources',
+	'definition']);
 
 /*
  * gulp watch
