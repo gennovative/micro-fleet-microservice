@@ -40,22 +40,54 @@ declare module 'back-lib-gennova-foundation/src/app/utils/Guard' {
 	export class Guard {
 	    private constructor();
 	    static assertDefined(name: string, target: any): void;
+	    static assertNotEmpty(name: string, target: any): void;
+	    static assertIsFunction(name: string, target: any): void;
 	}
 
 }
 declare module 'back-lib-gennova-foundation/src/app/utils/DependencyContainer' {
 	import { injectable, inject, interfaces } from 'inversify';
-	export { injectable, inject };
 	export class BindingScope<T> {
 	    private _binding;
 	    constructor(_binding: interfaces.BindingInWhenOnSyntax<T>);
 	    asSingleton(): void;
 	    asTransient(): void;
 	}
+	export { injectable, inject };
+	export interface INewable<T> extends interfaces.Newable<T> {
+	}
+	export interface IDependencyContainer {
+	    /**
+	     * Registers `constructor` as resolvable with key `identifier`.
+	     * @param {string | symbol} identifier - The key used to resolve this dependency.
+	     * @param {INewable<T>} constructor - A class that will be resolved with `identifier`.
+	     *
+	     * @return {BindingScope} - A BindingScope instance that allows settings dependency as singleton or transient.
+	     */
+	    bind<TInterface>(identifier: string | symbol, constructor: INewable<TInterface>): BindingScope<TInterface>;
+	    /**
+	     * Registers a constant value with key `identifier`.
+	     * @param {string | symbol} identifier - The key used to resolve this dependency.
+	     * @param {T} value - The constant value to store.
+	     */
+	    bindConstant<T>(identifier: string | symbol, value: T): any;
+	    /**
+	     * Retrieves an instance of dependency with all its own dependencies resolved.
+	     * @param {string | Symbol} - The key that was used to register before.
+	     *
+	     * @return {T} - An instance of registered type, or null if that type was not registered.
+	     */
+	    resolve<T>(identifier: string | symbol): T;
+	    /**
+	     * Gets rid of all registered dependencies.
+	     */
+	    dispose(): void;
+	}
 	export class DependencyContainer {
 	    private _container;
 	    constructor();
-	    bind<TInterface>(identifier: string | symbol, constructor: interfaces.Newable<TInterface>): BindingScope<TInterface>;
+	    bind<TInterface>(identifier: string | symbol, constructor: INewable<TInterface>): BindingScope<TInterface>;
+	    bindConstant<T>(identifier: string | symbol, value: T): void;
 	    resolve<T>(identifier: string | symbol): T;
 	    dispose(): void;
 	    private assertNotDisposed();
@@ -142,16 +174,80 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter' {
 
 }
 declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter' {
+	import * as amqp from 'amqplib';
 	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
 	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
-	export interface IMessageBrokerAdapter extends IAdapter {
+	export type MessageHandler = (msg: IMessage, ack: Function, nack: Function) => void;
+	export interface IMessage {
+	    data: any;
+	    raw: amqp.Message;
+	    correlationId?: string;
 	}
-	export class MessageBrokerAdapter implements IMessageBrokerAdapter {
+	export interface IPublishOptions extends amqp.Options.Publish {
+	}
+	export interface IMessageBrokerAdapter extends IAdapter {
+	    /**
+	     * Sends `message` to the broker and label the message with `topic`.
+	     * @param {string} topic - A name to label the message with. Should be in format "xxx.yyy.zzz".
+	     * @param {any} message - A message to send to broker.
+	     */
+	    publish(topic: string, message: any): Promise<void>;
+	    /**
+	     * Listens to messages whose label matches `matchingPattern`.
+	     * @param {string} matchingPattern - Pattern to match with message label. Should be in format "xx.*" or "xx.#.#".
+	     * @param {function} onMessage - Callback to invoke when there is an incomming message.
+	     * @return {string} - A promise with resolve to a consumer tag, which is used to unsubscribe later.
+	     */
+	    subscribe(matchingPattern: string, onMessage: MessageHandler): Promise<string>;
+	    /**
+	     * Stop listening to a subscription that was made before.
+	     */
+	    unsubscribe(consumerTag: string): Promise<void>;
+	}
+	export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	    private _configAdapter;
-	    private _channel;
+	    private _connectionPrm;
+	    private _publishChanPrm;
+	    private _consumeChanPrm;
+	    private _exchange;
+	    private _subscriptions;
 	    constructor(_configAdapter: IConfigurationAdapter);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
+	    subscribe(matchingPattern: string, onMessage: MessageHandler, noAck?: boolean): Promise<string>;
+	    publish(topic: string, message: any, options?: IPublishOptions): Promise<void>;
+	    rpc(requestTopic: string, responseTopic: string, message: any): Promise<IMessage>;
+	    unsubscribe(consumerTag: string): Promise<void>;
+	    private connect(hostAddress);
+	    private disconnect();
+	    private createChannel();
+	    /**
+	     * If `queueName` is null, creates a queue and binds it to `matchingPattern`.
+	     * If `queueName` is not null, binds `matchingPattern` to the queue with that name.
+	     * @return {string} null if no queue is created, otherwise returns the new queue name.
+	     */
+	    private bindQueue(channelPromise, matchingPattern);
+	    private unbindQueue(channelPromise, matchingPattern);
+	    private handleError(err, message);
+	    private moreSub(matchingPattern, consumerTag);
+	    /**
+	     * @return {string} the pattern name which should be unbound, othewise return null.
+	     */
+	    private lessSub(consumerTag);
+	    private parseMessage(raw);
+	}
+
+}
+declare module 'back-lib-gennova-foundation/src/app/adapters/RoutingAdapter' {
+	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
+	import { MessageHandler, IMessage } from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
+	export interface IRoutingAdapter extends IAdapter {
+	    moduleName: string;
+	    subscribeRequest(action: string, onMessage: MessageHandler, module?: string): Promise<void>;
+	    subscribeResponse(action: string, onMessage: MessageHandler, module?: string): Promise<void>;
+	    subscribe(matchingPattern: string, onMessage: MessageHandler): Promise<void>;
+	    publishRequest(action: string, module?: string): Promise<IMessage>;
+	    publish(matchingPattern: string): Promise<IMessage>;
 	}
 
 }
@@ -252,7 +348,15 @@ declare module 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBas
 declare module 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase' {
 	import { QueryBuilder } from 'objection';
 	import { EntityBase } from 'back-lib-gennova-foundation/src/app/microservice/EntityBase';
-	export abstract class RepositoryBase<TEntity extends EntityBase> {
+	export interface IRepository<TEntity extends EntityBase> {
+	    create(ent: TEntity): Promise<TEntity>;
+	    delete(id: number): Promise<number>;
+	    find(id: number): Promise<TEntity>;
+	    patch(entity: Partial<TEntity>): Promise<number>;
+	    update(entity: TEntity): Promise<number>;
+	    query(): QueryBuilder<TEntity>;
+	}
+	export abstract class RepositoryBase<TEntity extends EntityBase> implements IRepository<TEntity> {
 	    create(ent: TEntity): Promise<TEntity>;
 	    delete(id: number): Promise<number>;
 	    find(id: number): Promise<TEntity>;
@@ -262,7 +366,7 @@ declare module 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase'
 	}
 
 }
-declare module 'back-lib-gennova-foundation' {
+declare module 'back-lib-gennova-foundation/src/app/index' {
 	import 'reflect-metadata';
 	export * from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
 	export * from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';

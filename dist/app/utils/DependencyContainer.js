@@ -30,6 +30,9 @@ class DependencyContainer {
         scope = new BindingScope(binding);
         return scope;
     }
+    bindConstant(identifier, value) {
+        this._container.bind(identifier).toConstantValue(value);
+    }
     resolve(identifier) {
         this.assertNotDisposed();
         try {

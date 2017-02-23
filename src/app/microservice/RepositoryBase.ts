@@ -2,7 +2,17 @@ import { QueryBuilder } from 'objection';
 import { EntityBase } from './EntityBase';
 import { Guard } from '../utils/Guard';
 
-export abstract class RepositoryBase<TEntity extends EntityBase> {
+export interface IRepository<TEntity extends EntityBase> {
+	create(ent: TEntity): Promise<TEntity>;
+	delete(id: number): Promise<number>;
+	find(id: number): Promise<TEntity>;
+	patch(entity: Partial<TEntity>): Promise<number>;
+	update(entity: TEntity): Promise<number>;
+	query(): QueryBuilder<TEntity>;
+}
+
+export abstract class RepositoryBase<TEntity extends EntityBase>
+			implements IRepository<TEntity> {
 
 	public async create(ent: TEntity): Promise<TEntity> {
 		let newEnt = await this.query().insert(ent);

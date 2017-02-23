@@ -324,7 +324,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 		let subscriptions = this._subscriptions,
 			matchingPattern = null;
 		
-		for(let sub of subscriptions) {
+		for (let sub of subscriptions) {
 			if (!sub[1].has(consumerTag)) { continue; }
 
 			// Remove this tag from consumer list.
