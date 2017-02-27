@@ -56,6 +56,7 @@ export interface IDependencyContainer {
 export class DependencyContainer {
 	private _container: Container;
 
+	// TODO: Should be singleton
 	constructor() {
 		this._container = new Container();
 	}
