@@ -42,6 +42,8 @@ declare module 'back-lib-gennova-foundation/src/app/utils/Guard' {
 	    static assertDefined(name: string, target: any): void;
 	    static assertNotEmpty(name: string, target: any): void;
 	    static assertIsFunction(name: string, target: any): void;
+	    static assertIsTruthy(target: any, message: string, isCritical?: boolean): void;
+	    static assertIsMatch(name: string, rule: RegExp, target: string, message?: string): void;
 	}
 
 }
@@ -145,9 +147,10 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapte
 }
 declare module 'back-lib-gennova-foundation/src/app/constants/Types' {
 	export class Types {
+	    static BROKER_ADAPTER: symbol;
 	    static CONFIG_ADAPTER: symbol;
 	    static DB_ADAPTER: symbol;
-	    static BROKER_ADAPTER: symbol;
+	    static DEPENDENCY_CONTAINER: symbol;
 	}
 
 }
@@ -177,11 +180,12 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapte
 	import * as amqp from 'amqplib';
 	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
 	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
-	export type MessageHandler = (msg: IMessage, ack: Function, nack: Function) => void;
+	export type MessageHandleFunction = (msg: IMessage, ack: () => void, nack?: () => void) => void;
+	export type RpcHandleFunction = (msg: IMessage, reply: (response: any) => void, deny?: () => void) => void;
 	export interface IMessage {
 	    data: any;
 	    raw: amqp.Message;
-	    correlationId?: string;
+	    properties?: any;
 	}
 	export interface IPublishOptions extends amqp.Options.Publish {
 	}
@@ -190,15 +194,16 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapte
 	     * Sends `message` to the broker and label the message with `topic`.
 	     * @param {string} topic - A name to label the message with. Should be in format "xxx.yyy.zzz".
 	     * @param {any} message - A message to send to broker.
+	     * @param {IPublishOptions} options - Options to add to message properties.
 	     */
-	    publish(topic: string, message: any): Promise<void>;
+	    publish(topic: string, message: any, options?: IPublishOptions): Promise<void>;
 	    /**
 	     * Listens to messages whose label matches `matchingPattern`.
 	     * @param {string} matchingPattern - Pattern to match with message label. Should be in format "xx.*" or "xx.#.#".
 	     * @param {function} onMessage - Callback to invoke when there is an incomming message.
 	     * @return {string} - A promise with resolve to a consumer tag, which is used to unsubscribe later.
 	     */
-	    subscribe(matchingPattern: string, onMessage: MessageHandler): Promise<string>;
+	    subscribe(matchingPattern: string, onMessage: MessageHandleFunction): Promise<string>;
 	    /**
 	     * Stop listening to a subscription that was made before.
 	     */
@@ -214,9 +219,8 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapte
 	    constructor(_configAdapter: IConfigurationAdapter);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
-	    subscribe(matchingPattern: string, onMessage: MessageHandler, noAck?: boolean): Promise<string>;
+	    subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string>;
 	    publish(topic: string, message: any, options?: IPublishOptions): Promise<void>;
-	    rpc(requestTopic: string, responseTopic: string, message: any): Promise<IMessage>;
 	    unsubscribe(consumerTag: string): Promise<void>;
 	    private connect(hostAddress);
 	    private disconnect();
@@ -235,19 +239,6 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapte
 	     */
 	    private lessSub(consumerTag);
 	    private parseMessage(raw);
-	}
-
-}
-declare module 'back-lib-gennova-foundation/src/app/adapters/RoutingAdapter' {
-	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
-	import { MessageHandler, IMessage } from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
-	export interface IRoutingAdapter extends IAdapter {
-	    moduleName: string;
-	    subscribeRequest(action: string, onMessage: MessageHandler, module?: string): Promise<void>;
-	    subscribeResponse(action: string, onMessage: MessageHandler, module?: string): Promise<void>;
-	    subscribe(matchingPattern: string, onMessage: MessageHandler): Promise<void>;
-	    publishRequest(action: string, module?: string): Promise<IMessage>;
-	    publish(matchingPattern: string): Promise<IMessage>;
 	}
 
 }
@@ -366,20 +357,145 @@ declare module 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase'
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/index' {
+declare module 'back-lib-gennova-foundation/src/app/rpc/RpcModels' {
+	export interface IRpcRequest {
+	    from: string;
+	    to: string;
+	    param: any;
+	}
+	export interface IRpcResponse {
+	    isSuccess: boolean;
+	    from: string;
+	    to: string;
+	    data: any;
+	}
+
+}
+declare module 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase' {
+	import { IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+	export interface IRpcCaller {
+	    /**
+	     * A name used in "from" and "to" request property.
+	     */
+	    name: string;
+	    /**
+	     * Listens to `route`, resolves an instance with `dependencyIdentifier`
+	     * when there is a request coming, calls instance's `action` method. If `actions`
+	     * is not specified, RPC Caller tries to figure out an action method from `route`.
+	     */
+	    call(moduleName: string, action: string, param: any): Promise<IRpcResponse>;
+	}
+	export abstract class RpcCallerBase {
+	    protected _name: string;
+	    name: string;
+	}
+
+}
+declare module 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase' {
+	import { IDependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
+	import { IRpcRequest, IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+	export type PromiseResolveFn = (value?: any | PromiseLike<any>) => void;
+	export type PromiseRejectFn = (reason?: any) => void;
+	export type RpcControllerFunction = (request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn) => void;
+	export type RpcActionFactory = (controller) => RpcControllerFunction;
+	export interface IRpcHandler {
+	    /**
+	     * A name used in "from" and "to" request property.
+	     */
+	    name: string;
+	    /**
+	     * Waits for incoming request, resolves an instance with `dependencyIdentifier`,
+	     * calls instance's `action` method. If `customAction` is specified,
+	     * calls instance's `customAction` instead.
+	     */
+	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): any;
+	}
+	export abstract class RpcHandlerBase {
+	    protected _depContainer: IDependencyContainer;
+	    protected _name: string;
+	    name: string;
+	    constructor(_depContainer: IDependencyContainer);
+	    protected resolveActionFunc(action: string, depId: string | symbol, actFactory?: RpcActionFactory): RpcControllerFunction;
+	    protected createResponse(isSuccess: any, data: any, replyTo: string): IRpcResponse;
+	}
+
+}
+declare module 'back-lib-gennova-foundation/src/app/rpc/HttpRpcCaller' {
+	import { RpcCallerBase, IRpcCaller } from 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase';
+	import { IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+	export interface IHttpRpcCaller extends IRpcCaller {
+	    baseUrl: string;
+	}
+	export class HttpRpcCaller extends RpcCallerBase implements IHttpRpcCaller {
+	    private _baseUrl;
+	    private _requestMaker;
+	    constructor();
+	    baseUrl: string;
+	    call(moduleName: string, action: string, param: any): Promise<IRpcResponse>;
+	}
+
+}
+declare module 'back-lib-gennova-foundation/src/app/rpc/HttpRpcHandler' {
+	import * as express from 'express-serve-static-core';
+	import { IDependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
+	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase';
+	export interface IHttpRpcHandler extends IRpcHandler {
+	    router: express.IRouter;
+	}
+	export class ExpressRpcHandler extends RpcHandlerBase implements IHttpRpcHandler {
+	    private readonly _urlSafe;
+	    private _router;
+	    router: express.IRouter;
+	    constructor(depContainer: IDependencyContainer);
+	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): void;
+	    private buildHandleFunc(actionFn);
+	}
+
+}
+declare module 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcCaller' {
+	import { IMessageBrokerAdapter } from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
+	import { RpcCallerBase, IRpcCaller } from 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase';
+	import { IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+	export class MessageBrokerRpcCaller extends RpcCallerBase implements IRpcCaller {
+	    private _msgBrokerAdt;
+	    constructor(_msgBrokerAdt: IMessageBrokerAdapter);
+	    call(moduleName: string, action: string, param: any): Promise<IRpcResponse>;
+	}
+
+}
+declare module 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcHandler' {
+	import { IDependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
+	import { IMessageBrokerAdapter } from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
+	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase';
+	export class MessageBrokerRpcHandler extends RpcHandlerBase implements IRpcHandler {
+	    private _msgBrokerAdt;
+	    constructor(depContainer: IDependencyContainer, _msgBrokerAdt: IMessageBrokerAdapter);
+	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): void;
+	    private buildHandleFunc(actionFn);
+	}
+
+}
+declare module 'back-lib-gennova-foundation' {
 	import 'reflect-metadata';
 	export * from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
 	export * from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
 	export * from 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter';
 	export * from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
+	export * from 'back-lib-gennova-foundation/src/app/constants/SettingKeys';
+	export * from 'back-lib-gennova-foundation/src/app/constants/Types';
 	export * from 'back-lib-gennova-foundation/src/app/hubs/ExpressHub';
 	export * from 'back-lib-gennova-foundation/src/app/microservice/EntityBase';
 	export * from 'back-lib-gennova-foundation/src/app/microservice/Exceptions';
 	export * from 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBase';
 	export * from 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase';
+	export * from 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase';
+	export * from 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase';
+	export * from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+	export * from 'back-lib-gennova-foundation/src/app/rpc/HttpRpcCaller';
+	export * from 'back-lib-gennova-foundation/src/app/rpc/HttpRpcHandler';
+	export * from 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcCaller';
+	export * from 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcHandler';
 	export * from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
 	export * from 'back-lib-gennova-foundation/src/app/utils/Guard';
-	export * from 'back-lib-gennova-foundation/src/app/constants/SettingKeys';
-	export * from 'back-lib-gennova-foundation/src/app/constants/Types';
 
 }

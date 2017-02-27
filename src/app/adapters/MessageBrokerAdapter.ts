@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+
 import * as amqp from 'amqplib';
 import * as uuid from 'uuid';
 
@@ -10,7 +11,8 @@ import { Guard } from '../utils/Guard';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
-export type MessageHandler = (msg: IMessage, ack: Function, nack: Function) => void;
+export type MessageHandleFunction = (msg: IMessage, ack: () => void, nack?: () => void) => void;
+export type RpcHandleFunction = (msg: IMessage, reply: (response: any) => void, deny?: () => void) => void;
 
 interface IQueueInfo {
 	name: string;
@@ -20,11 +22,10 @@ interface IQueueInfo {
 export interface IMessage {
 	data: any;
 	raw: amqp.Message;
-	correlationId?: string;
+	properties?: any;
 }
 
 export interface IPublishOptions extends amqp.Options.Publish {
-
 }
 
 export interface IMessageBrokerAdapter extends IAdapter {
@@ -32,8 +33,9 @@ export interface IMessageBrokerAdapter extends IAdapter {
 	 * Sends `message` to the broker and label the message with `topic`.
 	 * @param {string} topic - A name to label the message with. Should be in format "xxx.yyy.zzz".
 	 * @param {any} message - A message to send to broker.
+	 * @param {IPublishOptions} options - Options to add to message properties.
 	 */
-	publish(topic: string, message: any): Promise<void>;
+	publish(topic: string, message: any, options?: IPublishOptions): Promise<void>;
 
 	/**
 	 * Listens to messages whose label matches `matchingPattern`.
@@ -41,7 +43,7 @@ export interface IMessageBrokerAdapter extends IAdapter {
 	 * @param {function} onMessage - Callback to invoke when there is an incomming message.
 	 * @return {string} - A promise with resolve to a consumer tag, which is used to unsubscribe later.
 	 */
-	subscribe(matchingPattern: string, onMessage: MessageHandler): Promise<string>;
+	subscribe(matchingPattern: string, onMessage: MessageHandleFunction): Promise<string>;
 
 	/**
 	 * Stop listening to a subscription that was made before.
@@ -89,7 +91,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 		this._consumeChanPrm = null;
 	}
 
-	public async subscribe(matchingPattern: string, onMessage: MessageHandler, noAck?: boolean): Promise<string> {
+	public async subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string> {
 		Guard.assertNotEmpty('matchingPattern', matchingPattern);
 		Guard.assertIsFunction('onMessage', onMessage);
 		try {
@@ -137,38 +139,6 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 		} catch (err) {
 			return this.handleError(err, 'Publishing error');
 		}
-	}
-
-	public rpc(requestTopic: string, responseTopic: string, message: any): Promise<IMessage> {
-		return new Promise<IMessage>((resolve, reject) => {
-			// There are many requests to same `requestTopic` and they listen to same `responseTopic`,
-			// A request only carea for a response with same `correlationId`.
-			const correlationId = uuid.v4();
-
-			let conCh = this._consumeChanPrm,
-				resEmitter = conCh['responseEmitter'];
-			
-			this.subscribe(responseTopic, (msg: IMessage, ack: Function, nack: Function) => {
-				// Announce that we've got a message with this correlationId.
-				resEmitter.emit(msg.correlationId, msg);
-			})
-			.then(consumerTag => {
-				resEmitter.once(correlationId, msg => {
-					// We got what we want, stop consuming.
-					this.unsubscribe(consumerTag);
-					
-					// Resolve only when we get the response with matched correlationId.
-					resolve(msg);
-				});
-
-				// Send request, marking the message with correlationId.
-				return this.publish(requestTopic, message, { correlationId });
-			})
-			.catch(err => {
-				reject(new MinorException(`RPC error: ${err}`));
-			});
-		});
-
 	}
 
 	public async unsubscribe(consumerTag: string): Promise<void> {
@@ -345,8 +315,8 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	private parseMessage(raw: amqp.Message): IMessage {
 		return {
 			raw,
-			data: JSON.parse(raw.content.toJSON().data.toString()),
-			correlationId: raw.properties.correlationId
+			data: raw.content.toJSON().data,
+			properties: raw.properties || {}
 		};
 	}
 }

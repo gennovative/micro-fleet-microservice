@@ -21,7 +21,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const events_1 = require("events");
 const amqp = require("amqplib");
-const uuid = require("uuid");
 const Exceptions_1 = require("../microservice/Exceptions");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
 const Guard_1 = require("../utils/Guard");
@@ -94,31 +93,6 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
             catch (err) {
                 return this.handleError(err, 'Publishing error');
             }
-        });
-    }
-    rpc(requestTopic, responseTopic, message) {
-        return new Promise((resolve, reject) => {
-            // There are many requests to same `requestTopic` and they listen to same `responseTopic`,
-            // A request only carea for a response with same `correlationId`.
-            const correlationId = uuid.v4();
-            let conCh = this._consumeChanPrm, resEmitter = conCh['responseEmitter'];
-            this.subscribe(responseTopic, (msg, ack, nack) => {
-                // Announce that we've got a message with this correlationId.
-                resEmitter.emit(msg.correlationId, msg);
-            })
-                .then(consumerTag => {
-                resEmitter.once(correlationId, msg => {
-                    // We got what we want, stop consuming.
-                    this.unsubscribe(consumerTag);
-                    // Resolve only when we get the response with matched correlationId.
-                    resolve(msg);
-                });
-                // Send request, marking the message with correlationId.
-                return this.publish(requestTopic, message, { correlationId });
-            })
-                .catch(err => {
-                reject(new Exceptions_1.MinorException(`RPC error: ${err}`));
-            });
         });
     }
     unsubscribe(consumerTag) {
@@ -269,8 +243,8 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
     parseMessage(raw) {
         return {
             raw,
-            data: JSON.parse(raw.content.toJSON().data.toString()),
-            correlationId: raw.properties.correlationId
+            data: raw.content.toJSON().data,
+            properties: raw.properties || {}
         };
     }
 };

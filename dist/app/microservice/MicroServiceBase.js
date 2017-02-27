@@ -86,9 +86,10 @@ class MicroServiceBase {
         return cfgAdt;
     }
     registerDependencies() {
-        this._depContainer = new DependencyContainer_1.DependencyContainer();
-        this._depContainer.bind(Types_1.Types.CONFIG_ADAPTER, ConfigurationAdapter_1.ConfigurationAdapter).asSingleton();
-        this._depContainer.bind(Types_1.Types.DB_ADAPTER, DatabaseAdapter_1.KnexDatabaseAdapter).asSingleton();
+        let depCon = this._depContainer = new DependencyContainer_1.DependencyContainer();
+        depCon.bindConstant(Types_1.Types.DEPENDENCY_CONTAINER, depCon);
+        depCon.bind(Types_1.Types.CONFIG_ADAPTER, ConfigurationAdapter_1.ConfigurationAdapter).asSingleton();
+        depCon.bind(Types_1.Types.DB_ADAPTER, DatabaseAdapter_1.KnexDatabaseAdapter).asSingleton();
     }
     /**
      * Invoked whenever any error occurs in the application.

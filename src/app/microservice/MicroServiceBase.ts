@@ -1,7 +1,7 @@
 import { IAdapter } from '../adapters/IAdapter';
 import { IConfigurationAdapter, ConfigurationAdapter } from '../adapters/ConfigurationAdapter';
 import { IDatabaseAdapter, KnexDatabaseAdapter } from '../adapters/DatabaseAdapter';
-import { DependencyContainer } from '../utils/DependencyContainer';
+import { IDependencyContainer, DependencyContainer } from '../utils/DependencyContainer';
 import { CriticalException } from './Exceptions';
 import { Types as T } from '../constants/Types';
 
@@ -92,9 +92,10 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDependencies(): void {
-		this._depContainer = new DependencyContainer();
-		this._depContainer.bind<IConfigurationAdapter>(T.CONFIG_ADAPTER, ConfigurationAdapter).asSingleton();
-		this._depContainer.bind<IDatabaseAdapter>(T.DB_ADAPTER, KnexDatabaseAdapter).asSingleton();
+		let depCon: IDependencyContainer = this._depContainer = new DependencyContainer();
+		depCon.bindConstant<IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
+		depCon.bind<IConfigurationAdapter>(T.CONFIG_ADAPTER, ConfigurationAdapter).asSingleton();
+		depCon.bind<IDatabaseAdapter>(T.DB_ADAPTER, KnexDatabaseAdapter).asSingleton();
 	}
 	
 	/**

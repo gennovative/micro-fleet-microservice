@@ -16,6 +16,7 @@ class BindingScope {
 }
 exports.BindingScope = BindingScope;
 class DependencyContainer {
+    // TODO: Should be singleton
     constructor() {
         this._container = new inversify_1.Container();
     }
