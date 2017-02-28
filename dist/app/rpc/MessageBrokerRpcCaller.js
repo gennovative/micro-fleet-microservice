@@ -17,13 +17,13 @@ const ex = require("../microservice/Exceptions");
 const Guard_1 = require("../utils/Guard");
 const Types_1 = require("../constants/Types");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
-const RpcCallerBase_1 = require("./RpcCallerBase");
-let MessageBrokerRpcCaller = class MessageBrokerRpcCaller extends RpcCallerBase_1.RpcCallerBase {
+const rpc = require("./RpcCommon");
+let MessageBrokerRpcCaller = class MessageBrokerRpcCaller extends rpc.RpcCallerBase {
     constructor(_msgBrokerAdt) {
         super();
         this._msgBrokerAdt = _msgBrokerAdt;
     }
-    call(moduleName, action, param) {
+    call(moduleName, action, params) {
         Guard_1.Guard.assertDefined('moduleName', moduleName);
         Guard_1.Guard.assertDefined('action', action);
         return new Promise((resolve, reject) => {
@@ -54,7 +54,7 @@ let MessageBrokerRpcCaller = class MessageBrokerRpcCaller extends RpcCallerBase_
                 let request = {
                     from: this._name,
                     to: moduleName,
-                    param
+                    params
                 };
                 // Send request, marking the message with correlationId.
                 return this._msgBrokerAdt.publish(`request.${moduleName}.${action}`, request, { correlationId });

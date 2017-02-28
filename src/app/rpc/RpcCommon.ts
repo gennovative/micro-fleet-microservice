@@ -1,10 +1,40 @@
+import * as express from 'express-serve-static-core';
+import { CriticalException } from '../microservice/Exceptions';
+import { IMessage } from '../adapters/MessageBrokerAdapter';
 import { Guard } from '../utils/Guard';
-import { IDependencyContainer } from '../utils/DependencyContainer';
-import { IRpcRequest, IRpcResponse } from './RpcModels';
+import { injectable, IDependencyContainer } from '../utils/DependencyContainer';
 
-// Based on ES6 native Promise definition
-export type PromiseResolveFn = (value?: any | PromiseLike<any>) => void;
-export type PromiseRejectFn = (reason?: any) => void;
+// Interface - Service contract
+
+export interface IRpcRequest {
+	from: string;
+	to: string;
+	params: any;
+}
+
+export interface IRpcResponse {
+	isSuccess: boolean;
+	from: string;
+	to: string;
+	data: any;
+}
+
+// Interface - RPC caller and handler
+
+export interface IRpcCaller {
+	/**
+	 * A name used in "from" and "to" request property.
+	 */
+	name: string;
+
+	/**
+	 * Listens to `route`, resolves an instance with `dependencyIdentifier`
+	 * when there is a request coming, calls instance's `action` method. If `actions`
+	 * is not specified, RPC Caller tries to figure out an action method from `route`.
+	 */
+	call(moduleName: string, action: string, params: any): Promise<IRpcResponse>;
+}
+
 
 export type RpcControllerFunction = (request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn) => void;
 export type RpcActionFactory = (controller) => RpcControllerFunction;
@@ -23,6 +53,24 @@ export interface IRpcHandler {
 	handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory);
 }
 
+
+// RPC Base classes
+
+@injectable()
+export abstract class RpcCallerBase {
+
+	protected _name: string;
+
+	public get name(): string {
+		return this._name;
+	}
+
+	public set name(val: string) {
+		this._name = val;
+	}
+}
+
+@injectable()
 export abstract class RpcHandlerBase {
 
 	protected _name: string;

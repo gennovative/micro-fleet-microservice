@@ -3,7 +3,7 @@ import * as spies from 'chai-spies';
 import * as _ from 'lodash';
 import { Model } from 'objection';
 
-import { KnexDatabaseAdapter, IConfigurationAdapter, SettingKeys as S } from '../../app';
+import { KnexDatabaseAdapter, IConfigurationProvider, SettingKeys as S } from '../../app';
 
 chai.use(spies);
 
@@ -19,7 +19,7 @@ const expect = chai.expect,
 	CONN_STRING = 'msql://localhost@user:pass',
 	CLIENT_NAME = 'postgres';
 
-class MockConfigAdapter implements IConfigurationAdapter {
+class MockConfigAdapter implements IConfigurationProvider {
 	
 	constructor(private _mode: string = MODE_CREDENTIALS) {
 	}

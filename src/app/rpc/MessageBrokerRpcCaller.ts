@@ -7,14 +7,16 @@ import { Guard } from '../utils/Guard';
 import { Types as T } from '../constants/Types';
 import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
 import { IMessageBrokerAdapter, MessageHandleFunction, IMessage } from '../adapters/MessageBrokerAdapter';
-import { RpcCallerBase, IRpcCaller } from './RpcCallerBase';
-import { IRpcRequest, IRpcResponse } from './RpcModels';
+import * as rpc from './RpcCommon';
 
+
+export interface IMediateRpcCaller extends rpc.IRpcCaller {
+}
 
 @injectable()
 export class MessageBrokerRpcCaller
-			extends RpcCallerBase
-			implements IRpcCaller {
+			extends rpc.RpcCallerBase
+			implements IMediateRpcCaller {
 
 	constructor(
 		@inject(T.BROKER_ADAPTER) private _msgBrokerAdt: IMessageBrokerAdapter
@@ -22,11 +24,11 @@ export class MessageBrokerRpcCaller
 		super();
 	}
 
-	call(moduleName: string, action: string, param: any): Promise<IRpcResponse> {
+	call(moduleName: string, action: string, params: any): Promise<rpc.IRpcResponse> {
 		Guard.assertDefined('moduleName', moduleName);
 		Guard.assertDefined('action', action);
 
-		return new Promise<IRpcResponse>((resolve, reject) => {
+		return new Promise<rpc.IRpcResponse>((resolve, reject) => {
 			// There are many requests to same `requestTopic` and they listen to same `responseTopic`,
 			// A request only carea for a response with same `correlationId`.
 			const correlationId = uuid.v4();
@@ -52,13 +54,13 @@ export class MessageBrokerRpcCaller
 				emitter.once(correlationId, (msg: IMessage) => {
 					// We got what we want, stop consuming.
 					this._msgBrokerAdt.unsubscribe(consumerTag);
-					resolve(<IRpcResponse>msg.data);
+					resolve(<rpc.IRpcResponse>msg.data);
 				});
 
-				let request: IRpcRequest = {
+				let request: rpc.IRpcRequest = {
 					from: this._name,
 					to: moduleName,
-					param
+					params
 				};
 
 				// Send request, marking the message with correlationId.

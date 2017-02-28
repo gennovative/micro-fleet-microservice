@@ -7,11 +7,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-const ConfigurationAdapter_1 = require("../adapters/ConfigurationAdapter");
-const DatabaseAdapter_1 = require("../adapters/DatabaseAdapter");
-const MessageBrokerAdapter_1 = require("../adapters/MessageBrokerAdapter");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
-const Exceptions_1 = require("./Exceptions");
+const cf = require("../adapters/ConfigurationProvider");
+const db = require("../adapters/DatabaseAdapter");
+const mb = require("../adapters/MessageBrokerAdapter");
+const rdc = require("../rpc/DirectRpcCaller");
+const rdh = require("../rpc/DirectRpcHandler");
+const rmc = require("../rpc/MessageBrokerRpcCaller");
+const rmh = require("../rpc/MessageBrokerRpcHandler");
+const dep = require("../utils/DependencyContainer");
+const ex = require("./Exceptions");
 const Types_1 = require("../constants/Types");
 class MicroServiceBase {
     constructor() {
@@ -26,7 +30,6 @@ class MicroServiceBase {
      */
     start() {
         this.registerDependencies();
-        //this.addModelMapper();
         this.addConfigAdapter();
         try {
             // A chance for derived class to add more adapters or do some customizations.
@@ -93,22 +96,35 @@ class MicroServiceBase {
         return dbAdt;
     }
     registerDbAdapter() {
-        this._depContainer.bind(Types_1.Types.DB_ADAPTER, DatabaseAdapter_1.KnexDatabaseAdapter).asSingleton();
+        this._depContainer.bind(Types_1.Types.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
     }
     registerConfigAdapter() {
-        this._depContainer.bind(Types_1.Types.CONFIG_ADAPTER, ConfigurationAdapter_1.ConfigurationAdapter).asSingleton();
+        this._depContainer.bind(Types_1.Types.CONFIG_ADAPTER, cf.ConfigurationProvider).asSingleton();
+    }
+    registerDirectRpcCaller() {
+        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rdc.DirectRpcCaller);
+    }
+    registerDirectRpcHandler() {
+        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rdh.ExpressRpcHandler);
     }
     registerMessageBrokerAdapter() {
-        this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, MessageBrokerAdapter_1.TopicMessageBrokerAdapter).asSingleton();
+        this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, mb.TopicMessageBrokerAdapter).asSingleton();
+    }
+    registerMessageBrokerRpcCaller() {
+        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rmc.MessageBrokerRpcCaller);
+    }
+    registerMessageBrokerRpcHandler() {
+        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rmh.MessageBrokerRpcHandler);
     }
     registerModelMapper() {
         this._depContainer.bindConstant(Types_1.Types.MODEL_MAPPER, automapper);
         return automapper;
     }
     registerDependencies() {
-        let depCon = this._depContainer = new DependencyContainer_1.DependencyContainer();
+        let depCon = this._depContainer = new dep.DependencyContainer();
         depCon.bindConstant(Types_1.Types.DEPENDENCY_CONTAINER, depCon);
         this.registerConfigAdapter();
+        this.registerDirectRpcCaller();
     }
     /**
      * Invoked whenever any error occurs in the application.
@@ -152,7 +168,7 @@ class MicroServiceBase {
                 initPromises = this._adapters.map(adt => adt.init());
             }
             else {
-                throw new Exceptions_1.CriticalException('Fail to fetch configuration!');
+                throw new ex.CriticalException('Fail to fetch configuration!');
             }
             yield Promise.all(initPromises);
         });

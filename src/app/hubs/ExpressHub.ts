@@ -1,18 +1,17 @@
-import * as core from 'express-serve-static-core';
 import * as http from 'http';
-const express = require('express');
+import * as express from 'express';
 import * as assert from 'assert';
 
 export interface IMicroWeb {
 	name: string;
-	initRoute(router: core.IRouter): void;
+	initRoute(router: express.Router): void;
 }
 
 /**
  * A central point that allows micro web services to register their routes.
  */
 export class ExpressHub {
-	private _app: core.Express;
+	private _app: express.Express;
 
 	constructor() {
 		this._app = express();
@@ -26,6 +25,7 @@ export class ExpressHub {
 
 		let r = express.Router();
 		this._app.use(`/${microWeb.name}`, r);
+		
 		microWeb.initRoute(r);
 		return this;
 	}

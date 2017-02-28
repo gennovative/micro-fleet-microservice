@@ -1,14 +1,18 @@
-import { IConfigurationAdapter, ConfigurationAdapter } from '../adapters/ConfigurationAdapter';
-import { IDatabaseAdapter, KnexDatabaseAdapter } from '../adapters/DatabaseAdapter';
-import { IMessageBrokerAdapter, TopicMessageBrokerAdapter } from '../adapters/MessageBrokerAdapter';
-import { IDependencyContainer, DependencyContainer } from '../utils/DependencyContainer';
-import { CriticalException } from './Exceptions';
+import * as cf from '../adapters/ConfigurationProvider';
+import * as db from '../adapters/DatabaseAdapter';
+import * as mb from '../adapters/MessageBrokerAdapter';
+import * as rdc from '../rpc/DirectRpcCaller';
+import * as rdh from '../rpc/DirectRpcHandler';
+import * as rmc from '../rpc/MessageBrokerRpcCaller';
+import * as rmh from '../rpc/MessageBrokerRpcHandler';
+import * as dep from '../utils/DependencyContainer';
+import * as ex from './Exceptions';
 import { Types as T } from '../constants/Types';
 
 
 export abstract class MicroServiceBase {
-	protected _configAdapter: IConfigurationAdapter;
-	protected _depContainer: DependencyContainer;
+	protected _configAdapter: cf.IConfigurationProvider;
+	protected _depContainer: dep.DependencyContainer;
 	protected _adapters: IAdapter[];
 	protected _isStarted: boolean;
 	
@@ -26,7 +30,6 @@ export abstract class MicroServiceBase {
 	 */
 	public start(): void {
 		this.registerDependencies();
-		//this.addModelMapper();
 		this.addConfigAdapter();
 
 		try {
@@ -80,34 +83,50 @@ export abstract class MicroServiceBase {
 	
 	// TODO: Should ha addAdapterFromContainer
 
-	protected addDbAdapter(): IDatabaseAdapter {
-		let dbAdt = this._depContainer.resolve<IDatabaseAdapter>(T.DB_ADAPTER);
+	protected addDbAdapter(): db.IDatabaseAdapter {
+		let dbAdt = this._depContainer.resolve<db.IDatabaseAdapter>(T.DB_ADAPTER);
 		this.addAdapter(dbAdt);
 		return dbAdt;
 	}
 
-	protected addConfigAdapter(): IConfigurationAdapter {
-		let cfgAdt = this._configAdapter = this._depContainer.resolve<IConfigurationAdapter>(T.CONFIG_ADAPTER);
+	protected addConfigAdapter(): cf.IConfigurationProvider {
+		let cfgAdt = this._configAdapter = this._depContainer.resolve<cf.IConfigurationProvider>(T.CONFIG_ADAPTER);
 		this.addAdapter(cfgAdt);
 		return cfgAdt;
 	}
 
-	protected addMessageBrokerAdapter(): IMessageBrokerAdapter {
-		let dbAdt = this._depContainer.resolve<IMessageBrokerAdapter>(T.BROKER_ADAPTER);
+	protected addMessageBrokerAdapter(): mb.IMessageBrokerAdapter {
+		let dbAdt = this._depContainer.resolve<mb.IMessageBrokerAdapter>(T.BROKER_ADAPTER);
 		this.addAdapter(dbAdt);
 		return dbAdt;
 	}
 
 	protected registerDbAdapter(): void {
-		this._depContainer.bind<IDatabaseAdapter>(T.DB_ADAPTER, KnexDatabaseAdapter).asSingleton();
+		this._depContainer.bind<db.IDatabaseAdapter>(T.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
 	}
 
 	protected registerConfigAdapter(): void {
-		this._depContainer.bind<IConfigurationAdapter>(T.CONFIG_ADAPTER, ConfigurationAdapter).asSingleton();
+		this._depContainer.bind<cf.IConfigurationProvider>(T.CONFIG_ADAPTER, cf.ConfigurationProvider).asSingleton();
+	}
+
+	protected registerDirectRpcCaller(): void {
+		this._depContainer.bind<rdc.IDirectRpcCaller>(T.DIRECT_RPC_CALLER, rdc.DirectRpcCaller);
+	}
+
+	protected registerDirectRpcHandler(): void {
+		this._depContainer.bind<rdh.IDirectRpcHandler>(T.DIRECT_RPC_CALLER, rdh.ExpressRpcHandler);
 	}
 
 	protected registerMessageBrokerAdapter(): void {
-		this._depContainer.bind<IMessageBrokerAdapter>(T.BROKER_ADAPTER, TopicMessageBrokerAdapter).asSingleton();
+		this._depContainer.bind<mb.IMessageBrokerAdapter>(T.BROKER_ADAPTER, mb.TopicMessageBrokerAdapter).asSingleton();
+	}
+
+	protected registerMessageBrokerRpcCaller(): void {
+		this._depContainer.bind<rmc.IMediateRpcCaller>(T.DIRECT_RPC_CALLER, rmc.MessageBrokerRpcCaller);
+	}
+
+	protected registerMessageBrokerRpcHandler(): void {
+		this._depContainer.bind<rmh.IMediateRpcHandler>(T.DIRECT_RPC_CALLER, rmh.MessageBrokerRpcHandler);
 	}
 
 	protected registerModelMapper(): AutoMapper {
@@ -116,9 +135,10 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDependencies(): void {
-		let depCon: IDependencyContainer = this._depContainer = new DependencyContainer();
-		depCon.bindConstant<IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
+		let depCon: dep.IDependencyContainer = this._depContainer = new dep.DependencyContainer();
+		depCon.bindConstant<dep.IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
 		this.registerConfigAdapter();
+		this.registerDirectRpcCaller();
 	}
 	
 	/**
@@ -169,7 +189,7 @@ export abstract class MicroServiceBase {
 		if (!cfgAdt.enableRemote || await cfgAdt.fetch()) {
 			initPromises = this._adapters.map(adt => adt.init());
 		} else {
-			throw new CriticalException('Fail to fetch configuration!');
+			throw new ex.CriticalException('Fail to fetch configuration!');
 		}
 
 		await Promise.all(initPromises);

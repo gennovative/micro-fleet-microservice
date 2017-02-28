@@ -31,6 +31,10 @@ export class Guard {
 			}
 		}
 	}
+
+	public static assertIsFalsey(target: any, message: string, isCritical: boolean = true): void {
+		Guard.assertIsTruthy(!target, message, isCritical);
+	}
 	
 	public static assertIsMatch(name: string, rule: RegExp, target: string, message?: string): void {
 		if (!rule.test(target)) {

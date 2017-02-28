@@ -3,13 +3,16 @@ import { Guard } from '../utils/Guard';
 import { Types as T } from '../constants/Types';
 import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
 import { IMessageBrokerAdapter, MessageHandleFunction, IMessage } from '../adapters/MessageBrokerAdapter';
-import { RpcHandlerBase, IRpcHandler, RpcActionFactory, RpcControllerFunction } from './RpcHandlerBase';
-import { IRpcRequest, IRpcResponse } from './RpcModels';
+import * as rpc from './RpcCommon';
+
+
+export interface IMediateRpcHandler extends rpc.IRpcHandler {
+}
 
 @injectable()
 export class MessageBrokerRpcHandler
-			extends RpcHandlerBase
-			implements IRpcHandler {
+			extends rpc.RpcHandlerBase
+			implements IMediateRpcHandler {
 	
 	constructor(
 		@inject(T.DEPENDENCY_CONTAINER) depContainer: IDependencyContainer,
@@ -18,7 +21,7 @@ export class MessageBrokerRpcHandler
 		super(depContainer);
 	}
 
-	public handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory) {
+	public handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory) {
 		Guard.assertDefined('action', action);
 		Guard.assertDefined('dependencyIdentifier', dependencyIdentifier);
 
@@ -28,9 +31,9 @@ export class MessageBrokerRpcHandler
 	}
 
 
-	private buildHandleFunc(actionFn: RpcControllerFunction): MessageHandleFunction {
+	private buildHandleFunc(actionFn: rpc.RpcControllerFunction): MessageHandleFunction {
 		return (msg: IMessage, ack: () => void, nack: () => void) => {
-			let request: IRpcRequest = msg.data,
+			let request: rpc.IRpcRequest = msg.data,
 				replyTopic: string = msg.properties.replyTopic,
 				correlationId = msg.properties.correlationId;
 			

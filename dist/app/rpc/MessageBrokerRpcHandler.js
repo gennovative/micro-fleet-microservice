@@ -15,8 +15,8 @@ const ex = require("../microservice/Exceptions");
 const Guard_1 = require("../utils/Guard");
 const Types_1 = require("../constants/Types");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
-const RpcHandlerBase_1 = require("./RpcHandlerBase");
-let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends RpcHandlerBase_1.RpcHandlerBase {
+const rpc = require("./RpcCommon");
+let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends rpc.RpcHandlerBase {
     constructor(depContainer, _msgBrokerAdt) {
         super(depContainer);
         this._msgBrokerAdt = _msgBrokerAdt;

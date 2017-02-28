@@ -23,3 +23,7 @@ declare interface IModelDTO {
 }
 
 declare type AutoMapper = AutoMapperJs.AutoMapper;
+
+// Based on ES6 native Promise definition
+declare type PromiseResolveFn = (value?: any | PromiseLike<any>) => void;
+declare type PromiseRejectFn = (reason?: any) => void;
