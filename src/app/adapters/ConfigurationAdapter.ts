@@ -1,5 +1,4 @@
 import * as request from 'request-promise';
-import { IAdapter } from './IAdapter';
 import { injectable } from '../utils/DependencyContainer';
 import { SettingKeys as S } from '../constants/SettingKeys';
 

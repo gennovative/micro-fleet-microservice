@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const ConfigurationAdapter_1 = require("../adapters/ConfigurationAdapter");
 const DatabaseAdapter_1 = require("../adapters/DatabaseAdapter");
+const MessageBrokerAdapter_1 = require("../adapters/MessageBrokerAdapter");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
 const Exceptions_1 = require("./Exceptions");
 const Types_1 = require("../constants/Types");
@@ -25,6 +26,7 @@ class MicroServiceBase {
      */
     start() {
         this.registerDependencies();
+        //this.addModelMapper();
         this.addConfigAdapter();
         try {
             // A chance for derived class to add more adapters or do some customizations.
@@ -85,11 +87,28 @@ class MicroServiceBase {
         this.addAdapter(cfgAdt);
         return cfgAdt;
     }
+    addMessageBrokerAdapter() {
+        let dbAdt = this._depContainer.resolve(Types_1.Types.BROKER_ADAPTER);
+        this.addAdapter(dbAdt);
+        return dbAdt;
+    }
+    registerDbAdapter() {
+        this._depContainer.bind(Types_1.Types.DB_ADAPTER, DatabaseAdapter_1.KnexDatabaseAdapter).asSingleton();
+    }
+    registerConfigAdapter() {
+        this._depContainer.bind(Types_1.Types.CONFIG_ADAPTER, ConfigurationAdapter_1.ConfigurationAdapter).asSingleton();
+    }
+    registerMessageBrokerAdapter() {
+        this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, MessageBrokerAdapter_1.TopicMessageBrokerAdapter).asSingleton();
+    }
+    registerModelMapper() {
+        this._depContainer.bindConstant(Types_1.Types.MODEL_MAPPER, automapper);
+        return automapper;
+    }
     registerDependencies() {
         let depCon = this._depContainer = new DependencyContainer_1.DependencyContainer();
         depCon.bindConstant(Types_1.Types.DEPENDENCY_CONTAINER, depCon);
-        depCon.bind(Types_1.Types.CONFIG_ADAPTER, ConfigurationAdapter_1.ConfigurationAdapter).asSingleton();
-        depCon.bind(Types_1.Types.DB_ADAPTER, DatabaseAdapter_1.KnexDatabaseAdapter).asSingleton();
+        this.registerConfigAdapter();
     }
     /**
      * Invoked whenever any error occurs in the application.

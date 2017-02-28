@@ -1,18 +1,6 @@
-declare module 'back-lib-gennova-foundation/src/app/adapters/IAdapter' {
-	export interface IAdapter {
-	    /**
-	     * Initializes this adapter.
-	     * @returns A promise that resolves `true` if success, rejects if otherwise.
-	     */
-	    init(): Promise<void>;
-	    /**
-	     * Stops this adapter and cleans all resources.
-	     */
-	    dispose(): Promise<void>;
-	}
+/// <reference path="./globals.d.ts" />
 
-}
-declare module 'back-lib-gennova-foundation/src/app/microservice/Exceptions' {
+declare module 'back-lib-foundation/src/app/microservice/Exceptions' {
 	export class Exception implements Error {
 	    protected _message: string;
 	    protected _isCritical: boolean;
@@ -36,7 +24,7 @@ declare module 'back-lib-gennova-foundation/src/app/microservice/Exceptions' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/utils/Guard' {
+declare module 'back-lib-foundation/src/app/utils/Guard' {
 	export class Guard {
 	    private constructor();
 	    static assertDefined(name: string, target: any): void;
@@ -47,7 +35,7 @@ declare module 'back-lib-gennova-foundation/src/app/utils/Guard' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/utils/DependencyContainer' {
+declare module 'back-lib-foundation/src/app/utils/DependencyContainer' {
 	import { injectable, inject, interfaces } from 'inversify';
 	export class BindingScope<T> {
 	    private _binding;
@@ -96,7 +84,7 @@ declare module 'back-lib-gennova-foundation/src/app/utils/DependencyContainer' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/constants/SettingKeys' {
+declare module 'back-lib-foundation/src/app/constants/SettingKeys' {
 	export class SettingKeys {
 	    static CONFIG_SERVICE_ADDRESSES: string;
 	    static DB_HOST: string;
@@ -112,8 +100,7 @@ declare module 'back-lib-gennova-foundation/src/app/constants/SettingKeys' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter' {
-	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
+declare module 'back-lib-foundation/src/app/adapters/ConfigurationAdapter' {
 	export interface IConfigurationAdapter extends IAdapter {
 	    enableRemote: boolean;
 	    get(key: string): string;
@@ -145,8 +132,9 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapte
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/constants/Types' {
+declare module 'back-lib-foundation/src/app/constants/Types' {
 	export class Types {
+	    static MODEL_MAPPER: symbol;
 	    static BROKER_ADAPTER: symbol;
 	    static CONFIG_ADAPTER: symbol;
 	    static DB_ADAPTER: symbol;
@@ -154,9 +142,8 @@ declare module 'back-lib-gennova-foundation/src/app/constants/Types' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter' {
-	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
-	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
+declare module 'back-lib-foundation/src/app/adapters/DatabaseAdapter' {
+	import { IConfigurationAdapter } from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
 	export interface IDatabaseAdapter extends IAdapter {
 	    clientName: string;
 	    dispose(): Promise<void>;
@@ -176,10 +163,9 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter' {
+declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	import * as amqp from 'amqplib';
-	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
-	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
+	import { IConfigurationAdapter } from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
 	export type MessageHandleFunction = (msg: IMessage, ack: () => void, nack?: () => void) => void;
 	export type RpcHandleFunction = (msg: IMessage, reply: (response: any) => void, deny?: () => void) => void;
 	export interface IMessage {
@@ -242,7 +228,7 @@ declare module 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapte
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/hubs/ExpressHub' {
+declare module 'back-lib-foundation/src/app/hubs/ExpressHub' {
 	/// <reference types="node" />
 	import * as core from 'express-serve-static-core';
 	import * as http from 'http';
@@ -267,19 +253,11 @@ declare module 'back-lib-gennova-foundation/src/app/hubs/ExpressHub' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/microservice/EntityBase' {
-	import { Model } from 'objection';
-	export abstract class EntityBase extends Model {
-	    static readonly tableName: string;
-	    id: number;
-	}
-
-}
-declare module 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBase' {
-	import { IAdapter } from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
-	import { IConfigurationAdapter } from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
-	import { IDatabaseAdapter } from 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter';
-	import { DependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
+declare module 'back-lib-foundation/src/app/microservice/MicroServiceBase' {
+	import { IConfigurationAdapter } from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
+	import { IDatabaseAdapter } from 'back-lib-foundation/src/app/adapters/DatabaseAdapter';
+	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
+	import { DependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
 	export abstract class MicroServiceBase {
 	    protected _configAdapter: IConfigurationAdapter;
 	    protected _depContainer: DependencyContainer;
@@ -301,6 +279,11 @@ declare module 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBas
 	    protected addAdapter(adapter: IAdapter): number;
 	    protected addDbAdapter(): IDatabaseAdapter;
 	    protected addConfigAdapter(): IConfigurationAdapter;
+	    protected addMessageBrokerAdapter(): IMessageBrokerAdapter;
+	    protected registerDbAdapter(): void;
+	    protected registerConfigAdapter(): void;
+	    protected registerMessageBrokerAdapter(): void;
+	    protected registerModelMapper(): AutoMapper;
 	    protected registerDependencies(): void;
 	    /**
 	     * Invoked whenever any error occurs in the application.
@@ -336,28 +319,40 @@ declare module 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBas
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase' {
-	import { QueryBuilder } from 'objection';
-	import { EntityBase } from 'back-lib-gennova-foundation/src/app/microservice/EntityBase';
-	export interface IRepository<TEntity extends EntityBase> {
-	    create(ent: TEntity): Promise<TEntity>;
-	    delete(id: number): Promise<number>;
-	    find(id: number): Promise<TEntity>;
-	    patch(entity: Partial<TEntity>): Promise<number>;
-	    update(entity: TEntity): Promise<number>;
-	    query(): QueryBuilder<TEntity>;
-	}
-	export abstract class RepositoryBase<TEntity extends EntityBase> implements IRepository<TEntity> {
-	    create(ent: TEntity): Promise<TEntity>;
-	    delete(id: number): Promise<number>;
-	    find(id: number): Promise<TEntity>;
-	    patch(entity: Partial<TEntity>): Promise<number>;
-	    update(entity: TEntity): Promise<number>;
-	    abstract query(): QueryBuilder<TEntity>;
+declare module 'back-lib-foundation/src/app/persistence/EntityBase' {
+	import { Model } from 'objection';
+	export abstract class EntityBase extends Model {
+	    static readonly tableName: string;
+	    id: number;
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/rpc/RpcModels' {
+declare module 'back-lib-foundation/src/app/persistence/RepositoryBase' {
+	import { QueryBuilder } from 'objection';
+	import { EntityBase } from 'back-lib-foundation/src/app/persistence/EntityBase';
+	export interface IRepository<TModel extends IModelDTO> {
+	    create(model: TModel): Promise<TModel>;
+	    delete(id: number): Promise<number>;
+	    find(id: number): Promise<TModel>;
+	    patch(model: Partial<TModel>): Promise<number>;
+	    update(model: TModel): Promise<number>;
+	}
+	export abstract class RepositoryBase<TEntity extends EntityBase, TModel extends IModelDTO> implements IRepository<TModel> {
+	    protected _modelMapper: AutoMapper;
+	    constructor(_modelMapper: AutoMapper);
+	    create(model: TModel): Promise<TModel>;
+	    delete(id: number): Promise<number>;
+	    find(id: number): Promise<TModel>;
+	    patch(model: Partial<TModel>): Promise<number>;
+	    update(model: TModel): Promise<number>;
+	    protected abstract query(): QueryBuilder<TEntity>;
+	    protected abstract createModelMap(): void;
+	    protected abstract toEntity(from: TModel): TEntity;
+	    protected abstract toDTO(from: TEntity): TModel;
+	}
+
+}
+declare module 'back-lib-foundation/src/app/rpc/RpcModels' {
 	export interface IRpcRequest {
 	    from: string;
 	    to: string;
@@ -371,8 +366,8 @@ declare module 'back-lib-gennova-foundation/src/app/rpc/RpcModels' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase' {
-	import { IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+declare module 'back-lib-foundation/src/app/rpc/RpcCallerBase' {
+	import { IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
 	export interface IRpcCaller {
 	    /**
 	     * A name used in "from" and "to" request property.
@@ -391,9 +386,9 @@ declare module 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase' {
-	import { IDependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
-	import { IRpcRequest, IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+declare module 'back-lib-foundation/src/app/rpc/RpcHandlerBase' {
+	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	import { IRpcRequest, IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
 	export type PromiseResolveFn = (value?: any | PromiseLike<any>) => void;
 	export type PromiseRejectFn = (reason?: any) => void;
 	export type RpcControllerFunction = (request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn) => void;
@@ -420,9 +415,9 @@ declare module 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/rpc/HttpRpcCaller' {
-	import { RpcCallerBase, IRpcCaller } from 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase';
-	import { IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+declare module 'back-lib-foundation/src/app/rpc/HttpRpcCaller' {
+	import { RpcCallerBase, IRpcCaller } from 'back-lib-foundation/src/app/rpc/RpcCallerBase';
+	import { IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
 	export interface IHttpRpcCaller extends IRpcCaller {
 	    baseUrl: string;
 	}
@@ -435,10 +430,10 @@ declare module 'back-lib-gennova-foundation/src/app/rpc/HttpRpcCaller' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/rpc/HttpRpcHandler' {
+declare module 'back-lib-foundation/src/app/rpc/HttpRpcHandler' {
 	import * as express from 'express-serve-static-core';
-	import { IDependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
-	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase';
+	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-foundation/src/app/rpc/RpcHandlerBase';
 	export interface IHttpRpcHandler extends IRpcHandler {
 	    router: express.IRouter;
 	}
@@ -452,10 +447,10 @@ declare module 'back-lib-gennova-foundation/src/app/rpc/HttpRpcHandler' {
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcCaller' {
-	import { IMessageBrokerAdapter } from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
-	import { RpcCallerBase, IRpcCaller } from 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase';
-	import { IRpcResponse } from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
+declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller' {
+	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
+	import { RpcCallerBase, IRpcCaller } from 'back-lib-foundation/src/app/rpc/RpcCallerBase';
+	import { IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
 	export class MessageBrokerRpcCaller extends RpcCallerBase implements IRpcCaller {
 	    private _msgBrokerAdt;
 	    constructor(_msgBrokerAdt: IMessageBrokerAdapter);
@@ -463,10 +458,10 @@ declare module 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcCaller' 
 	}
 
 }
-declare module 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcHandler' {
-	import { IDependencyContainer } from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
-	import { IMessageBrokerAdapter } from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
-	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase';
+declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler' {
+	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
+	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-foundation/src/app/rpc/RpcHandlerBase';
 	export class MessageBrokerRpcHandler extends RpcHandlerBase implements IRpcHandler {
 	    private _msgBrokerAdt;
 	    constructor(depContainer: IDependencyContainer, _msgBrokerAdt: IMessageBrokerAdapter);
@@ -475,27 +470,27 @@ declare module 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcHandler'
 	}
 
 }
-declare module 'back-lib-gennova-foundation' {
+declare module 'back-lib-foundation' {
 	import 'reflect-metadata';
-	export * from 'back-lib-gennova-foundation/src/app/adapters/IAdapter';
-	export * from 'back-lib-gennova-foundation/src/app/adapters/ConfigurationAdapter';
-	export * from 'back-lib-gennova-foundation/src/app/adapters/DatabaseAdapter';
-	export * from 'back-lib-gennova-foundation/src/app/adapters/MessageBrokerAdapter';
-	export * from 'back-lib-gennova-foundation/src/app/constants/SettingKeys';
-	export * from 'back-lib-gennova-foundation/src/app/constants/Types';
-	export * from 'back-lib-gennova-foundation/src/app/hubs/ExpressHub';
-	export * from 'back-lib-gennova-foundation/src/app/microservice/EntityBase';
-	export * from 'back-lib-gennova-foundation/src/app/microservice/Exceptions';
-	export * from 'back-lib-gennova-foundation/src/app/microservice/MicroServiceBase';
-	export * from 'back-lib-gennova-foundation/src/app/microservice/RepositoryBase';
-	export * from 'back-lib-gennova-foundation/src/app/rpc/RpcCallerBase';
-	export * from 'back-lib-gennova-foundation/src/app/rpc/RpcHandlerBase';
-	export * from 'back-lib-gennova-foundation/src/app/rpc/RpcModels';
-	export * from 'back-lib-gennova-foundation/src/app/rpc/HttpRpcCaller';
-	export * from 'back-lib-gennova-foundation/src/app/rpc/HttpRpcHandler';
-	export * from 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcCaller';
-	export * from 'back-lib-gennova-foundation/src/app/rpc/MessageBrokerRpcHandler';
-	export * from 'back-lib-gennova-foundation/src/app/utils/DependencyContainer';
-	export * from 'back-lib-gennova-foundation/src/app/utils/Guard';
+	import 'automapper-ts';
+	export * from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
+	export * from 'back-lib-foundation/src/app/adapters/DatabaseAdapter';
+	export * from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
+	export * from 'back-lib-foundation/src/app/constants/SettingKeys';
+	export * from 'back-lib-foundation/src/app/constants/Types';
+	export * from 'back-lib-foundation/src/app/hubs/ExpressHub';
+	export * from 'back-lib-foundation/src/app/microservice/Exceptions';
+	export * from 'back-lib-foundation/src/app/microservice/MicroServiceBase';
+	export * from 'back-lib-foundation/src/app/persistence/EntityBase';
+	export * from 'back-lib-foundation/src/app/persistence/RepositoryBase';
+	export * from 'back-lib-foundation/src/app/rpc/RpcCallerBase';
+	export * from 'back-lib-foundation/src/app/rpc/RpcHandlerBase';
+	export * from 'back-lib-foundation/src/app/rpc/RpcModels';
+	export * from 'back-lib-foundation/src/app/rpc/HttpRpcCaller';
+	export * from 'back-lib-foundation/src/app/rpc/HttpRpcHandler';
+	export * from 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller';
+	export * from 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler';
+	export * from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	export * from 'back-lib-foundation/src/app/utils/Guard';
 
 }

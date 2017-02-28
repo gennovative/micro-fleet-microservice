@@ -1,9 +1,10 @@
+import 'automapper-ts'; // Singleton
 import { expect } from 'chai';
 import { Model, QueryBuilder } from 'objection';
 
-import { RepositoryBase, EntityBase, InvalidArgumentException,
+import { RepositoryBase, EntityBase, InvalidArgumentException, inject,
 	IConfigurationAdapter, IDatabaseAdapter, KnexDatabaseAdapter,
-	SettingKeys as S } from '../../app';
+	SettingKeys as S, Types as T } from '../../app';
 
 const CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`,
 	DB_TABLE = 'userdata',
@@ -38,23 +39,63 @@ class MockConfigAdapter implements IConfigurationAdapter {
 	}
 }
 
+// Should put this in Types.ts
+const TYPE_USER_DTO = Symbol('UserDTO'),
+	TYPE_USER_ENT = Symbol('UserEntity');
+
+class UserDTO implements IModelDTO {
+	// NOTE: Class variales must be initialized, otherwise they
+	// will disappear in transpiled code.
+	public id: number = undefined;
+	public name: string = undefined;
+	public age: number = undefined;
+}
+
 class UserEntity extends EntityBase {
 	/* override */ static get tableName(): string {
 		return DB_TABLE;
 	}
 
-	public name: string;
-	public age: number;
+	// NOTE: Class variales must be initialized, otherwise they
+	// will disappear in transpiled code.
+	public name: string = undefined;
+	public age: number = undefined;
 }
 
-class UserRepo extends RepositoryBase<UserEntity> {
-	public query(): QueryBuilder<UserEntity> {
+class UserRepo extends RepositoryBase<UserEntity, UserDTO> {
+	
+	constructor(
+		@inject(T.MODEL_MAPPER) modelMapper: AutoMapper
+	) {
+		super(modelMapper);
+	}
+
+	protected /* override */ query(): QueryBuilder<UserEntity> {
 		return UserEntity.query();
+	}
+
+	protected /* override */ createModelMap(): void {
+		let mapper = this._modelMapper;
+		mapper.createMap(UserDTO, UserEntity);		
+		mapper.createMap(UserEntity, UserDTO);
+			// Ignores all properties that UserEntity has but UserDTO doesn't.
+			//.convertToType(UserDTO);
+	}
+
+	protected /* override */ toEntity(from: UserDTO): UserEntity {
+		return this._modelMapper.map(UserDTO, UserEntity, from);
+							// (DTO)===^         ^===(Entity)
+	}
+
+	protected /* override */ toDTO(from: UserDTO): UserDTO {
+		return this._modelMapper.map(UserEntity, UserDTO, from);
+							// (Entity)===^         ^===(DTO)
+								// Be EXTREMELY careful! It's very easy to make mistake here!
 	}
 }
 
 let dbAdapter: IDatabaseAdapter,
-	cachedEnt: UserEntity;
+	cachedDTO: UserDTO;
 
 // Commented. Because these tests make real connection to SqlLite file.
 // Change `describe.skip(...)` to `describe(...)` to enable these tests.
@@ -73,13 +114,13 @@ describe.skip('RepositoryBase', () => {
 	describe('create', () => {
 		it('should insert a row to database', async () => {
 			// Arrange
-			let usrRepo = new UserRepo(),
-				entity = new UserEntity();
+			let usrRepo = new UserRepo(automapper),
+				entity = new UserDTO();
 			entity.name = 'Hiri';
 			entity.age = 29;
 			
 			// Act
-			let createdEnt: UserEntity = cachedEnt = await usrRepo.create(entity);
+			let createdEnt: UserDTO = cachedDTO = await usrRepo.create(entity);
 			
 			// Assert
 			expect(createdEnt).to.be.not.null;
@@ -92,66 +133,66 @@ describe.skip('RepositoryBase', () => {
 	describe('find', () => {
 		it('should return an model instance if found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo();
+			let usrRepo = new UserRepo(automapper);
 			
 			// Act
-			let foundEnt: UserEntity = await usrRepo.find(cachedEnt.id);
+			let foundModel: UserDTO = await usrRepo.find(cachedDTO.id);
 			
 			// Assert
-			expect(foundEnt).to.be.not.null;
-			expect(foundEnt.id).to.equal(cachedEnt.id);
-			expect(foundEnt.name).to.equal(cachedEnt.name);
-			expect(foundEnt.age).to.equal(cachedEnt.age);
+			expect(foundModel).to.be.not.null;
+			expect(foundModel.id).to.equal(cachedDTO.id);
+			expect(foundModel.name).to.equal(cachedDTO.name);
+			expect(foundModel.age).to.equal(cachedDTO.age);
 		});
 		
 		it('should return `undefined` if not found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo();
+			let usrRepo = new UserRepo(automapper);
 			
 			// Act
-			let entity: UserEntity = await usrRepo.find(IMPOSSIBLE_ID);
+			let model: UserDTO = await usrRepo.find(IMPOSSIBLE_ID);
 			
 			// Assert
-			expect(entity).to.be.undefined;
+			expect(model).to.be.undefined;
 		});
 	});
 
 	describe('patch', () => {
 		it('should return a possitive number if found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo(),
+			let usrRepo = new UserRepo(automapper),
 				newAge = 45;
 			
 			// Act
-			let affectedRows: number = await usrRepo.patch({ id: cachedEnt.id, age: newAge}),
-				refetchedEnt: UserEntity = await usrRepo.find(cachedEnt.id);
+			let affectedRows: number = await usrRepo.patch({ id: cachedDTO.id, age: newAge}),
+				refetchedModel: UserDTO = await usrRepo.find(cachedDTO.id);
 			
 			// Assert
 			expect(affectedRows).to.be.greaterThan(0);
-			expect(refetchedEnt).to.be.not.null;
-			expect(refetchedEnt.id).to.equal(cachedEnt.id);
-			expect(refetchedEnt.name).to.equal(cachedEnt.name);
-			expect(refetchedEnt.age).to.equal(newAge);
+			expect(refetchedModel).to.be.not.null;
+			expect(refetchedModel.id).to.equal(cachedDTO.id);
+			expect(refetchedModel.name).to.equal(cachedDTO.name);
+			expect(refetchedModel.age).to.equal(newAge);
 		});
 		
 		it('should return 0 if not found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo(),
+			let usrRepo = new UserRepo(automapper),
 				newAge = 45;
 			
 			// Act
 			let affectedRows: number = await usrRepo.patch({ id: IMPOSSIBLE_ID, age: newAge}),
-				refetchedEnt: UserEntity = await usrRepo.find(IMPOSSIBLE_ID);
+				refetchedModel: UserDTO = await usrRepo.find(IMPOSSIBLE_ID);
 			
 			// Assert
 			expect(affectedRows).to.equal(0);
 			// If `patch` returns 0, but we actually find an entity with the id, then something is wrong.
-			expect(refetchedEnt).to.be.undefined;
+			expect(refetchedModel).to.be.undefined;
 		});
 		
 		it('should throw exception if `id` is not provided', async () => {
 			// Arrange
-			let usrRepo = new UserRepo(),
+			let usrRepo = new UserRepo(automapper),
 				newAge = 45;
 
 			// Act
@@ -172,34 +213,34 @@ describe.skip('RepositoryBase', () => {
 	describe('update', () => {
 		it('should return a possitive number if found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo(),
+			let usrRepo = new UserRepo(automapper),
 				newName = 'Brian',
-				updatedEnt: UserEntity = Object.assign(new UserEntity, cachedEnt);
+				updatedEnt: UserDTO = Object.assign(new UserDTO, cachedDTO);
 			updatedEnt.name = newName;
 			
 			// Act
-			let affectedRows: number = await usrRepo.update(<UserEntity>updatedEnt),
-				refetchedEnt: UserEntity = await usrRepo.find(cachedEnt.id);
+			let affectedRows: number = await usrRepo.update(<UserDTO>updatedEnt),
+				refetchedModel: UserDTO = await usrRepo.find(cachedDTO.id);
 			
 			// Assert
 			expect(affectedRows).to.be.greaterThan(0);
-			expect(refetchedEnt).to.be.not.null;
-			expect(refetchedEnt.id).to.equal(cachedEnt.id);
-			expect(refetchedEnt.name).to.equal(newName);
-			expect(refetchedEnt.age).to.equal(cachedEnt.age);
+			expect(refetchedModel).to.be.not.null;
+			expect(refetchedModel.id).to.equal(cachedDTO.id);
+			expect(refetchedModel.name).to.equal(newName);
+			expect(refetchedModel.age).to.equal(cachedDTO.age);
 		});
 		
 		it('should return 0 if not found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo(),
+			let usrRepo = new UserRepo(automapper),
 				newName = 'Brian',
-				updatedEnt: UserEntity = Object.assign(new UserEntity, cachedEnt);
+				updatedEnt: UserDTO = Object.assign(new UserDTO, cachedDTO);
 			updatedEnt.id = IMPOSSIBLE_ID;
 			updatedEnt.name = newName;
 			
 			// Act
-			let affectedRows: number = await usrRepo.update(<UserEntity>updatedEnt),
-				refetchedEnt: UserEntity = await usrRepo.find(updatedEnt.id);
+			let affectedRows: number = await usrRepo.update(<UserDTO>updatedEnt),
+				refetchedEnt: UserDTO = await usrRepo.find(updatedEnt.id);
 			
 			// Assert
 			expect(affectedRows).to.equal(0);
@@ -209,9 +250,9 @@ describe.skip('RepositoryBase', () => {
 		
 		it('should throw exception if `id` is not provided', async () => {
 			// Arrange
-			let usrRepo = new UserRepo(),
+			let usrRepo = new UserRepo(automapper),
 				newName = 'Brian',
-				updatedEnt: UserEntity = Object.assign(new UserEntity, cachedEnt);
+				updatedEnt: UserDTO = Object.assign(new UserDTO, cachedDTO);
 			delete updatedEnt.id;
 			updatedEnt.name = newName;
 
@@ -219,7 +260,7 @@ describe.skip('RepositoryBase', () => {
 			let affectedRows = -1,
 				exception = null;
 			try {
-				affectedRows = await usrRepo.update(<UserEntity>updatedEnt);
+				affectedRows = await usrRepo.update(<UserDTO>updatedEnt);
 			} catch (ex) {
 				exception = ex;
 			}
@@ -233,11 +274,11 @@ describe.skip('RepositoryBase', () => {
 	describe('delete', () => {
 		it('should return a possitive number if found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo();
+			let usrRepo = new UserRepo(automapper);
 			
 			// Act
-			let affectedRows: number = await usrRepo.delete(cachedEnt.id),
-				refetchedEnt: UserEntity = await usrRepo.find(cachedEnt.id);
+			let affectedRows: number = await usrRepo.delete(cachedDTO.id),
+				refetchedEnt: UserDTO = await usrRepo.find(cachedDTO.id);
 			
 			// Assert
 			expect(affectedRows).to.be.greaterThan(0);
@@ -247,11 +288,11 @@ describe.skip('RepositoryBase', () => {
 		
 		it('should return 0 if not found', async () => {
 			// Arrange
-			let usrRepo = new UserRepo();
+			let usrRepo = new UserRepo(automapper);
 			
 			// Act
 			let affectedRows: number = await usrRepo.delete(IMPOSSIBLE_ID),
-				refetchedEnt: UserEntity = await usrRepo.find(IMPOSSIBLE_ID);
+				refetchedEnt: UserDTO = await usrRepo.find(IMPOSSIBLE_ID);
 			
 			// Assert
 			expect(affectedRows).to.equal(0);

@@ -1,7 +1,6 @@
 import * as knex from 'knex';
 import { Model } from 'objection';
 
-import { IAdapter } from './IAdapter';
 import { IConfigurationAdapter } from './ConfigurationAdapter';
 import { injectable, inject } from '../utils/DependencyContainer';
 import { SettingKeys as S } from '../constants/SettingKeys';

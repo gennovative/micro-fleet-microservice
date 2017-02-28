@@ -1,7 +1,7 @@
 {
-  "name": "back-lib-gennova-foundation",
+  "name": "back-lib-foundation",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Core abstract classes, functional helpers and other global utilities.",
   "main": "./dist/app/index.js",
   "types": "./typings/app.d.ts",
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "amqplib": "^0.5.1",
+    "automapper-ts": "^1.8.1",
     "express": "^4.14.0",
     "inversify": "^3.1.0",
     "knex": "^0.12.6",

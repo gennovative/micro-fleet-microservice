@@ -1,6 +1,6 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
-import { MicroServiceBase, IAdapter, IConfigurationAdapter, IDatabaseAdapter,
+import { MicroServiceBase, IConfigurationAdapter, IDatabaseAdapter,
 	Types, CriticalException, injectable, SettingKeys as S } from '../../app';
 
 chai.use(spies);
@@ -89,15 +89,28 @@ class TestMarketingService extends MicroServiceBase {
 		super.registerDependencies();
 		this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility);
 		this._depContainer.bind<ICustomAdapter>(CUSTOM_ADT, CustomAdapter);
+
+		// In reality, we can merely call `registerConfigAdapter` method. However,
+		// in this case, we want to inject our mock instance instead.
+		//// this.registerConfigAdapter();
 		this._depContainer.bind<IConfigurationAdapter>(Types.CONFIG_ADAPTER, MockConfigService).asSingleton();
+		
+		// Call this if your service works directly with database.
+		//this.registerDbAdapter();
+		
+		// Call this if your service communicates via message broker.
+		// this.registerMessageBrokerAdapter();
+		
+		// Call this if your service needs to map between entities and DTO models.
+		//this.registerModelMapper();
 	}
 
 	protected /* override */ onStarting(): void {
 		// Call this if your service works directly with database.
-		super.addDbAdapter();
+		//this.addDbAdapter();
 
 		// Call this if your service communicates via message broker.
-		// this.addMessageBrokerAdapter(); // Not implemented yet :)
+		// this.addMessageBrokerAdapter();
 		
 		// Use this if you have a home-made adapter.
 		// All added adapters' init method will be called 
