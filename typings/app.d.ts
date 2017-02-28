@@ -1,5 +1,3 @@
-/// <reference path="./globals.d.ts" />
-
 declare module 'back-lib-foundation/src/app/microservice/Exceptions' {
 	export class Exception implements Error {
 	    protected _message: string;
@@ -31,6 +29,7 @@ declare module 'back-lib-foundation/src/app/utils/Guard' {
 	    static assertNotEmpty(name: string, target: any): void;
 	    static assertIsFunction(name: string, target: any): void;
 	    static assertIsTruthy(target: any, message: string, isCritical?: boolean): void;
+	    static assertIsFalsey(target: any, message: string, isCritical?: boolean): void;
 	    static assertIsMatch(name: string, rule: RegExp, target: string, message?: string): void;
 	}
 
@@ -84,6 +83,20 @@ declare module 'back-lib-foundation/src/app/utils/DependencyContainer' {
 	}
 
 }
+declare module 'back-lib-foundation/src/app/constants/Types' {
+	export class Types {
+	    static MODEL_MAPPER: symbol;
+	    static BROKER_ADAPTER: symbol;
+	    static CONFIG_ADAPTER: symbol;
+	    static DB_ADAPTER: symbol;
+	    static DEPENDENCY_CONTAINER: symbol;
+	    static DIRECT_RPC_CALLER: symbol;
+	    static DIRECT_RPC_HANDLER: symbol;
+	    static MB_RPC_CALLER: symbol;
+	    static MB_RPC_HANDLER: symbol;
+	}
+
+}
 declare module 'back-lib-foundation/src/app/constants/SettingKeys' {
 	export class SettingKeys {
 	    static CONFIG_SERVICE_ADDRESSES: string;
@@ -100,72 +113,9 @@ declare module 'back-lib-foundation/src/app/constants/SettingKeys' {
 	}
 
 }
-declare module 'back-lib-foundation/src/app/adapters/ConfigurationAdapter' {
-	export interface IConfigurationAdapter extends IAdapter {
-	    enableRemote: boolean;
-	    get(key: string): string;
-	    fetch(): Promise<boolean>;
-	}
-	/**
-	 * Provides settings from package
-	 */
-	export class ConfigurationAdapter implements IConfigurationAdapter {
-	    private _configFilePath;
-	    private _fileSettings;
-	    private _requestMaker;
-	    private _remoteSettings;
-	    private _enableRemote;
-	    constructor();
-	    enableRemote: boolean;
-	    init(): Promise<void>;
-	    dispose(): Promise<void>;
-	    /**
-	     * Attempts to get settings from cached Configuration Service, environmetal variable,
-	     * and `appconfig.json` file, respectedly.
-	     */
-	    get(key: string): string;
-	    /**
-	     * Attempts to fetch settings from remote Configuration Service.
-	     */
-	    fetch(): Promise<boolean>;
-	    private attemptFetch(address);
-	}
-
-}
-declare module 'back-lib-foundation/src/app/constants/Types' {
-	export class Types {
-	    static MODEL_MAPPER: symbol;
-	    static BROKER_ADAPTER: symbol;
-	    static CONFIG_ADAPTER: symbol;
-	    static DB_ADAPTER: symbol;
-	    static DEPENDENCY_CONTAINER: symbol;
-	}
-
-}
-declare module 'back-lib-foundation/src/app/adapters/DatabaseAdapter' {
-	import { IConfigurationAdapter } from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
-	export interface IDatabaseAdapter extends IAdapter {
-	    clientName: string;
-	    dispose(): Promise<void>;
-	}
-	/**
-	 * Provides settings from package
-	 */
-	export class KnexDatabaseAdapter implements IDatabaseAdapter {
-	    private _configAdapter;
-	    private _clientName;
-	    private _knex;
-	    constructor(_configAdapter: IConfigurationAdapter);
-	    clientName: string;
-	    init(): Promise<void>;
-	    dispose(): Promise<void>;
-	    private buildConnSettings();
-	}
-
-}
 declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	import * as amqp from 'amqplib';
-	import { IConfigurationAdapter } from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
+	import { IConfigurationProvider } from 'back-lib-foundation/src/app/adapters/ConfigurationProvider';
 	export type MessageHandleFunction = (msg: IMessage, ack: () => void, nack?: () => void) => void;
 	export type RpcHandleFunction = (msg: IMessage, reply: (response: any) => void, deny?: () => void) => void;
 	export interface IMessage {
@@ -202,7 +152,7 @@ declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	    private _consumeChanPrm;
 	    private _exchange;
 	    private _subscriptions;
-	    constructor(_configAdapter: IConfigurationAdapter);
+	    constructor(_configAdapter: IConfigurationProvider);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
 	    subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string>;
@@ -228,13 +178,136 @@ declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	}
 
 }
+declare module 'back-lib-foundation/src/app/rpc/RpcCommon' {
+	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	export interface IRpcRequest {
+	    from: string;
+	    to: string;
+	    params: any;
+	}
+	export interface IRpcResponse {
+	    isSuccess: boolean;
+	    from: string;
+	    to: string;
+	    data: any;
+	}
+	export interface IRpcCaller {
+	    /**
+	     * A name used in "from" and "to" request property.
+	     */
+	    name: string;
+	    /**
+	     * Listens to `route`, resolves an instance with `dependencyIdentifier`
+	     * when there is a request coming, calls instance's `action` method. If `actions`
+	     * is not specified, RPC Caller tries to figure out an action method from `route`.
+	     */
+	    call(moduleName: string, action: string, params: any): Promise<IRpcResponse>;
+	}
+	export type RpcControllerFunction = (request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn) => void;
+	export type RpcActionFactory = (controller) => RpcControllerFunction;
+	export interface IRpcHandler {
+	    /**
+	     * A name used in "from" and "to" request property.
+	     */
+	    name: string;
+	    /**
+	     * Waits for incoming request, resolves an instance with `dependencyIdentifier`,
+	     * calls instance's `action` method. If `customAction` is specified,
+	     * calls instance's `customAction` instead.
+	     */
+	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): any;
+	}
+	export abstract class RpcCallerBase {
+	    protected _name: string;
+	    name: string;
+	}
+	export abstract class RpcHandlerBase {
+	    protected _depContainer: IDependencyContainer;
+	    protected _name: string;
+	    name: string;
+	    constructor(_depContainer: IDependencyContainer);
+	    protected resolveActionFunc(action: string, depId: string | symbol, actFactory?: RpcActionFactory): RpcControllerFunction;
+	    protected createResponse(isSuccess: any, data: any, replyTo: string): IRpcResponse;
+	}
+
+}
+declare module 'back-lib-foundation/src/app/rpc/DirectRpcCaller' {
+	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
+	export interface IDirectRpcCaller extends rpc.IRpcCaller {
+	    baseUrl: string;
+	}
+	export class DirectRpcCaller extends rpc.RpcCallerBase implements IDirectRpcCaller {
+	    private _baseUrl;
+	    private _requestMaker;
+	    constructor();
+	    baseUrl: string;
+	    call(moduleName: string, action: string, params: any): Promise<rpc.IRpcResponse>;
+	}
+
+}
+declare module 'back-lib-foundation/src/app/adapters/ConfigurationProvider' {
+	import * as rdc from 'back-lib-foundation/src/app/rpc/DirectRpcCaller';
+	export interface IConfigurationProvider extends IAdapter {
+	    enableRemote: boolean;
+	    get(key: string): string;
+	    fetch(): Promise<boolean>;
+	}
+	/**
+	 * Provides settings from package
+	 */
+	export class ConfigurationProvider implements IConfigurationProvider {
+	    private _rpcCaller;
+	    private _configFilePath;
+	    private _fileSettings;
+	    private _requestMaker;
+	    private _remoteSettings;
+	    private _enableRemote;
+	    constructor(_rpcCaller: rdc.IDirectRpcCaller);
+	    enableRemote: boolean;
+	    init(): Promise<void>;
+	    dispose(): Promise<void>;
+	    /**
+	     * Attempts to get settings from cached Configuration Service, environmetal variable,
+	     * and `appconfig.json` file, respectedly.
+	     */
+	    get(key: string): string;
+	    /**
+	     * Attempts to fetch settings from remote Configuration Service.
+	     */
+	    fetch(): Promise<boolean>;
+	    private attemptFetch(address);
+	}
+
+}
+declare module 'back-lib-foundation/src/app/adapters/DatabaseAdapter' {
+	import { IConfigurationProvider } from 'back-lib-foundation/src/app/adapters/ConfigurationProvider';
+	export interface IDatabaseAdapter extends IAdapter {
+	    clientName: string;
+	    dispose(): Promise<void>;
+	}
+	/**
+	 * Provides settings from package
+	 */
+	export class KnexDatabaseAdapter implements IDatabaseAdapter {
+	    private _configAdapter;
+	    private _clientName;
+	    private _knex;
+	    constructor(_configAdapter: IConfigurationProvider);
+	    clientName: string;
+	    init(): Promise<void>;
+	    dispose(): Promise<void>;
+	    private buildConnSettings();
+	}
+
+}
 declare module 'back-lib-foundation/src/app/hubs/ExpressHub' {
+	/// <reference types="express" />
 	/// <reference types="node" />
-	import * as core from 'express-serve-static-core';
 	import * as http from 'http';
+	import * as express from 'express';
 	export interface IMicroWeb {
 	    name: string;
-	    initRoute(router: core.IRouter): void;
+	    initRoute(router: express.Router): void;
 	}
 	/**
 	 * A central point that allows micro web services to register their routes.
@@ -253,14 +326,60 @@ declare module 'back-lib-foundation/src/app/hubs/ExpressHub' {
 	}
 
 }
-declare module 'back-lib-foundation/src/app/microservice/MicroServiceBase' {
-	import { IConfigurationAdapter } from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
-	import { IDatabaseAdapter } from 'back-lib-foundation/src/app/adapters/DatabaseAdapter';
+declare module 'back-lib-foundation/src/app/rpc/DirectRpcHandler' {
+	/// <reference types="express" />
+	import * as express from 'express';
+	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
+	export interface IDirectRpcHandler extends rpc.IRpcHandler {
+	    express: express.Express;
+	}
+	export class ExpressRpcHandler extends rpc.RpcHandlerBase implements IDirectRpcHandler {
+	    private readonly _urlSafe;
+	    private _router;
+	    private _express;
+	    express: express.Express;
+	    constructor(depContainer: IDependencyContainer);
+	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): void;
+	    private initRouter();
+	    private buildHandleFunc(actionFn);
+	}
+
+}
+declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller' {
 	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
-	import { DependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
+	export interface IMediateRpcCaller extends rpc.IRpcCaller {
+	}
+	export class MessageBrokerRpcCaller extends rpc.RpcCallerBase implements IMediateRpcCaller {
+	    private _msgBrokerAdt;
+	    constructor(_msgBrokerAdt: IMessageBrokerAdapter);
+	    call(moduleName: string, action: string, params: any): Promise<rpc.IRpcResponse>;
+	}
+
+}
+declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler' {
+	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
+	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
+	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
+	export interface IMediateRpcHandler extends rpc.IRpcHandler {
+	}
+	export class MessageBrokerRpcHandler extends rpc.RpcHandlerBase implements IMediateRpcHandler {
+	    private _msgBrokerAdt;
+	    constructor(depContainer: IDependencyContainer, _msgBrokerAdt: IMessageBrokerAdapter);
+	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): void;
+	    private buildHandleFunc(actionFn);
+	}
+
+}
+declare module 'back-lib-foundation/src/app/microservice/MicroServiceBase' {
+	import * as cf from 'back-lib-foundation/src/app/adapters/ConfigurationProvider';
+	import * as db from 'back-lib-foundation/src/app/adapters/DatabaseAdapter';
+	import * as mb from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
+	import * as dep from 'back-lib-foundation/src/app/utils/DependencyContainer';
 	export abstract class MicroServiceBase {
-	    protected _configAdapter: IConfigurationAdapter;
-	    protected _depContainer: DependencyContainer;
+	    protected _configAdapter: cf.IConfigurationProvider;
+	    protected _depContainer: dep.DependencyContainer;
 	    protected _adapters: IAdapter[];
 	    protected _isStarted: boolean;
 	    constructor();
@@ -277,12 +396,16 @@ declare module 'back-lib-foundation/src/app/microservice/MicroServiceBase' {
 	     * @return Total number of adapters that have been added so far.
 	     */
 	    protected addAdapter(adapter: IAdapter): number;
-	    protected addDbAdapter(): IDatabaseAdapter;
-	    protected addConfigAdapter(): IConfigurationAdapter;
-	    protected addMessageBrokerAdapter(): IMessageBrokerAdapter;
+	    protected addDbAdapter(): db.IDatabaseAdapter;
+	    protected addConfigAdapter(): cf.IConfigurationProvider;
+	    protected addMessageBrokerAdapter(): mb.IMessageBrokerAdapter;
 	    protected registerDbAdapter(): void;
 	    protected registerConfigAdapter(): void;
+	    protected registerDirectRpcCaller(): void;
+	    protected registerDirectRpcHandler(): void;
 	    protected registerMessageBrokerAdapter(): void;
+	    protected registerMessageBrokerRpcCaller(): void;
+	    protected registerMessageBrokerRpcHandler(): void;
 	    protected registerModelMapper(): AutoMapper;
 	    protected registerDependencies(): void;
 	    /**
@@ -352,128 +475,10 @@ declare module 'back-lib-foundation/src/app/persistence/RepositoryBase' {
 	}
 
 }
-declare module 'back-lib-foundation/src/app/rpc/RpcModels' {
-	export interface IRpcRequest {
-	    from: string;
-	    to: string;
-	    param: any;
-	}
-	export interface IRpcResponse {
-	    isSuccess: boolean;
-	    from: string;
-	    to: string;
-	    data: any;
-	}
-
-}
-declare module 'back-lib-foundation/src/app/rpc/RpcCallerBase' {
-	import { IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
-	export interface IRpcCaller {
-	    /**
-	     * A name used in "from" and "to" request property.
-	     */
-	    name: string;
-	    /**
-	     * Listens to `route`, resolves an instance with `dependencyIdentifier`
-	     * when there is a request coming, calls instance's `action` method. If `actions`
-	     * is not specified, RPC Caller tries to figure out an action method from `route`.
-	     */
-	    call(moduleName: string, action: string, param: any): Promise<IRpcResponse>;
-	}
-	export abstract class RpcCallerBase {
-	    protected _name: string;
-	    name: string;
-	}
-
-}
-declare module 'back-lib-foundation/src/app/rpc/RpcHandlerBase' {
-	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
-	import { IRpcRequest, IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
-	export type PromiseResolveFn = (value?: any | PromiseLike<any>) => void;
-	export type PromiseRejectFn = (reason?: any) => void;
-	export type RpcControllerFunction = (request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn) => void;
-	export type RpcActionFactory = (controller) => RpcControllerFunction;
-	export interface IRpcHandler {
-	    /**
-	     * A name used in "from" and "to" request property.
-	     */
-	    name: string;
-	    /**
-	     * Waits for incoming request, resolves an instance with `dependencyIdentifier`,
-	     * calls instance's `action` method. If `customAction` is specified,
-	     * calls instance's `customAction` instead.
-	     */
-	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): any;
-	}
-	export abstract class RpcHandlerBase {
-	    protected _depContainer: IDependencyContainer;
-	    protected _name: string;
-	    name: string;
-	    constructor(_depContainer: IDependencyContainer);
-	    protected resolveActionFunc(action: string, depId: string | symbol, actFactory?: RpcActionFactory): RpcControllerFunction;
-	    protected createResponse(isSuccess: any, data: any, replyTo: string): IRpcResponse;
-	}
-
-}
-declare module 'back-lib-foundation/src/app/rpc/HttpRpcCaller' {
-	import { RpcCallerBase, IRpcCaller } from 'back-lib-foundation/src/app/rpc/RpcCallerBase';
-	import { IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
-	export interface IHttpRpcCaller extends IRpcCaller {
-	    baseUrl: string;
-	}
-	export class HttpRpcCaller extends RpcCallerBase implements IHttpRpcCaller {
-	    private _baseUrl;
-	    private _requestMaker;
-	    constructor();
-	    baseUrl: string;
-	    call(moduleName: string, action: string, param: any): Promise<IRpcResponse>;
-	}
-
-}
-declare module 'back-lib-foundation/src/app/rpc/HttpRpcHandler' {
-	import * as express from 'express-serve-static-core';
-	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
-	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-foundation/src/app/rpc/RpcHandlerBase';
-	export interface IHttpRpcHandler extends IRpcHandler {
-	    router: express.IRouter;
-	}
-	export class ExpressRpcHandler extends RpcHandlerBase implements IHttpRpcHandler {
-	    private readonly _urlSafe;
-	    private _router;
-	    router: express.IRouter;
-	    constructor(depContainer: IDependencyContainer);
-	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): void;
-	    private buildHandleFunc(actionFn);
-	}
-
-}
-declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller' {
-	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
-	import { RpcCallerBase, IRpcCaller } from 'back-lib-foundation/src/app/rpc/RpcCallerBase';
-	import { IRpcResponse } from 'back-lib-foundation/src/app/rpc/RpcModels';
-	export class MessageBrokerRpcCaller extends RpcCallerBase implements IRpcCaller {
-	    private _msgBrokerAdt;
-	    constructor(_msgBrokerAdt: IMessageBrokerAdapter);
-	    call(moduleName: string, action: string, param: any): Promise<IRpcResponse>;
-	}
-
-}
-declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler' {
-	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
-	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
-	import { RpcHandlerBase, IRpcHandler, RpcActionFactory } from 'back-lib-foundation/src/app/rpc/RpcHandlerBase';
-	export class MessageBrokerRpcHandler extends RpcHandlerBase implements IRpcHandler {
-	    private _msgBrokerAdt;
-	    constructor(depContainer: IDependencyContainer, _msgBrokerAdt: IMessageBrokerAdapter);
-	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): void;
-	    private buildHandleFunc(actionFn);
-	}
-
-}
 declare module 'back-lib-foundation' {
 	import 'reflect-metadata';
 	import 'automapper-ts';
-	export * from 'back-lib-foundation/src/app/adapters/ConfigurationAdapter';
+	export * from 'back-lib-foundation/src/app/adapters/ConfigurationProvider';
 	export * from 'back-lib-foundation/src/app/adapters/DatabaseAdapter';
 	export * from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
 	export * from 'back-lib-foundation/src/app/constants/SettingKeys';
@@ -483,11 +488,9 @@ declare module 'back-lib-foundation' {
 	export * from 'back-lib-foundation/src/app/microservice/MicroServiceBase';
 	export * from 'back-lib-foundation/src/app/persistence/EntityBase';
 	export * from 'back-lib-foundation/src/app/persistence/RepositoryBase';
-	export * from 'back-lib-foundation/src/app/rpc/RpcCallerBase';
-	export * from 'back-lib-foundation/src/app/rpc/RpcHandlerBase';
-	export * from 'back-lib-foundation/src/app/rpc/RpcModels';
-	export * from 'back-lib-foundation/src/app/rpc/HttpRpcCaller';
-	export * from 'back-lib-foundation/src/app/rpc/HttpRpcHandler';
+	export * from 'back-lib-foundation/src/app/rpc/RpcCommon';
+	export * from 'back-lib-foundation/src/app/rpc/DirectRpcCaller';
+	export * from 'back-lib-foundation/src/app/rpc/DirectRpcHandler';
 	export * from 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller';
 	export * from 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler';
 	export * from 'back-lib-foundation/src/app/utils/DependencyContainer';

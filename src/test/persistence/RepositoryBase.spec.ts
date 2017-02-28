@@ -3,14 +3,14 @@ import { expect } from 'chai';
 import { Model, QueryBuilder } from 'objection';
 
 import { RepositoryBase, EntityBase, InvalidArgumentException, inject,
-	IConfigurationAdapter, IDatabaseAdapter, KnexDatabaseAdapter,
+	IConfigurationProvider, IDatabaseAdapter, KnexDatabaseAdapter,
 	SettingKeys as S, Types as T } from '../../app';
 
 const CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`,
 	DB_TABLE = 'userdata',
 	IMPOSSIBLE_ID = 0;
 
-class MockConfigAdapter implements IConfigurationAdapter {
+class MockConfigAdapter implements IConfigurationProvider {
 	
 	constructor() {
 	}

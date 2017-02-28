@@ -1,0 +1,63 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+const Guard_1 = require("../utils/Guard");
+const DependencyContainer_1 = require("../utils/DependencyContainer");
+// RPC Base classes
+let RpcCallerBase = class RpcCallerBase {
+    get name() {
+        return this._name;
+    }
+    set name(val) {
+        this._name = val;
+    }
+};
+RpcCallerBase = __decorate([
+    DependencyContainer_1.injectable()
+], RpcCallerBase);
+exports.RpcCallerBase = RpcCallerBase;
+let RpcHandlerBase = class RpcHandlerBase {
+    constructor(_depContainer) {
+        this._depContainer = _depContainer;
+    }
+    get name() {
+        return this._name;
+    }
+    set name(val) {
+        this._name = val;
+    }
+    resolveActionFunc(action, depId, actFactory) {
+        // Attempt to resolve controller instance
+        let instance = this._depContainer.resolve(depId);
+        Guard_1.Guard.assertIsTruthy(instance, `Cannot resolve dependency ${depId}!`);
+        let actionFn = (action ? instance[action] : null);
+        // If default action is not available, attempt to get action from factory.
+        if (!actionFn) {
+            actionFn = (actFactory ? actFactory(instance) : null);
+        }
+        Guard_1.Guard.assertIsTruthy(instance, `Specified action does not exist!`);
+        return actionFn.bind(instance);
+    }
+    createResponse(isSuccess, data, replyTo) {
+        return {
+            isSuccess,
+            from: this._name,
+            to: replyTo,
+            data
+        };
+    }
+};
+RpcHandlerBase = __decorate([
+    DependencyContainer_1.injectable(),
+    __metadata("design:paramtypes", [Object])
+], RpcHandlerBase);
+exports.RpcHandlerBase = RpcHandlerBase;
+
+//# sourceMappingURL=RpcCommon.js.map

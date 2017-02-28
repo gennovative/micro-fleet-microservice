@@ -1,8 +1,11 @@
 import * as request from 'request-promise';
-import { injectable } from '../utils/DependencyContainer';
+import { inject, injectable } from '../utils/DependencyContainer';
+import * as rdc from '../rpc/DirectRpcCaller';
+import * as rcm from '../rpc/RpcCommon';
 import { SettingKeys as S } from '../constants/SettingKeys';
+import { Types as T } from '../constants/Types';
 
-export interface IConfigurationAdapter extends IAdapter {
+export interface IConfigurationProvider extends IAdapter {
 	enableRemote: boolean;
 	get(key: string): string;
 	fetch(): Promise<boolean>;
@@ -12,17 +15,20 @@ export interface IConfigurationAdapter extends IAdapter {
  * Provides settings from package
  */
 @injectable()
-export class ConfigurationAdapter implements IConfigurationAdapter {
+export class ConfigurationProvider implements IConfigurationProvider {
 	private _configFilePath = `${process.cwd()}/appconfig.json`;
 	private _fileSettings;
 	private _requestMaker;
 	private _remoteSettings;
 	private _enableRemote: boolean;
 
-	constructor() {
+	constructor(
+		@inject(T.DIRECT_RPC_CALLER) private _rpcCaller: rdc.IDirectRpcCaller
+	) {
 		this._remoteSettings = {};
 		this._requestMaker = request;
 		this._enableRemote = false;
+		this._rpcCaller.name = 'ConfigurationProvider';
 	}
 
 	public get enableRemote(): boolean {
@@ -51,6 +57,7 @@ export class ConfigurationAdapter implements IConfigurationAdapter {
 			this._remoteSettings = null;
 			this._requestMaker = null;
 			this._enableRemote = null;
+			this._rpcCaller = null;
 			resolve();
 		});
 	}
@@ -86,19 +93,15 @@ export class ConfigurationAdapter implements IConfigurationAdapter {
 
 
 	private async attemptFetch(address: string): Promise<boolean> {
-		let serviceName = this.get(S.SERVICE_NAME),
-			options = {
-				uri: address,
-				qs: {
-					name: serviceName // -> uri + '?name=xxxxx'
-				},
-				json: true // Automatically parses the JSON string in the response
-			};
+		let serviceName = this.get(S.SERVICE_NAME);
 
 		try {
-			let json = await this._requestMaker(options);
-			if (json.success) {
-				this._remoteSettings = json.settings;
+			this._rpcCaller.baseUrl = address;
+			let res: rcm.IRpcResponse = await this._rpcCaller.call('ConfigurationSvc', 'instance', {
+				name: serviceName
+			});
+			if (res.isSuccess) {
+				this._remoteSettings = res.data;
 				return true;
 			}
 		} catch (err) {

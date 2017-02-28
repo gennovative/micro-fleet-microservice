@@ -4,7 +4,7 @@ function __export(m) {
 }
 require("reflect-metadata");
 require("automapper-ts");
-__export(require("./adapters/ConfigurationAdapter"));
+__export(require("./adapters/ConfigurationProvider"));
 __export(require("./adapters/DatabaseAdapter"));
 __export(require("./adapters/MessageBrokerAdapter"));
 __export(require("./constants/SettingKeys"));
@@ -14,10 +14,9 @@ __export(require("./microservice/Exceptions"));
 __export(require("./microservice/MicroServiceBase"));
 __export(require("./persistence/EntityBase"));
 __export(require("./persistence/RepositoryBase"));
-__export(require("./rpc/RpcCallerBase"));
-__export(require("./rpc/RpcHandlerBase"));
-__export(require("./rpc/HttpRpcCaller"));
-__export(require("./rpc/HttpRpcHandler"));
+__export(require("./rpc/RpcCommon"));
+__export(require("./rpc/DirectRpcCaller"));
+__export(require("./rpc/DirectRpcHandler"));
 __export(require("./rpc/MessageBrokerRpcCaller"));
 __export(require("./rpc/MessageBrokerRpcHandler"));
 __export(require("./utils/DependencyContainer"));

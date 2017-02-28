@@ -1,3 +1,4 @@
+/// <reference types="express-serve-static-core" />
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -12,20 +13,21 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 const ex = require("../microservice/Exceptions");
+//import * as exCore from 'express-serve-static-core';
+const express = require("express");
 const Guard_1 = require("../utils/Guard");
 const Types_1 = require("../constants/Types");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
-const RpcHandlerBase_1 = require("./RpcHandlerBase");
-let ExpressRpcHandler = class ExpressRpcHandler extends RpcHandlerBase_1.RpcHandlerBase {
+const rpc = require("./RpcCommon");
+let ExpressRpcHandler = class ExpressRpcHandler extends rpc.RpcHandlerBase {
     constructor(depContainer) {
         super(depContainer);
         this._urlSafe = /^[a-zA-Z0-9_-]*$/.compile();
     }
-    get router() {
-        return this._router;
-    }
-    set router(val) {
-        this._router = val;
+    set express(val) {
+        Guard_1.Guard.assertIsFalsey(this._router, 'Another Express instance is already set.');
+        this._express = val;
+        this.initRouter();
     }
     handle(action, dependencyIdentifier, actionFactory) {
         Guard_1.Guard.assertIsMatch(null, this._urlSafe, action, `Route "${action}" is not URL-safe!`);
@@ -33,13 +35,14 @@ let ExpressRpcHandler = class ExpressRpcHandler extends RpcHandlerBase_1.RpcHand
         let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
         this._router.post(`/${action}`, this.buildHandleFunc(actionFn));
     }
+    initRouter() {
+        Guard_1.Guard.assertIsTruthy(this._name, 'Name must be set before setting Express.');
+        this._router = express.Router();
+        this._express.use(`/${this._name}`, this._router);
+    }
     buildHandleFunc(actionFn) {
         return (req, res) => {
-            let request = {
-                from: req.body.from,
-                to: req.body.to,
-                param: req.body
-            };
+            let request = req.body;
             (new Promise((resolve, reject) => {
                 // Execute controller's action
                 actionFn(request, resolve, reject);
@@ -70,4 +73,4 @@ ExpressRpcHandler = __decorate([
 ], ExpressRpcHandler);
 exports.ExpressRpcHandler = ExpressRpcHandler;
 
-//# sourceMappingURL=HttpRpcHandler.js.map
+//# sourceMappingURL=DirectRpcHandler.js.map

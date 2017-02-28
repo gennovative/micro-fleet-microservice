@@ -1,6 +1,6 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
-import { MicroServiceBase, IConfigurationAdapter, IDatabaseAdapter,
+import { MicroServiceBase, IConfigurationProvider, IDatabaseAdapter,
 	Types, CriticalException, injectable, SettingKeys as S } from '../../app';
 
 chai.use(spies);
@@ -46,7 +46,7 @@ const BEHAV_FALSE = 'behav_false',
 	CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`;
 
 @injectable()
-class MockConfigService implements IConfigurationAdapter {
+class MockConfigService implements IConfigurationProvider {
 
 	public behavior: string;
 	
@@ -93,7 +93,7 @@ class TestMarketingService extends MicroServiceBase {
 		// In reality, we can merely call `registerConfigAdapter` method. However,
 		// in this case, we want to inject our mock instance instead.
 		//// this.registerConfigAdapter();
-		this._depContainer.bind<IConfigurationAdapter>(Types.CONFIG_ADAPTER, MockConfigService).asSingleton();
+		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_ADAPTER, MockConfigService).asSingleton();
 		
 		// Call this if your service works directly with database.
 		//this.registerDbAdapter();

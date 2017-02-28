@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import * as amqp from 'amqplib';
 import * as uuid from 'uuid';
 
-import { IConfigurationAdapter } from './ConfigurationAdapter';
+import { IConfigurationProvider } from './ConfigurationProvider';
 import { CriticalException, MinorException } from '../microservice/Exceptions';
 import { injectable, inject } from '../utils/DependencyContainer';
 import { Guard } from '../utils/Guard';
@@ -63,7 +63,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	private _subscriptions: Map<string, Set<string>>;
 
 	constructor(
-		@inject(T.CONFIG_ADAPTER) private _configAdapter: IConfigurationAdapter
+		@inject(T.CONFIG_ADAPTER) private _configAdapter: IConfigurationProvider
 	) {
 		this._subscriptions = new Map();
 	}

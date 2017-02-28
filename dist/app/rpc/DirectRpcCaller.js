@@ -11,8 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 const request = require("request-promise");
 const Guard_1 = require("../utils/Guard");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
-const RpcCallerBase_1 = require("./RpcCallerBase");
-let HttpRpcCaller = class HttpRpcCaller extends RpcCallerBase_1.RpcCallerBase {
+const rpc = require("./RpcCommon");
+let DirectRpcCaller = class DirectRpcCaller extends rpc.RpcCallerBase {
     constructor() {
         super();
         this._requestMaker = request;
@@ -23,25 +23,29 @@ let HttpRpcCaller = class HttpRpcCaller extends RpcCallerBase_1.RpcCallerBase {
     set baseUrl(val) {
         this._baseUrl = val;
     }
-    call(moduleName, action, param) {
+    call(moduleName, action, params) {
         Guard_1.Guard.assertDefined('moduleName', moduleName);
         Guard_1.Guard.assertDefined('action', action);
         Guard_1.Guard.assertIsTruthy(this._baseUrl, 'Base URL must be set!');
         return new Promise((resolve, reject) => {
-            let options = {
+            let request = {
+                from: this._name,
+                to: moduleName,
+                params
+            }, options = {
                 method: 'POST',
-                uri: `${this._baseUrl}/${moduleName}/${action}`,
-                body: param,
+                uri: `http://${this._baseUrl}/${moduleName}/${action}`,
+                body: request,
                 json: true // Automatically stringifies the body to JSON
             };
             return this._requestMaker(options);
         });
     }
 };
-HttpRpcCaller = __decorate([
+DirectRpcCaller = __decorate([
     DependencyContainer_1.injectable(),
     __metadata("design:paramtypes", [])
-], HttpRpcCaller);
-exports.HttpRpcCaller = HttpRpcCaller;
+], DirectRpcCaller);
+exports.DirectRpcCaller = DirectRpcCaller;
 
-//# sourceMappingURL=HttpRpcCaller.js.map
+//# sourceMappingURL=DirectRpcCaller.js.map

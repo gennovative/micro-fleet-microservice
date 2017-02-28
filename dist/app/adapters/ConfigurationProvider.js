@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -18,16 +21,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const request = require("request-promise");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
+const rdc = require("../rpc/DirectRpcCaller");
 const SettingKeys_1 = require("../constants/SettingKeys");
+const Types_1 = require("../constants/Types");
 /**
  * Provides settings from package
  */
-let ConfigurationAdapter = class ConfigurationAdapter {
-    constructor() {
+let ConfigurationProvider = class ConfigurationProvider {
+    constructor(_rpcCaller) {
+        this._rpcCaller = _rpcCaller;
         this._configFilePath = `${process.cwd()}/appconfig.json`;
         this._remoteSettings = {};
         this._requestMaker = request;
         this._enableRemote = false;
+        this._rpcCaller.name = 'ConfigurationProvider';
     }
     get enableRemote() {
         return this._enableRemote;
@@ -53,6 +60,7 @@ let ConfigurationAdapter = class ConfigurationAdapter {
             this._remoteSettings = null;
             this._requestMaker = null;
             this._enableRemote = null;
+            this._rpcCaller = null;
             resolve();
         });
     }
@@ -85,17 +93,14 @@ let ConfigurationAdapter = class ConfigurationAdapter {
     }
     attemptFetch(address) {
         return __awaiter(this, void 0, void 0, function* () {
-            let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_NAME), options = {
-                uri: address,
-                qs: {
-                    name: serviceName // -> uri + '?name=xxxxx'
-                },
-                json: true // Automatically parses the JSON string in the response
-            };
+            let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_NAME);
             try {
-                let json = yield this._requestMaker(options);
-                if (json.success) {
-                    this._remoteSettings = json.settings;
+                this._rpcCaller.baseUrl = address;
+                let res = yield this._rpcCaller.call('ConfigurationSvc', 'instance', {
+                    name: serviceName
+                });
+                if (res.isSuccess) {
+                    this._remoteSettings = res.data;
                     return true;
                 }
             }
@@ -105,10 +110,11 @@ let ConfigurationAdapter = class ConfigurationAdapter {
         });
     }
 };
-ConfigurationAdapter = __decorate([
+ConfigurationProvider = __decorate([
     DependencyContainer_1.injectable(),
-    __metadata("design:paramtypes", [])
-], ConfigurationAdapter);
-exports.ConfigurationAdapter = ConfigurationAdapter;
+    __param(0, DependencyContainer_1.inject(Types_1.Types.DIRECT_RPC_CALLER)),
+    __metadata("design:paramtypes", [Object])
+], ConfigurationProvider);
+exports.ConfigurationProvider = ConfigurationProvider;
 
-//# sourceMappingURL=ConfigurationAdapter.js.map
+//# sourceMappingURL=ConfigurationProvider.js.map

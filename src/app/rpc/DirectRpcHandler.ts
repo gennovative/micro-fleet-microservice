@@ -1,30 +1,34 @@
+/// <reference types="express-serve-static-core" />
+
 import * as ex from '../microservice/Exceptions';
-import * as express from 'express-serve-static-core';
+//import * as exCore from 'express-serve-static-core';
+import * as express from 'express';
 import { Guard } from '../utils/Guard';
 import { Types as T } from '../constants/Types';
 import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
-import { RpcHandlerBase, IRpcHandler, RpcActionFactory, RpcControllerFunction } from './RpcHandlerBase';
-import { IRpcRequest } from './RpcModels';
+import * as rpc from './RpcCommon';
 
-export interface IHttpRpcHandler extends IRpcHandler {
-	router: express.IRouter;
+export interface IDirectRpcHandler extends rpc.IRpcHandler {
+	express: express.Express;
 }
 
 @injectable()
 export class ExpressRpcHandler
-			extends RpcHandlerBase
-			implements IHttpRpcHandler {
+			extends rpc.RpcHandlerBase
+			implements IDirectRpcHandler {
 
 	private readonly _urlSafe: RegExp = /^[a-zA-Z0-9_-]*$/.compile();
-	private _router: express.IRouter;
+	private _router: express.Router;
+	private _express: express.Express;
 
-	public get router(): express.IRouter {
-		return this._router;
+
+	public set express(val: express.Express) {
+		Guard.assertIsFalsey(this._router, 'Another Express instance is already set.');
+
+		this._express = val;
+		this.initRouter();
 	}
 
-	public set router(val: express.IRouter) {
-		this._router = val;
-	}
 
 	constructor(
 		@inject(T.DEPENDENCY_CONTAINER) depContainer: IDependencyContainer
@@ -33,7 +37,7 @@ export class ExpressRpcHandler
 	}
 
 
-	public handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory) {
+	public handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory) {
 		Guard.assertIsMatch(null, this._urlSafe, action, `Route "${action}" is not URL-safe!`);
 		Guard.assertIsTruthy(this._router, 'Router must be set!');
 
@@ -41,13 +45,17 @@ export class ExpressRpcHandler
 		this._router.post(`/${action}`, this.buildHandleFunc(actionFn));
 	}
 
-	private buildHandleFunc(actionFn: RpcControllerFunction): express.RequestHandler {
+
+	private initRouter() {
+		Guard.assertIsTruthy(this._name, 'Name must be set before setting Express.');
+		
+		this._router = express.Router();
+		this._express.use(`/${this._name}`, this._router);
+	}
+
+	private buildHandleFunc(actionFn: rpc.RpcControllerFunction): express.RequestHandler {
 		return (req: express.Request, res: express.Response) => {
-			let request: IRpcRequest = {
-				from: req.body.from,
-				to: req.body.to,
-				param: req.body
-			};
+			let request: rpc.IRpcRequest = req.body;
 
 			(new Promise((resolve, reject) => {
 				// Execute controller's action

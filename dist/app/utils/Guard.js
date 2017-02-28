@@ -28,6 +28,9 @@ class Guard {
             }
         }
     }
+    static assertIsFalsey(target, message, isCritical = true) {
+        Guard.assertIsTruthy(!target, message, isCritical);
+    }
     static assertIsMatch(name, rule, target, message) {
         if (!rule.test(target)) {
             throw new ex.InvalidArgumentException(name, message || 'Does not match specified rule!');

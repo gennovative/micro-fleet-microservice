@@ -1,7 +1,7 @@
 import * as knex from 'knex';
 import { Model } from 'objection';
 
-import { IConfigurationAdapter } from './ConfigurationAdapter';
+import { IConfigurationProvider } from './ConfigurationProvider';
 import { injectable, inject } from '../utils/DependencyContainer';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
@@ -22,7 +22,7 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 	private _knex; // for unittest mocking
 
 	constructor(
-		@inject(T.CONFIG_ADAPTER) private _configAdapter: IConfigurationAdapter
+		@inject(T.CONFIG_ADAPTER) private _configAdapter: IConfigurationProvider
 	) {
 		this._clientName = 'pg';
 		this._knex = knex;
