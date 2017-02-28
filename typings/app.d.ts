@@ -1,3 +1,5 @@
+/// <reference path="./globals.d.ts" />
+
 declare module 'back-lib-foundation/src/app/microservice/Exceptions' {
 	export class Exception implements Error {
 	    protected _message: string;
@@ -281,6 +283,27 @@ declare module 'back-lib-foundation/src/app/adapters/ConfigurationProvider' {
 }
 declare module 'back-lib-foundation/src/app/adapters/DatabaseAdapter' {
 	import { IConfigurationProvider } from 'back-lib-foundation/src/app/adapters/ConfigurationProvider';
+	/**
+	 * Db driver names for `IDatabaseAdapter.clientName` property.
+	 */
+	export class DbClient {
+	    /**
+	     * Microsoft SQL Server
+	     */
+	    static readonly MSSQL: string;
+	    /**
+	     * MySQL
+	     */
+	    static readonly MYSQL: string;
+	    /**
+	     * PostgreSQL
+	     */
+	    static readonly POSTGRESQL: string;
+	    /**
+	     * SQLite 3
+	     */
+	    static readonly SQLITE3: string;
+	}
 	export interface IDatabaseAdapter extends IAdapter {
 	    clientName: string;
 	    dispose(): Promise<void>;

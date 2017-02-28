@@ -28,7 +28,9 @@ export class ConfigurationProvider implements IConfigurationProvider {
 		this._remoteSettings = {};
 		this._requestMaker = request;
 		this._enableRemote = false;
-		this._rpcCaller.name = 'ConfigurationProvider';
+		if (this._rpcCaller) {
+			this._rpcCaller.name = 'ConfigurationProvider';
+		}
 	}
 
 	public get enableRemote(): boolean {

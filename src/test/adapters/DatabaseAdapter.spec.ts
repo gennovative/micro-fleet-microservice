@@ -3,7 +3,7 @@ import * as spies from 'chai-spies';
 import * as _ from 'lodash';
 import { Model } from 'objection';
 
-import { KnexDatabaseAdapter, IConfigurationProvider, SettingKeys as S } from '../../app';
+import { KnexDatabaseAdapter, IConfigurationProvider, DbClient, SettingKeys as S } from '../../app';
 
 chai.use(spies);
 
@@ -17,7 +17,7 @@ const expect = chai.expect,
 	CONN_DB = 'randomDb',
 	CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`,
 	CONN_STRING = 'msql://localhost@user:pass',
-	CLIENT_NAME = 'postgres';
+	CLIENT_NAME = DbClient.POSTGRESQL;
 
 class MockConfigAdapter implements IConfigurationProvider {
 	
@@ -109,7 +109,7 @@ describe('KnexDatabaseAdapter', () => {
 			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
 				modelKnex = Model.knex;
 			
-			dbAdapter.clientName = 'sqlite3';
+			dbAdapter.clientName = DbClient.SQLITE3;
 			// Spy on this method, because we need the real function be called.
 			chai.spy.on(dbAdapter, '_knex');
 			chai.spy.on(Model, 'knex');
@@ -130,7 +130,7 @@ describe('KnexDatabaseAdapter', () => {
 			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
 				expectedSettings;
 			
-			dbAdapter.clientName = 'sqlite3';
+			dbAdapter.clientName = DbClient.SQLITE3;
 			expectedSettings = {
 					client: dbAdapter.clientName, 
 					useNullAsDefault: true,
@@ -221,7 +221,7 @@ describe('KnexDatabaseAdapter', () => {
 				callMe = chai.spy();
 
 			// Act
-			dbAdapter.clientName = 'sqlite3';
+			dbAdapter.clientName = DbClient.SQLITE3;
 			await dbAdapter.init();
 			await dbAdapter.dispose();
 

@@ -6,6 +6,30 @@ import { injectable, inject } from '../utils/DependencyContainer';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
+/**
+ * Db driver names for `IDatabaseAdapter.clientName` property.
+ */
+export class DbClient {
+	/**
+	 * Microsoft SQL Server
+	 */
+	public static readonly MSSQL = 'mssql';
+	
+	/**
+	 * MySQL
+	 */
+	public static readonly MYSQL = 'mysql';
+	
+	/**
+	 * PostgreSQL
+	 */
+	public static readonly POSTGRESQL = 'pg';
+	
+	/**
+	 * SQLite 3
+	 */
+	public static readonly SQLITE3 = 'sqlite3';
+}
 
 export interface IDatabaseAdapter extends IAdapter {
 	clientName: string;
@@ -24,7 +48,7 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 	constructor(
 		@inject(T.CONFIG_ADAPTER) private _configAdapter: IConfigurationProvider
 	) {
-		this._clientName = 'pg';
+		this._clientName = DbClient.POSTGRESQL;
 		this._knex = knex;
 	}
 
