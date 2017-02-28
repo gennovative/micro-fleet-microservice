@@ -1,6 +1,6 @@
-import { IAdapter } from '../adapters/IAdapter';
 import { IConfigurationAdapter, ConfigurationAdapter } from '../adapters/ConfigurationAdapter';
 import { IDatabaseAdapter, KnexDatabaseAdapter } from '../adapters/DatabaseAdapter';
+import { IMessageBrokerAdapter, TopicMessageBrokerAdapter } from '../adapters/MessageBrokerAdapter';
 import { IDependencyContainer, DependencyContainer } from '../utils/DependencyContainer';
 import { CriticalException } from './Exceptions';
 import { Types as T } from '../constants/Types';
@@ -26,6 +26,7 @@ export abstract class MicroServiceBase {
 	 */
 	public start(): void {
 		this.registerDependencies();
+		//this.addModelMapper();
 		this.addConfigAdapter();
 
 		try {
@@ -91,11 +92,33 @@ export abstract class MicroServiceBase {
 		return cfgAdt;
 	}
 
+	protected addMessageBrokerAdapter(): IMessageBrokerAdapter {
+		let dbAdt = this._depContainer.resolve<IMessageBrokerAdapter>(T.BROKER_ADAPTER);
+		this.addAdapter(dbAdt);
+		return dbAdt;
+	}
+
+	protected registerDbAdapter(): void {
+		this._depContainer.bind<IDatabaseAdapter>(T.DB_ADAPTER, KnexDatabaseAdapter).asSingleton();
+	}
+
+	protected registerConfigAdapter(): void {
+		this._depContainer.bind<IConfigurationAdapter>(T.CONFIG_ADAPTER, ConfigurationAdapter).asSingleton();
+	}
+
+	protected registerMessageBrokerAdapter(): void {
+		this._depContainer.bind<IMessageBrokerAdapter>(T.BROKER_ADAPTER, TopicMessageBrokerAdapter).asSingleton();
+	}
+
+	protected registerModelMapper(): AutoMapper {
+		this._depContainer.bindConstant<AutoMapper>(T.MODEL_MAPPER, automapper);
+		return automapper;
+	}
+
 	protected registerDependencies(): void {
 		let depCon: IDependencyContainer = this._depContainer = new DependencyContainer();
 		depCon.bindConstant<IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
-		depCon.bind<IConfigurationAdapter>(T.CONFIG_ADAPTER, ConfigurationAdapter).asSingleton();
-		depCon.bind<IDatabaseAdapter>(T.DB_ADAPTER, KnexDatabaseAdapter).asSingleton();
+		this.registerConfigAdapter();
 	}
 	
 	/**

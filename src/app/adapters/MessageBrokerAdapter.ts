@@ -3,7 +3,6 @@ import { EventEmitter } from 'events';
 import * as amqp from 'amqplib';
 import * as uuid from 'uuid';
 
-import { IAdapter } from './IAdapter';
 import { IConfigurationAdapter } from './ConfigurationAdapter';
 import { CriticalException, MinorException } from '../microservice/Exceptions';
 import { injectable, inject } from '../utils/DependencyContainer';
