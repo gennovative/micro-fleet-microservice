@@ -2,7 +2,7 @@ import 'automapper-ts'; // Singleton
 import { expect } from 'chai';
 import { Model, QueryBuilder } from 'objection';
 
-import { RepositoryBase, EntityBase, InvalidArgumentException, inject,
+import { RepositoryBase, EntityBase, InvalidArgumentException, inject, DbClient,
 	IConfigurationProvider, IDatabaseAdapter, KnexDatabaseAdapter,
 	SettingKeys as S, Types as T } from '../../app';
 
@@ -103,7 +103,7 @@ describe.skip('RepositoryBase', () => {
 	
 	beforeEach('Initialize db adapter', async () => {
 		dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
-		dbAdapter.clientName = 'sqlite3';
+		dbAdapter.clientName = DbClient.SQLITE3;
 		await dbAdapter.init();
 	});
 

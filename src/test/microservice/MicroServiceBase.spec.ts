@@ -1,7 +1,7 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
 import { MicroServiceBase, IConfigurationProvider, IDatabaseAdapter,
-	Types, CriticalException, injectable, SettingKeys as S } from '../../app';
+	Types, CriticalException, injectable, DbClient, SettingKeys as S } from '../../app';
 
 chai.use(spies);
 const expect = chai.expect;
@@ -267,7 +267,7 @@ describe('MicroServiceBase', () => {
 					if (adt['clientName']) {
 						// Search for database adapter and
 						// tell it to work with testing Sqlite3 file.
-						adt['clientName'] = 'sqlite3';
+						adt['clientName'] = DbClient.SQLITE3;
 					}
 				});
 			};
@@ -341,7 +341,7 @@ describe('MicroServiceBase', () => {
 						if (adt['clientName']) {
 							// Search for database adapter and
 							// tell it to work with testing Sqlite3 file.
-							adt['clientName'] = 'sqlite3';
+							adt['clientName'] = DbClient.SQLITE3;
 						}
 					});
 				};

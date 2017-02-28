@@ -25,12 +25,34 @@ const DependencyContainer_1 = require("../utils/DependencyContainer");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
 /**
+ * Db driver names for `IDatabaseAdapter.clientName` property.
+ */
+class DbClient {
+}
+/**
+ * Microsoft SQL Server
+ */
+DbClient.MSSQL = 'mssql';
+/**
+ * MySQL
+ */
+DbClient.MYSQL = 'mysql';
+/**
+ * PostgreSQL
+ */
+DbClient.POSTGRESQL = 'pg';
+/**
+ * SQLite 3
+ */
+DbClient.SQLITE3 = 'sqlite3';
+exports.DbClient = DbClient;
+/**
  * Provides settings from package
  */
 let KnexDatabaseAdapter = class KnexDatabaseAdapter {
     constructor(_configAdapter) {
         this._configAdapter = _configAdapter;
-        this._clientName = 'pg';
+        this._clientName = DbClient.POSTGRESQL;
         this._knex = knex;
     }
     get clientName() {
