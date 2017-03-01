@@ -21,6 +21,8 @@ let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends rpc.RpcHandl
         super(depContainer);
         this._msgBrokerAdt = _msgBrokerAdt;
     }
+    init(param) {
+    }
     handle(action, dependencyIdentifier, actionFactory) {
         Guard_1.Guard.assertDefined('action', action);
         Guard_1.Guard.assertDefined('dependencyIdentifier', dependencyIdentifier);

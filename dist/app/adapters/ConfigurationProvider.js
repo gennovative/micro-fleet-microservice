@@ -97,7 +97,7 @@ let ConfigurationProvider = class ConfigurationProvider {
         return __awaiter(this, void 0, void 0, function* () {
             let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_NAME);
             try {
-                this._rpcCaller.baseUrl = address;
+                this._rpcCaller.baseAddress = address;
                 let res = yield this._rpcCaller.call('ConfigurationSvc', 'instance', {
                     name: serviceName
                 });

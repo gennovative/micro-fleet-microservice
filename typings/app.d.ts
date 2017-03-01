@@ -204,6 +204,11 @@ declare module 'back-lib-foundation/src/app/rpc/RpcCommon' {
 	     * is not specified, RPC Caller tries to figure out an action method from `route`.
 	     */
 	    call(moduleName: string, action: string, params: any): Promise<IRpcResponse>;
+	    /**
+	     * Sets up this RPC caller with specified `param`. Each implementation class requires
+	     * different kinds of `param`.
+	     */
+	    init(param: any): any;
 	}
 	export type RpcControllerFunction = (request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn) => void;
 	export type RpcActionFactory = (controller) => RpcControllerFunction;
@@ -218,6 +223,11 @@ declare module 'back-lib-foundation/src/app/rpc/RpcCommon' {
 	     * calls instance's `customAction` instead.
 	     */
 	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory): any;
+	    /**
+	     * Sets up this RPC handler with specified `param`. Each implementation class requires
+	     * different kinds of `param`.
+	     */
+	    init(param: any): void;
 	}
 	export abstract class RpcCallerBase {
 	    protected _name: string;
@@ -236,13 +246,19 @@ declare module 'back-lib-foundation/src/app/rpc/RpcCommon' {
 declare module 'back-lib-foundation/src/app/rpc/DirectRpcCaller' {
 	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
 	export interface IDirectRpcCaller extends rpc.IRpcCaller {
-	    baseUrl: string;
+	    /**
+	     * IP address or host name including port number.
+	     * Do not include protocol (http, ftp...) because different class implementations
+	     * will prepend different protocols.
+	     */
+	    baseAddress: string;
 	}
 	export class DirectRpcCaller extends rpc.RpcCallerBase implements IDirectRpcCaller {
-	    private _baseUrl;
+	    private _baseAddress;
 	    private _requestMaker;
 	    constructor();
-	    baseUrl: string;
+	    baseAddress: string;
+	    init(param: any): void;
 	    call(moduleName: string, action: string, params: any): Promise<rpc.IRpcResponse>;
 	}
 
@@ -350,21 +366,17 @@ declare module 'back-lib-foundation/src/app/hubs/ExpressHub' {
 
 }
 declare module 'back-lib-foundation/src/app/rpc/DirectRpcHandler' {
-	/// <reference types="express" />
-	import * as express from 'express';
 	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
 	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
 	export interface IDirectRpcHandler extends rpc.IRpcHandler {
-	    express: express.Express;
 	}
-	export class ExpressRpcHandler extends rpc.RpcHandlerBase implements IDirectRpcHandler {
-	    private readonly _urlSafe;
+	export class ExpressDirectRpcHandler extends rpc.RpcHandlerBase implements IDirectRpcHandler {
+	    private static URL_TESTER;
+	    private _app;
 	    private _router;
-	    private _express;
-	    express: express.Express;
 	    constructor(depContainer: IDependencyContainer);
+	    init(param: any): void;
 	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): void;
-	    private initRouter();
 	    private buildHandleFunc(actionFn);
 	}
 
@@ -377,6 +389,7 @@ declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller' {
 	export class MessageBrokerRpcCaller extends rpc.RpcCallerBase implements IMediateRpcCaller {
 	    private _msgBrokerAdt;
 	    constructor(_msgBrokerAdt: IMessageBrokerAdapter);
+	    init(param: any): void;
 	    call(moduleName: string, action: string, params: any): Promise<rpc.IRpcResponse>;
 	}
 
@@ -390,6 +403,7 @@ declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler' {
 	export class MessageBrokerRpcHandler extends rpc.RpcHandlerBase implements IMediateRpcHandler {
 	    private _msgBrokerAdt;
 	    constructor(depContainer: IDependencyContainer, _msgBrokerAdt: IMessageBrokerAdapter);
+	    init(param: any): void;
 	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): void;
 	    private buildHandleFunc(actionFn);
 	}
@@ -402,7 +416,7 @@ declare module 'back-lib-foundation/src/app/microservice/MicroServiceBase' {
 	import * as dep from 'back-lib-foundation/src/app/utils/DependencyContainer';
 	export abstract class MicroServiceBase {
 	    protected _configAdapter: cf.IConfigurationProvider;
-	    protected _depContainer: dep.DependencyContainer;
+	    protected _depContainer: dep.IDependencyContainer;
 	    protected _adapters: IAdapter[];
 	    protected _isStarted: boolean;
 	    constructor();

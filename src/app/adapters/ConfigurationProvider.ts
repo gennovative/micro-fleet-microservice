@@ -98,7 +98,7 @@ export class ConfigurationProvider implements IConfigurationProvider {
 		let serviceName = this.get(S.SERVICE_NAME);
 
 		try {
-			this._rpcCaller.baseUrl = address;
+			this._rpcCaller.baseAddress = address;
 			let res: rcm.IRpcResponse = await this._rpcCaller.call('ConfigurationSvc', 'instance', {
 				name: serviceName
 			});

@@ -10,10 +10,13 @@ const expect = chai.expect;
 
 class MockDirectRpcCaller implements app.IDirectRpcCaller {
 	public name: string;
-	public baseUrl: string;
+	public baseAddress: string;
 	
 	public call(moduleName: string, action: string, params: any): Promise<app.IRpcResponse> {
 		return null;
+	}
+	
+	public init(param: any): void {
 	}
 }
 

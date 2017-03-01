@@ -36,13 +36,13 @@ let RpcHandlerBase = class RpcHandlerBase {
     resolveActionFunc(action, depId, actFactory) {
         // Attempt to resolve controller instance
         let instance = this._depContainer.resolve(depId);
-        Guard_1.Guard.assertIsTruthy(instance, `Cannot resolve dependency ${depId}!`);
-        let actionFn = (action ? instance[action] : null);
+        Guard_1.Guard.assertIsTruthy(instance, `Cannot resolve dependency ${depId.toString()}!`);
+        let actionFn = instance[action];
         // If default action is not available, attempt to get action from factory.
         if (!actionFn) {
             actionFn = (actFactory ? actFactory(instance) : null);
         }
-        Guard_1.Guard.assertIsTruthy(instance, `Specified action does not exist!`);
+        Guard_1.Guard.assertIsTruthy(actionFn, 'Specified action does not exist in controller!');
         return actionFn.bind(instance);
     }
     createResponse(isSuccess, data, replyTo) {
