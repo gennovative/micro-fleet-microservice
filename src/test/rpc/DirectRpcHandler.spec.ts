@@ -1,122 +1,344 @@
+import { expect } from 'chai';
 import * as express from 'express';
-import { MicroServiceBase, inject, IDirectRpcHandler, IRpcRequest, 
-	RpcActionFactory, CriticalException, Types as T} from '../../app';
+import * as requestMaker from 'request-promise';
+import { ExpressDirectRpcHandler, DependencyContainer, injectable,
+	IDirectRpcHandler, IRpcRequest, IRpcResponse, MinorException, Exception } from '../../app';
 
+const MODULE = 'TestHandler',
+	CONTROLLER_NORM = Symbol('NormalProductController'),
+	CONTROLLER_ERR = Symbol('ErrorProductController'),
+	SUCCESS_ADD_PRODUCT = 'addProductOk',
+	SUCCESS_DEL_PRODUCT = 'removeOk',
+	ERROR_ADD_PRODUCT = 'addProductError',
+	ERROR_DEL_PRODUCT = 'removeError';
 
-const HTTP_ADAPTER = Symbol('IHttpAdapter'),
-	PRODUCT_CONTROLLER = Symbol('ProductController');
-
-// NOTE: Should put in ~/app/controllers/ProductController.ts
-class ProductController {
-
-	constructor(
-		//inject Product Repository here
-	) {
-	}
-
-	// This method must have these parameters: request, resolve, reject
-	public getProduct(request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn): void {
-		let id = request.params.id;
-		if (!id) {
-			reject('Product id is required!');
-			return;
-		}
-
-		let product; //= await productRepo.find(id);
-		resolve(product);
+@injectable()
+class NormalProductController {
+	public addProduct(request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn): void {
+		resolve(SUCCESS_ADD_PRODUCT);
+		console.log('Product added!');
 	}
 
 	public remove(request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn): void {
-		// `resolve` if success => response with status: 200, isSuccess: true
-		// `reject` if it's the caller's fault (validation issues) => response with status: 200, isSuccess: false
-		
-		if (request.from == 'UglyService') {
-			// If it's due to this method's fault/error => response with status: 500, isSucess: false
-			// The caller should try calling someone else.
-			throw new CriticalException('I hate you. Do not talk to you!');
-		}
+		resolve(SUCCESS_DEL_PRODUCT);
+		console.log('Product deleted!');
+	}
+
+	public echo(request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn): void {
+		resolve(request.params['text']);
 	}
 }
 
-interface IHttpAdapter extends IAdapter {
+@injectable()
+class ErrorProductController {
+	public addProduct(request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn): void {
+		reject(ERROR_ADD_PRODUCT);
+		console.log('Product adding failed!');
+	}
+
+	public remove(request: IRpcRequest, resolve: PromiseResolveFn, reject: PromiseRejectFn): void {
+		console.log('Product deleting failed!');
+		throw new MinorException(ERROR_DEL_PRODUCT);
+	}
 }
 
-class ExpressAdapter implements IHttpAdapter {
-	private _express: express.Express;
+describe('ExpressDirectRpcHandler', () => {
+	describe('init', () => {
+		it('Should use `name` property to init Router', () => {
+			// Arrange
+			let handler = new ExpressDirectRpcHandler(null),
+				app: express.Express = express();
 
-	constructor(
-		@inject(T.DIRECT_RPC_HANDLER) private _rpcHandler: IDirectRpcHandler
-	) {
-		this._express = express();
-		this._rpcHandler.express = this._express;
-		this._rpcHandler.name = 'ProductService'; // Not very important, for logging purpose.
-	}
+			// Act
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: express.Router()
+			});
 
-	public init(): Promise<void> {
-		return <any>Promise.all([
-			this.handleRequests(),
-			this.initExpress()
-		]);
-	}
-	
-	public dispose(): Promise<void> {
-		return Promise.resolve();
-	}
+			// Assert
+			expect(app._router.stack).to.be.not.null;
 
-	private handleRequests(): Promise<void> {
-		return new Promise<void>((resolve, reject) => {
-			let rpc = this._rpcHandler;
-			
-			// If controller has a method with same name (eg: 'getProduct')
-			rpc.handle('getProduct', PRODUCT_CONTROLLER);
+			let router = app._router.stack.find(entry => entry.name == 'router');
+			expect(router).to.be.not.null;
 
-			// If controller has different method name, or wants to do something
-			// more complicated.
-			let factory: RpcActionFactory = (controller: ProductController) => controller.remove.bind(controller);
-
-			// More verbose version, same job.
-			// let factory: RpcActionFactory = (controller: ProductController) => {
-			//	return controller.remove.bind(controller);
-			// };
-
-			rpc.handle('deleteProduct', PRODUCT_CONTROLLER, factory);
+			expect(`/${MODULE}`).to.match(router.regexp);
+			expect(`/${handler.name}`).to.match(router.regexp);
 		});
-	}
+	});
 
-	private initExpress(): Promise<void> {
-		return new Promise<void>((resolve, reject) => {
-			this._express.listen(3000, (err) => {
-				if (err) {
-					// Write log then reject
-					reject(err);
-				}
+	describe('handle', () => {
+		it('Should add a route path in case action name is same with method name.', (done) => {
+			// Arrange
+			const ACTION = 'addProduct';
+
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
+
+			depContainer.bind<NormalProductController>(CONTROLLER_NORM, NormalProductController);
+
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			handler.handle(ACTION, CONTROLLER_NORM);
+
+			// Assert
+			expect(router.stack[0].route.path).to.equal(`/${ACTION}`);
+
+			let server = app.listen(3000, () => {
+				let options = {
+					method: 'POST',
+					uri: `http://localhost:3000/${MODULE}/${ACTION}`,
+					body: {},
+					json: true
+				};
+
+				requestMaker(options).then((res: IRpcResponse) => {
+					expect(res.from).to.equal(MODULE);
+					expect(res.data).to.equal(SUCCESS_ADD_PRODUCT);
+					done();
+					server.close();
+					server = null;
+				})
+				.catch(err => {
+					console.error(err);
+					server.close();
+					server = null;
+				});
 			});
 		});
-	}
-}
 
-class MockMicroService extends MicroServiceBase {
-	protected /* override */ registerDependencies(): void {
-		super.registerDependencies();
+		it('Should add a route path in case action name is resolved by factory.', (done) => {
+			// Arrange
+			const ACTION = 'deleteProduct';
 
-		this.registerDirectRpcHandler();
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
 
-		this._depContainer.bind<IHttpAdapter>(HTTP_ADAPTER, ExpressAdapter).asSingleton();
-		
-		// NOTE: It's OK to map a class to itself without interface.
-		this._depContainer
-			.bind<ProductController>(PRODUCT_CONTROLLER, ProductController)
-			// .asSingleton() => May save some resource, but not sure, and not recommend.
-			;
-		
-		
-		// No need to call this, because MicroServiceBase already calls it for ConfigAdapter to use.
-		// this.registerConfigAdapter();
-		// this.registerDirectRpcCaller();
-	}
+			depContainer.bind<NormalProductController>(CONTROLLER_NORM, NormalProductController);
 
-	protected /* override */ onStarting(): void {
-		let httpAdt = this._depContainer.resolve<IHttpAdapter>(HTTP_ADAPTER);
-		this.addAdapter(httpAdt);
-	}
-}
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			handler.handle(ACTION, CONTROLLER_NORM, (controller: NormalProductController) => controller.remove.bind(controller));
+
+			// Assert
+			expect(router.stack[0].route.path).to.equal(`/${ACTION}`);
+			
+			let server = app.listen(3000, () => {
+				let options = {
+					method: 'POST',
+					uri: `http://localhost:3000/${MODULE}/${ACTION}`,
+					body: {},
+					json: true
+				};
+
+				requestMaker(options).then((res: IRpcResponse) => {
+					expect(res.from).to.equal(MODULE);
+					expect(res.data).to.equal(SUCCESS_DEL_PRODUCT);
+					done();
+					server.close();
+					server = null;
+				})
+				.catch(err => {
+					console.error(err);
+					server.close();
+					server = null;
+				});
+			});
+		});
+
+		it('Should parse and pass request parameters to action method.', (done) => {
+			// Arrange
+			const ACTION = 'echo',
+				TEXT = 'echo...echooooo';
+
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
+
+			depContainer.bind<NormalProductController>(CONTROLLER_NORM, NormalProductController);
+
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			handler.handle(ACTION, CONTROLLER_NORM);
+
+			// Assert
+			let server = app.listen(3000, () => {
+				let request: IRpcRequest = {
+					from: '',
+					to: MODULE,
+					params: {
+						text: TEXT
+					}
+				},
+				options = {
+					method: 'POST',
+					uri: `http://localhost:3000/${MODULE}/${ACTION}`,
+					body: request,
+					json: true
+				};
+
+				requestMaker(options).then((res: IRpcResponse) => {
+					expect(res.data).to.equal(TEXT);
+					done();
+					server.close();
+					server = null;
+				})
+				.catch(err => {
+					console.error(err);
+					expect(true, 'Request should be successful!').to.be.not.false;
+					server.close();
+					server = null;
+				});
+			});
+		});
+
+		it('Should throw error if specified action does not exist in controller.', () => {
+			// Arrange
+			const UNEXIST_ACTION = 'editProduct';
+
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
+
+			depContainer.bind<NormalProductController>(CONTROLLER_NORM, NormalProductController);
+
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			let exception: Exception = null;
+			try {
+				handler.handle(UNEXIST_ACTION, CONTROLLER_NORM);
+			} catch (ex) {
+				exception = ex;
+			}
+
+			// Assert
+			expect(exception).to.be.not.null;
+			expect(exception).to.be.instanceOf(Exception);
+			expect(exception.message).to.equal('Specified action does not exist in controller!');
+		});
+
+		it('Should respond with status 200 if controller rejects.', (done) => {
+			// Arrange
+			const ACTION = 'addProduct';
+
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
+
+			depContainer.bind<ErrorProductController>(CONTROLLER_ERR, ErrorProductController);
+
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			handler.handle(ACTION, CONTROLLER_ERR);
+
+			// Assert
+			let server = app.listen(3000, () => {
+				let options = {
+					method: 'POST',
+					uri: `http://localhost:3000/${MODULE}/${ACTION}`,
+					body: {},
+					json: true
+				};
+
+				requestMaker(options).then((res: IRpcResponse) => {
+					// If status 200
+					
+					expect(res).to.be.not.null;
+					expect(res.isSuccess).to.be.false;
+					expect(res.data).to.equal(ERROR_ADD_PRODUCT);
+					done();
+					server.close();
+					server = null;
+				})
+				.catch(err => {
+					// If status 500 or request error.
+
+					console.error(err);
+					expect(true, 'Request should be successful!').to.be.not.false;
+					server.close();
+					server = null;
+				});
+			});
+		});
+
+		it('Should respond with status 500 if controller throws error.', (done) => {
+			// Arrange
+			const ACTION = 'deleteProduct';
+
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
+
+			depContainer.bind<ErrorProductController>(CONTROLLER_ERR, ErrorProductController);
+
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			handler.handle(ACTION, CONTROLLER_ERR, (controller: ErrorProductController) => controller.remove.bind(controller));
+
+			// Assert
+			let server = app.listen(3000, () => {
+				let options = {
+					method: 'POST',
+					uri: `http://localhost:3000/${MODULE}/${ACTION}`,
+					body: {},
+					json: true
+				};
+
+				requestMaker(options).then((res: IRpcResponse) => {
+					// If status 200
+
+					expect(true, 'Request should NOT be successful!').to.be.not.false;
+					server.close();
+					server = null;
+				})
+				.catch(rawResponse => {
+					// If status 500 or request error.
+
+					expect(rawResponse.statusCode).to.equal(500);
+					expect(rawResponse.error.data).to.equal(ERROR_DEL_PRODUCT);
+					done();
+					server.close();
+					server = null;
+				});
+			});
+		});
+	});
+});

@@ -17,16 +17,18 @@ let DirectRpcCaller = class DirectRpcCaller extends rpc.RpcCallerBase {
         super();
         this._requestMaker = request;
     }
-    get baseUrl() {
-        return this._baseUrl;
+    get baseAddress() {
+        return this._baseAddress;
     }
-    set baseUrl(val) {
-        this._baseUrl = val;
+    set baseAddress(val) {
+        this._baseAddress = val;
+    }
+    init(param) {
     }
     call(moduleName, action, params) {
         Guard_1.Guard.assertDefined('moduleName', moduleName);
         Guard_1.Guard.assertDefined('action', action);
-        Guard_1.Guard.assertIsTruthy(this._baseUrl, 'Base URL must be set!');
+        Guard_1.Guard.assertIsTruthy(this._baseAddress, 'Base URL must be set!');
         return new Promise((resolve, reject) => {
             let request = {
                 from: this._name,
@@ -34,11 +36,14 @@ let DirectRpcCaller = class DirectRpcCaller extends rpc.RpcCallerBase {
                 params
             }, options = {
                 method: 'POST',
-                uri: `http://${this._baseUrl}/${moduleName}/${action}`,
+                uri: `http://${this._baseAddress}/${moduleName}/${action}`,
                 body: request,
                 json: true // Automatically stringifies the body to JSON
             };
-            return this._requestMaker(options);
+            return this._requestMaker(options)
+                .catch(rawResponse => {
+                return rawResponse.error;
+            });
         });
     }
 };

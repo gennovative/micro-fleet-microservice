@@ -24,7 +24,10 @@ export class MessageBrokerRpcCaller
 		super();
 	}
 
-	call(moduleName: string, action: string, params: any): Promise<rpc.IRpcResponse> {
+	public init(param: any): void {
+	}
+
+	public call(moduleName: string, action: string, params: any): Promise<rpc.IRpcResponse> {
 		Guard.assertDefined('moduleName', moduleName);
 		Guard.assertDefined('action', action);
 

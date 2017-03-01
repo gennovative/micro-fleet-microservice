@@ -1,4 +1,3 @@
-/// <reference types="express-serve-static-core" />
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -12,33 +11,32 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+const bodyParser = require("body-parser");
 const ex = require("../microservice/Exceptions");
-//import * as exCore from 'express-serve-static-core';
-const express = require("express");
 const Guard_1 = require("../utils/Guard");
 const Types_1 = require("../constants/Types");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
 const rpc = require("./RpcCommon");
-let ExpressRpcHandler = class ExpressRpcHandler extends rpc.RpcHandlerBase {
+let ExpressDirectRpcHandler = ExpressDirectRpcHandler_1 = class ExpressDirectRpcHandler extends rpc.RpcHandlerBase {
     constructor(depContainer) {
         super(depContainer);
-        this._urlSafe = /^[a-zA-Z0-9_-]*$/.compile();
     }
-    set express(val) {
-        Guard_1.Guard.assertIsFalsey(this._router, 'Another Express instance is already set.');
-        this._express = val;
-        this.initRouter();
+    init(param) {
+        Guard_1.Guard.assertIsFalsey(this._router, 'This RPC Caller is already initialized!');
+        Guard_1.Guard.assertIsTruthy(this._name, '`name` property must be set!');
+        Guard_1.Guard.assertIsTruthy(param.expressApp, '`expressApp` with an instance of Express is required!');
+        Guard_1.Guard.assertIsTruthy(param.router, '`router` with an instance of Express Router is required!');
+        let app = this._app = param.expressApp;
+        this._router = param.router;
+        //app.use(bodyParser.urlencoded({extended: true})); // Parse Form values in POST request, but I don't think we need it in this case.
+        app.use(bodyParser.json()); // Parse JSON in POST request
+        app.use(`/${this._name}`, this._router);
     }
     handle(action, dependencyIdentifier, actionFactory) {
-        Guard_1.Guard.assertIsMatch(null, this._urlSafe, action, `Route "${action}" is not URL-safe!`);
-        Guard_1.Guard.assertIsTruthy(this._router, 'Router must be set!');
+        Guard_1.Guard.assertIsMatch(null, ExpressDirectRpcHandler_1.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
+        Guard_1.Guard.assertIsTruthy(this._router, '`init` method must be called first!');
         let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
         this._router.post(`/${action}`, this.buildHandleFunc(actionFn));
-    }
-    initRouter() {
-        Guard_1.Guard.assertIsTruthy(this._name, 'Name must be set before setting Express.');
-        this._router = express.Router();
-        this._express.use(`/${this._name}`, this._router);
     }
     buildHandleFunc(actionFn) {
         return (req, res) => {
@@ -48,7 +46,7 @@ let ExpressRpcHandler = class ExpressRpcHandler extends rpc.RpcHandlerBase {
                 actionFn(request, resolve, reject);
             }))
                 .then(result => {
-                res.send(200, this.createResponse(true, result, request.from));
+                res.status(200).send(this.createResponse(true, result, request.from));
             })
                 .catch(error => {
                 let errMsg = error, statusCode = 200;
@@ -59,18 +57,24 @@ let ExpressRpcHandler = class ExpressRpcHandler extends rpc.RpcHandlerBase {
                     statusCode = 500;
                     errMsg = error.message;
                 }
-                // If this is a custom error, which means the action method sends this error
+                // If this is a reject error, which means the action method sends this error
                 // back to caller on purpose.
-                res.send(statusCode, this.createResponse(false, errMsg, request.from));
+                res.status(statusCode).send(this.createResponse(false, errMsg, request.from));
             });
         };
     }
 };
-ExpressRpcHandler = __decorate([
+ExpressDirectRpcHandler.URL_TESTER = (function () {
+    let regexp = new RegExp(/^[a-zA-Z0-9_-]*$/);
+    regexp.compile();
+    return regexp;
+})();
+ExpressDirectRpcHandler = ExpressDirectRpcHandler_1 = __decorate([
     DependencyContainer_1.injectable(),
     __param(0, DependencyContainer_1.inject(Types_1.Types.DEPENDENCY_CONTAINER)),
     __metadata("design:paramtypes", [Object])
-], ExpressRpcHandler);
-exports.ExpressRpcHandler = ExpressRpcHandler;
+], ExpressDirectRpcHandler);
+exports.ExpressDirectRpcHandler = ExpressDirectRpcHandler;
+var ExpressDirectRpcHandler_1;
 
 //# sourceMappingURL=DirectRpcHandler.js.map

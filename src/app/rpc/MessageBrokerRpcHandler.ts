@@ -21,6 +21,10 @@ export class MessageBrokerRpcHandler
 		super(depContainer);
 	}
 
+
+	public init(param: any): void {
+	}
+
 	public handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory) {
 		Guard.assertDefined('action', action);
 		Guard.assertDefined('dependencyIdentifier', dependencyIdentifier);

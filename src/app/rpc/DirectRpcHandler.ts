@@ -1,33 +1,27 @@
-/// <reference types="express-serve-static-core" />
-
-import * as ex from '../microservice/Exceptions';
-//import * as exCore from 'express-serve-static-core';
 import * as express from 'express';
+import * as bodyParser from 'body-parser';
+import * as ex from '../microservice/Exceptions';
 import { Guard } from '../utils/Guard';
 import { Types as T } from '../constants/Types';
 import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
 import * as rpc from './RpcCommon';
 
 export interface IDirectRpcHandler extends rpc.IRpcHandler {
-	express: express.Express;
 }
 
 @injectable()
-export class ExpressRpcHandler
+export class ExpressDirectRpcHandler
 			extends rpc.RpcHandlerBase
 			implements IDirectRpcHandler {
 
-	private readonly _urlSafe: RegExp = /^[a-zA-Z0-9_-]*$/.compile();
+	private static URL_TESTER: RegExp = (function() {
+			let regexp = new RegExp(/^[a-zA-Z0-9_-]*$/);
+			regexp.compile();
+			return regexp;
+		})();
+
+	private _app: express.Express;
 	private _router: express.Router;
-	private _express: express.Express;
-
-
-	public set express(val: express.Express) {
-		Guard.assertIsFalsey(this._router, 'Another Express instance is already set.');
-
-		this._express = val;
-		this.initRouter();
-	}
 
 
 	constructor(
@@ -37,21 +31,28 @@ export class ExpressRpcHandler
 	}
 
 
+	public init(param: any): void {
+		Guard.assertIsFalsey(this._router, 'This RPC Caller is already initialized!');
+		Guard.assertIsTruthy(this._name, '`name` property must be set!');
+		Guard.assertIsTruthy(param.expressApp, '`expressApp` with an instance of Express is required!');
+		Guard.assertIsTruthy(param.router, '`router` with an instance of Express Router is required!');
+
+		let app: express.Express = this._app = param.expressApp;
+		
+		this._router = param.router;
+		//app.use(bodyParser.urlencoded({extended: true})); // Parse Form values in POST request, but I don't think we need it in this case.
+		app.use(bodyParser.json()); // Parse JSON in POST request
+		app.use(`/${this._name}`, this._router);
+	}
+
 	public handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory) {
-		Guard.assertIsMatch(null, this._urlSafe, action, `Route "${action}" is not URL-safe!`);
-		Guard.assertIsTruthy(this._router, 'Router must be set!');
+		Guard.assertIsMatch(null, ExpressDirectRpcHandler.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
+		Guard.assertIsTruthy(this._router, '`init` method must be called first!');
 
 		let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
 		this._router.post(`/${action}`, this.buildHandleFunc(actionFn));
 	}
 
-
-	private initRouter() {
-		Guard.assertIsTruthy(this._name, 'Name must be set before setting Express.');
-		
-		this._router = express.Router();
-		this._express.use(`/${this._name}`, this._router);
-	}
 
 	private buildHandleFunc(actionFn: rpc.RpcControllerFunction): express.RequestHandler {
 		return (req: express.Request, res: express.Response) => {
@@ -62,7 +63,7 @@ export class ExpressRpcHandler
 				actionFn(request, resolve, reject);
 			}))
 			.then(result => {
-				res.send(200, this.createResponse(true, result, request.from));
+				res.status(200).send(this.createResponse(true, result, request.from));
 			})
 			.catch(error => {
 				let errMsg = error,
@@ -76,9 +77,9 @@ export class ExpressRpcHandler
 					errMsg = error.message;
 				}
 
-				// If this is a custom error, which means the action method sends this error
+				// If this is a reject error, which means the action method sends this error
 				// back to caller on purpose.
-				res.send(statusCode, this.createResponse(false, errMsg, request.from));
+				res.status(statusCode).send(this.createResponse(false, errMsg, request.from));
 			});
 		};
 	}

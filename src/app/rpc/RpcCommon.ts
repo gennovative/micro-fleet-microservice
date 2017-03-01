@@ -33,6 +33,12 @@ export interface IRpcCaller {
 	 * is not specified, RPC Caller tries to figure out an action method from `route`.
 	 */
 	call(moduleName: string, action: string, params: any): Promise<IRpcResponse>;
+
+	/**
+	 * Sets up this RPC caller with specified `param`. Each implementation class requires
+	 * different kinds of `param`.
+	 */
+	init(param: any);
 }
 
 
@@ -51,6 +57,12 @@ export interface IRpcHandler {
 	 * calls instance's `customAction` instead.
 	 */
 	handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: RpcActionFactory);
+	
+	/**
+	 * Sets up this RPC handler with specified `param`. Each implementation class requires
+	 * different kinds of `param`.
+	 */
+	init(param: any): void;
 }
 
 
@@ -90,16 +102,16 @@ export abstract class RpcHandlerBase {
 	protected resolveActionFunc(action: string, depId: string | symbol, actFactory?: RpcActionFactory): RpcControllerFunction {
 		// Attempt to resolve controller instance
 		let instance = this._depContainer.resolve<any>(depId);
-		Guard.assertIsTruthy(instance, `Cannot resolve dependency ${depId}!`);
+		Guard.assertIsTruthy(instance, `Cannot resolve dependency ${depId.toString()}!`);
 
-		let actionFn = (action ? instance[action] : null);
+		let actionFn = instance[action];
 		
 		// If default action is not available, attempt to get action from factory.
 		if (!actionFn) {
 			actionFn = (actFactory ? actFactory(instance) : null);
 		}
 
-		Guard.assertIsTruthy(instance, `Specified action does not exist!`);
+		Guard.assertIsTruthy(actionFn, 'Specified action does not exist in controller!');
 
 		return actionFn.bind(instance);
 	}

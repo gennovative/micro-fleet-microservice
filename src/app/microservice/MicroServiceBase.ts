@@ -12,7 +12,7 @@ import { Types as T } from '../constants/Types';
 
 export abstract class MicroServiceBase {
 	protected _configAdapter: cf.IConfigurationProvider;
-	protected _depContainer: dep.DependencyContainer;
+	protected _depContainer: dep.IDependencyContainer;
 	protected _adapters: IAdapter[];
 	protected _isStarted: boolean;
 	
@@ -114,7 +114,7 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDirectRpcHandler(): void {
-		this._depContainer.bind<rdh.IDirectRpcHandler>(T.DIRECT_RPC_CALLER, rdh.ExpressRpcHandler);
+		this._depContainer.bind<rdh.IDirectRpcHandler>(T.DIRECT_RPC_CALLER, rdh.ExpressDirectRpcHandler);
 	}
 
 	protected registerMessageBrokerAdapter(): void {

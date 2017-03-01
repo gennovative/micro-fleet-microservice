@@ -1,4 +1,4 @@
-import { MicroServiceBase, inject, IDirectRpcCaller, IRpcResponse, MinorException, Types as T} from '../../app';
+import { MicroServiceBase, inject, injectable, IDirectRpcCaller, IRpcResponse, MinorException, Types as T} from '../../app';
 
 
 const PRODUCT_PROVIDER = Symbol('IProductProvider');
@@ -11,13 +11,14 @@ interface IProductProvider {
 	getProduct(id: number): Promise<ProductDTO>;
 }
 
+@injectable()
 class MockProductProvider implements IProductProvider {
 	
 	constructor(
 		@inject(T.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
 	) {
 		this._rpcCaller.name = 'MockProvider'; // Not very important, for logging purpose.
-		this._rpcCaller.baseUrl = 'product.com'; // NOTE: No "http://" at the head. No "/" at the end.
+		this._rpcCaller.baseAddress = 'product.com'; // NOTE: No "http://" at the head. No "/" at the end.
 	}
 
 	public async getProduct(id: number): Promise<ProductDTO> {

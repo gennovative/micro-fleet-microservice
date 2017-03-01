@@ -23,6 +23,8 @@ let MessageBrokerRpcCaller = class MessageBrokerRpcCaller extends rpc.RpcCallerB
         super();
         this._msgBrokerAdt = _msgBrokerAdt;
     }
+    init(param) {
+    }
     call(moduleName, action, params) {
         Guard_1.Guard.assertDefined('moduleName', moduleName);
         Guard_1.Guard.assertDefined('action', action);
