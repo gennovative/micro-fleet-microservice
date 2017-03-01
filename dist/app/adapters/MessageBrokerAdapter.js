@@ -19,7 +19,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-const events_1 = require("events");
 const amqp = require("amqplib");
 const Exceptions_1 = require("../microservice/Exceptions");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
@@ -161,9 +160,7 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                 // Setting exchange as "durable" means the exchange with same name will be re-created after the message broker restarts,
                 // but all queues and waiting messages will be lost.
                 exResult = yield ch.assertExchange(this._exchange, EXCHANGE_TYPE, { durable: true });
-                ch['queue'] = {};
-                ch['responseEmitter'] = new events_1.EventEmitter();
-                ch['responseEmitter'].setMaxListeners(0);
+                ch['queue'] = '';
                 return Promise.resolve(ch);
             }
             catch (err) {
@@ -250,7 +247,7 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
 };
 TopicMessageBrokerAdapter = __decorate([
     DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.CONFIG_ADAPTER)),
+    __param(0, DependencyContainer_1.inject(Types_1.Types.CONFIG_PROVIDER)),
     __metadata("design:paramtypes", [Object])
 ], TopicMessageBrokerAdapter);
 exports.TopicMessageBrokerAdapter = TopicMessageBrokerAdapter;

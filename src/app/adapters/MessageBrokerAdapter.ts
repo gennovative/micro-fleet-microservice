@@ -63,13 +63,13 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	private _subscriptions: Map<string, Set<string>>;
 
 	constructor(
-		@inject(T.CONFIG_ADAPTER) private _configAdapter: IConfigurationProvider
+		@inject(T.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider
 	) {
 		this._subscriptions = new Map();
 	}
 	
 	public init(): Promise<void> {
-		let cfgAdt = this._configAdapter;
+		let cfgAdt = this._configProvider;
 
 		this._exchange = cfgAdt.get(S.MSG_BROKER_EXCHANGE);
 		this.connect(cfgAdt.get(S.MSG_BROKER_HOST));
@@ -221,9 +221,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 				// but all queues and waiting messages will be lost.
 				exResult = await ch.assertExchange(this._exchange, EXCHANGE_TYPE, {durable: true});
 
-			ch['queue'] = {};
-			ch['responseEmitter'] = new EventEmitter();
-			ch['responseEmitter'].setMaxListeners(0);
+			ch['queue'] = '';
 			return Promise.resolve(ch);
 
 		} catch (err) {

@@ -12,8 +12,8 @@ const db = require("../adapters/DatabaseAdapter");
 const mb = require("../adapters/MessageBrokerAdapter");
 const rdc = require("../rpc/DirectRpcCaller");
 const rdh = require("../rpc/DirectRpcHandler");
-const rmc = require("../rpc/MessageBrokerRpcCaller");
-const rmh = require("../rpc/MessageBrokerRpcHandler");
+const rmc = require("../rpc/MediateRpcCaller");
+const rmh = require("../rpc/MediateRpcHandler");
 const dep = require("../utils/DependencyContainer");
 const ex = require("./Exceptions");
 const Types_1 = require("../constants/Types");
@@ -86,7 +86,7 @@ class MicroServiceBase {
         return dbAdt;
     }
     addConfigAdapter() {
-        let cfgAdt = this._configAdapter = this._depContainer.resolve(Types_1.Types.CONFIG_ADAPTER);
+        let cfgAdt = this._configAdapter = this._depContainer.resolve(Types_1.Types.CONFIG_PROVIDER);
         this.addAdapter(cfgAdt);
         return cfgAdt;
     }
@@ -98,8 +98,8 @@ class MicroServiceBase {
     registerDbAdapter() {
         this._depContainer.bind(Types_1.Types.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
     }
-    registerConfigAdapter() {
-        this._depContainer.bind(Types_1.Types.CONFIG_ADAPTER, cf.ConfigurationProvider).asSingleton();
+    registerConfigProvider() {
+        this._depContainer.bind(Types_1.Types.CONFIG_PROVIDER, cf.ConfigurationProvider).asSingleton();
     }
     registerDirectRpcCaller() {
         this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rdc.DirectRpcCaller);
@@ -110,11 +110,11 @@ class MicroServiceBase {
     registerMessageBrokerAdapter() {
         this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, mb.TopicMessageBrokerAdapter).asSingleton();
     }
-    registerMessageBrokerRpcCaller() {
-        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rmc.MessageBrokerRpcCaller);
+    registerMediateRpcCaller() {
+        this._depContainer.bind(Types_1.Types.MEDIATE_RPC_CALLER, rmc.MessageBrokerRpcCaller);
     }
-    registerMessageBrokerRpcHandler() {
-        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rmh.MessageBrokerRpcHandler);
+    registerMediateRpcHandler() {
+        this._depContainer.bind(Types_1.Types.MEDIATE_RPC_HANDLER, rmh.MessageBrokerRpcHandler);
     }
     registerModelMapper() {
         this._depContainer.bindConstant(Types_1.Types.MODEL_MAPPER, automapper);
@@ -123,8 +123,9 @@ class MicroServiceBase {
     registerDependencies() {
         let depCon = this._depContainer = new dep.DependencyContainer();
         depCon.bindConstant(Types_1.Types.DEPENDENCY_CONTAINER, depCon);
-        this.registerConfigAdapter();
+        this.registerConfigProvider();
         this.registerDirectRpcCaller();
+        this.registerModelMapper();
     }
     /**
      * Invoked whenever any error occurs in the application.

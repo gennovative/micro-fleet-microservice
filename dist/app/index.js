@@ -17,8 +17,8 @@ __export(require("./persistence/RepositoryBase"));
 __export(require("./rpc/RpcCommon"));
 __export(require("./rpc/DirectRpcCaller"));
 __export(require("./rpc/DirectRpcHandler"));
-__export(require("./rpc/MessageBrokerRpcCaller"));
-__export(require("./rpc/MessageBrokerRpcHandler"));
+__export(require("./rpc/MediateRpcCaller"));
+__export(require("./rpc/MediateRpcHandler"));
 __export(require("./utils/DependencyContainer"));
 __export(require("./utils/Guard"));
 

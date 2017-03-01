@@ -87,31 +87,31 @@ declare module 'back-lib-foundation/src/app/utils/DependencyContainer' {
 }
 declare module 'back-lib-foundation/src/app/constants/Types' {
 	export class Types {
-	    static MODEL_MAPPER: symbol;
-	    static BROKER_ADAPTER: symbol;
-	    static CONFIG_ADAPTER: symbol;
-	    static DB_ADAPTER: symbol;
-	    static DEPENDENCY_CONTAINER: symbol;
-	    static DIRECT_RPC_CALLER: symbol;
-	    static DIRECT_RPC_HANDLER: symbol;
-	    static MB_RPC_CALLER: symbol;
-	    static MB_RPC_HANDLER: symbol;
+	    static readonly MODEL_MAPPER: symbol;
+	    static readonly BROKER_ADAPTER: symbol;
+	    static readonly CONFIG_PROVIDER: symbol;
+	    static readonly DB_ADAPTER: symbol;
+	    static readonly DEPENDENCY_CONTAINER: symbol;
+	    static readonly DIRECT_RPC_CALLER: symbol;
+	    static readonly DIRECT_RPC_HANDLER: symbol;
+	    static readonly MEDIATE_RPC_CALLER: symbol;
+	    static readonly MEDIATE_RPC_HANDLER: symbol;
 	}
 
 }
 declare module 'back-lib-foundation/src/app/constants/SettingKeys' {
 	export class SettingKeys {
-	    static CONFIG_SERVICE_ADDRESSES: string;
-	    static DB_HOST: string;
-	    static DB_USER: string;
-	    static DB_PASSWORD: string;
-	    static DB_NAME: string;
-	    static DB_FILE: string;
-	    static DB_CONN_STRING: string;
-	    static MSG_BROKER_HOST: string;
-	    static MSG_BROKER_EXCHANGE: string;
-	    static MSG_BROKER_RECONN_TIMEOUT: string;
-	    static SERVICE_NAME: string;
+	    static readonly CONFIG_SERVICE_ADDRESSES: string;
+	    static readonly DB_HOST: string;
+	    static readonly DB_USER: string;
+	    static readonly DB_PASSWORD: string;
+	    static readonly DB_NAME: string;
+	    static readonly DB_FILE: string;
+	    static readonly DB_CONN_STRING: string;
+	    static readonly MSG_BROKER_HOST: string;
+	    static readonly MSG_BROKER_EXCHANGE: string;
+	    static readonly MSG_BROKER_RECONN_TIMEOUT: string;
+	    static readonly SERVICE_NAME: string;
 	}
 
 }
@@ -381,7 +381,7 @@ declare module 'back-lib-foundation/src/app/rpc/DirectRpcHandler' {
 	}
 
 }
-declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller' {
+declare module 'back-lib-foundation/src/app/rpc/MediateRpcCaller' {
 	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
 	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
 	export interface IMediateRpcCaller extends rpc.IRpcCaller {
@@ -394,7 +394,7 @@ declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller' {
 	}
 
 }
-declare module 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler' {
+declare module 'back-lib-foundation/src/app/rpc/MediateRpcHandler' {
 	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
 	import { IMessageBrokerAdapter } from 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter';
 	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
@@ -437,12 +437,12 @@ declare module 'back-lib-foundation/src/app/microservice/MicroServiceBase' {
 	    protected addConfigAdapter(): cf.IConfigurationProvider;
 	    protected addMessageBrokerAdapter(): mb.IMessageBrokerAdapter;
 	    protected registerDbAdapter(): void;
-	    protected registerConfigAdapter(): void;
+	    protected registerConfigProvider(): void;
 	    protected registerDirectRpcCaller(): void;
 	    protected registerDirectRpcHandler(): void;
 	    protected registerMessageBrokerAdapter(): void;
-	    protected registerMessageBrokerRpcCaller(): void;
-	    protected registerMessageBrokerRpcHandler(): void;
+	    protected registerMediateRpcCaller(): void;
+	    protected registerMediateRpcHandler(): void;
 	    protected registerModelMapper(): AutoMapper;
 	    protected registerDependencies(): void;
 	    /**
@@ -491,24 +491,28 @@ declare module 'back-lib-foundation/src/app/persistence/RepositoryBase' {
 	import { QueryBuilder } from 'objection';
 	import { EntityBase } from 'back-lib-foundation/src/app/persistence/EntityBase';
 	export interface IRepository<TModel extends IModelDTO> {
+	    countAll(): Promise<number>;
 	    create(model: TModel): Promise<TModel>;
 	    delete(id: number): Promise<number>;
 	    find(id: number): Promise<TModel>;
+	    page(pageIndex: number, pageSize: number): Promise<TModel[]>;
 	    patch(model: Partial<TModel>): Promise<number>;
 	    update(model: TModel): Promise<number>;
 	}
 	export abstract class RepositoryBase<TEntity extends EntityBase, TModel extends IModelDTO> implements IRepository<TModel> {
 	    protected _modelMapper: AutoMapper;
 	    constructor(_modelMapper: AutoMapper);
+	    countAll(): Promise<number>;
 	    create(model: TModel): Promise<TModel>;
 	    delete(id: number): Promise<number>;
 	    find(id: number): Promise<TModel>;
 	    patch(model: Partial<TModel>): Promise<number>;
+	    page(pageIndex: number, pageSize: number): Promise<TModel[]>;
 	    update(model: TModel): Promise<number>;
 	    protected abstract query(): QueryBuilder<TEntity>;
 	    protected abstract createModelMap(): void;
-	    protected abstract toEntity(from: TModel): TEntity;
-	    protected abstract toDTO(from: TEntity): TModel;
+	    protected abstract toEntity(from: TModel | TModel[]): TEntity & TEntity[];
+	    protected abstract toDTO(from: TEntity | TEntity[]): TModel & TModel[];
 	}
 
 }
@@ -528,8 +532,8 @@ declare module 'back-lib-foundation' {
 	export * from 'back-lib-foundation/src/app/rpc/RpcCommon';
 	export * from 'back-lib-foundation/src/app/rpc/DirectRpcCaller';
 	export * from 'back-lib-foundation/src/app/rpc/DirectRpcHandler';
-	export * from 'back-lib-foundation/src/app/rpc/MessageBrokerRpcCaller';
-	export * from 'back-lib-foundation/src/app/rpc/MessageBrokerRpcHandler';
+	export * from 'back-lib-foundation/src/app/rpc/MediateRpcCaller';
+	export * from 'back-lib-foundation/src/app/rpc/MediateRpcHandler';
 	export * from 'back-lib-foundation/src/app/utils/DependencyContainer';
 	export * from 'back-lib-foundation/src/app/utils/Guard';
 

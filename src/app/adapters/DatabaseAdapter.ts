@@ -46,7 +46,7 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 	private _knex; // for unittest mocking
 
 	constructor(
-		@inject(T.CONFIG_ADAPTER) private _configAdapter: IConfigurationProvider
+		@inject(T.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider
 	) {
 		this._clientName = DbClient.POSTGRESQL;
 		this._knex = knex;
@@ -62,7 +62,7 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 
 	public init(): Promise<void> {
 		return new Promise<void>(resolve => {
-			let cfgAdt = this._configAdapter,
+			let cfgAdt = this._configProvider,
 				settings = {
 					client: this._clientName,
 					useNullAsDefault: true,
@@ -78,13 +78,13 @@ export class KnexDatabaseAdapter implements IDatabaseAdapter {
 		// Casting from Bluebird Promise to Node native Promise
 		// This cast is for compiler, hence no effect to runtime performance.
 		await Model.knex().destroy();
-		this._configAdapter = null;
+		this._configProvider = null;
 		this._knex = null;
 		this._clientName = null;
 	}
 
 	private buildConnSettings(): any {
-		let cfgAdt = this._configAdapter,
+		let cfgAdt = this._configProvider,
 			value: string;
 
 		// 1st priority: connect to a local file.

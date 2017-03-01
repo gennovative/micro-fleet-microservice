@@ -52,7 +52,7 @@ class ExpressAdapter implements IHttpAdapter {
 		this._express = express();
 		this._rpcHandler.name = 'ProductService'; // Some class implementation may require `name`, some may not.
 		this._rpcHandler.init({ 
-			express: this._express,
+			expressApp: this._express,
 			router: express.Router()
 		});
 	}

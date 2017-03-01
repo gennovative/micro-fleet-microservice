@@ -4,9 +4,11 @@ import { Guard } from '../utils/Guard';
 
 
 export interface IRepository<TModel extends IModelDTO> {
+	countAll(): Promise<number>;
 	create(model: TModel): Promise<TModel>;
 	delete(id: number): Promise<number>;
 	find(id: number): Promise<TModel>;
+	page(pageIndex: number, pageSize: number): Promise<TModel[]>;
 	patch(model: Partial<TModel>): Promise<number>;
 	update(model: TModel): Promise<number>;
 }
@@ -17,6 +19,14 @@ export abstract class RepositoryBase<TEntity extends EntityBase, TModel extends 
 	constructor(protected _modelMapper: AutoMapper) {
 		Guard.assertDefined('modelMapper', this._modelMapper);
 		this.createModelMap();
+	}
+
+	public async countAll(): Promise<number> {
+		let count = await <any>this.query().count('id');
+		
+		 // In case with Postgres, `count` returns a bigint type which will be a String 
+		 // and not a Number.
+		return (count * 1);
 	}
 
 	public async create(model: TModel): Promise<TModel> {
@@ -40,6 +50,11 @@ export abstract class RepositoryBase<TEntity extends EntityBase, TModel extends 
 		return affectedRows;
 	}
 
+	public async page(pageIndex: number, pageSize: number): Promise<TModel[]> {
+		let foundList = await this.query().page(pageIndex, pageSize);
+		return this.toDTO(foundList);
+	}
+
 	public async update(model: TModel): Promise<number> {
 		Guard.assertDefined('entity.id', model.id);
 		let affectedRows = await this.query().where('id', model.id).update(model);
@@ -48,6 +63,6 @@ export abstract class RepositoryBase<TEntity extends EntityBase, TModel extends 
 
 	protected abstract query(): QueryBuilder<TEntity>;
 	protected abstract createModelMap(): void;
-	protected abstract toEntity(from: TModel): TEntity;
-	protected abstract toDTO(from: TEntity): TModel;
+	protected abstract toEntity(from: TModel | TModel[]): TEntity & TEntity[];
+	protected abstract toDTO(from: TEntity | TEntity[]): TModel & TModel[];
 }

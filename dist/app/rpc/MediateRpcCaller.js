@@ -74,4 +74,4 @@ MessageBrokerRpcCaller = __decorate([
 ], MessageBrokerRpcCaller);
 exports.MessageBrokerRpcCaller = MessageBrokerRpcCaller;
 
-//# sourceMappingURL=MessageBrokerRpcCaller.js.map
+//# sourceMappingURL=MediateRpcCaller.js.map
