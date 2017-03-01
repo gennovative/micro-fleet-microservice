@@ -76,18 +76,18 @@ class UserRepo extends RepositoryBase<UserEntity, UserDTO> {
 
 	protected /* override */ createModelMap(): void {
 		let mapper = this._modelMapper;
-		mapper.createMap(UserDTO, UserEntity);		
+		mapper.createMap(UserDTO, UserEntity);
 		mapper.createMap(UserEntity, UserDTO);
 			// Ignores all properties that UserEntity has but UserDTO doesn't.
 			//.convertToType(UserDTO);
 	}
 
-	protected /* override */ toEntity(from: UserDTO): UserEntity {
+	protected /* override */ toEntity(from: UserDTO | UserDTO[]): UserEntity & UserEntity[] {
 		return this._modelMapper.map(UserDTO, UserEntity, from);
 							// (DTO)===^         ^===(Entity)
 	}
 
-	protected /* override */ toDTO(from: UserDTO): UserDTO {
+	protected /* override */ toDTO(from: UserEntity | UserEntity[]): UserDTO & UserDTO[] {
 		return this._modelMapper.map(UserEntity, UserDTO, from);
 							// (Entity)===^         ^===(DTO)
 								// Be EXTREMELY careful! It's very easy to make mistake here!

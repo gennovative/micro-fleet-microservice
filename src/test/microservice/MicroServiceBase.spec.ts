@@ -93,7 +93,7 @@ class TestMarketingService extends MicroServiceBase {
 		// In reality, we can merely call `registerConfigAdapter` method. However,
 		// in this case, we want to inject our mock instance instead.
 		//// this.registerConfigAdapter();
-		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_ADAPTER, MockConfigService).asSingleton();
+		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigService).asSingleton();
 		
 		// Call this if your service works directly with database.
 		//this.registerDbAdapter();
@@ -178,7 +178,7 @@ describe('MicroServiceBase', () => {
 			chai.spy.on(service, 'onError');
 
 			service['onStarting'] = function() {
-				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_ADAPTER);
+				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
 				cfgAdt.behavior = BEHAV_FALSE;
 			};
 
@@ -201,7 +201,7 @@ describe('MicroServiceBase', () => {
 			chai.spy.on(service, 'onError');
 			
 			service['onStarting'] = function() {
-				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_ADAPTER);
+				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
 				cfgAdt.behavior = BEHAV_THROW;
 			};
 

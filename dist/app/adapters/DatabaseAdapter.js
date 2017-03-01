@@ -109,7 +109,7 @@ let KnexDatabaseAdapter = class KnexDatabaseAdapter {
 };
 KnexDatabaseAdapter = __decorate([
     DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.CONFIG_ADAPTER)),
+    __param(0, DependencyContainer_1.inject(Types_1.Types.CONFIG_PROVIDER)),
     __metadata("design:paramtypes", [Object])
 ], KnexDatabaseAdapter);
 exports.KnexDatabaseAdapter = KnexDatabaseAdapter;

@@ -63,4 +63,4 @@ MessageBrokerRpcHandler = __decorate([
 ], MessageBrokerRpcHandler);
 exports.MessageBrokerRpcHandler = MessageBrokerRpcHandler;
 
-//# sourceMappingURL=MessageBrokerRpcHandler.js.map
+//# sourceMappingURL=MediateRpcHandler.js.map

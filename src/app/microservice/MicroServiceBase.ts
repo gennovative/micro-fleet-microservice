@@ -3,8 +3,8 @@ import * as db from '../adapters/DatabaseAdapter';
 import * as mb from '../adapters/MessageBrokerAdapter';
 import * as rdc from '../rpc/DirectRpcCaller';
 import * as rdh from '../rpc/DirectRpcHandler';
-import * as rmc from '../rpc/MessageBrokerRpcCaller';
-import * as rmh from '../rpc/MessageBrokerRpcHandler';
+import * as rmc from '../rpc/MediateRpcCaller';
+import * as rmh from '../rpc/MediateRpcHandler';
 import * as dep from '../utils/DependencyContainer';
 import * as ex from './Exceptions';
 import { Types as T } from '../constants/Types';
@@ -90,7 +90,7 @@ export abstract class MicroServiceBase {
 	}
 
 	protected addConfigAdapter(): cf.IConfigurationProvider {
-		let cfgAdt = this._configAdapter = this._depContainer.resolve<cf.IConfigurationProvider>(T.CONFIG_ADAPTER);
+		let cfgAdt = this._configAdapter = this._depContainer.resolve<cf.IConfigurationProvider>(T.CONFIG_PROVIDER);
 		this.addAdapter(cfgAdt);
 		return cfgAdt;
 	}
@@ -105,8 +105,8 @@ export abstract class MicroServiceBase {
 		this._depContainer.bind<db.IDatabaseAdapter>(T.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
 	}
 
-	protected registerConfigAdapter(): void {
-		this._depContainer.bind<cf.IConfigurationProvider>(T.CONFIG_ADAPTER, cf.ConfigurationProvider).asSingleton();
+	protected registerConfigProvider(): void {
+		this._depContainer.bind<cf.IConfigurationProvider>(T.CONFIG_PROVIDER, cf.ConfigurationProvider).asSingleton();
 	}
 
 	protected registerDirectRpcCaller(): void {
@@ -121,12 +121,12 @@ export abstract class MicroServiceBase {
 		this._depContainer.bind<mb.IMessageBrokerAdapter>(T.BROKER_ADAPTER, mb.TopicMessageBrokerAdapter).asSingleton();
 	}
 
-	protected registerMessageBrokerRpcCaller(): void {
-		this._depContainer.bind<rmc.IMediateRpcCaller>(T.DIRECT_RPC_CALLER, rmc.MessageBrokerRpcCaller);
+	protected registerMediateRpcCaller(): void {
+		this._depContainer.bind<rmc.IMediateRpcCaller>(T.MEDIATE_RPC_CALLER, rmc.MessageBrokerRpcCaller);
 	}
 
-	protected registerMessageBrokerRpcHandler(): void {
-		this._depContainer.bind<rmh.IMediateRpcHandler>(T.DIRECT_RPC_CALLER, rmh.MessageBrokerRpcHandler);
+	protected registerMediateRpcHandler(): void {
+		this._depContainer.bind<rmh.IMediateRpcHandler>(T.MEDIATE_RPC_HANDLER, rmh.MessageBrokerRpcHandler);
 	}
 
 	protected registerModelMapper(): AutoMapper {
@@ -137,8 +137,9 @@ export abstract class MicroServiceBase {
 	protected registerDependencies(): void {
 		let depCon: dep.IDependencyContainer = this._depContainer = new dep.DependencyContainer();
 		depCon.bindConstant<dep.IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
-		this.registerConfigAdapter();
+		this.registerConfigProvider();
 		this.registerDirectRpcCaller();
+		this.registerModelMapper();
 	}
 	
 	/**
