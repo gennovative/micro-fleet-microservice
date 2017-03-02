@@ -106,8 +106,8 @@ describe('ExpressDirectRpcHandler', () => {
 					server.close();
 					server = null;
 				})
-				.catch(err => {
-					console.error(err);
+				.catch(rawResponse => {
+					console.error(rawResponse.error);
 					server.close();
 					server = null;
 				});
@@ -152,8 +152,8 @@ describe('ExpressDirectRpcHandler', () => {
 					server.close();
 					server = null;
 				})
-				.catch(err => {
-					console.error(err);
+				.catch(rawResponse => {
+					console.error(rawResponse.error);
 					server.close();
 					server = null;
 				});
@@ -203,44 +203,13 @@ describe('ExpressDirectRpcHandler', () => {
 					server.close();
 					server = null;
 				})
-				.catch(err => {
-					console.error(err);
+				.catch(rawResponse => {
+					console.error(rawResponse.error);
 					expect(true, 'Request should be successful!').to.be.not.false;
 					server.close();
 					server = null;
 				});
 			});
-		});
-
-		it('Should throw error if specified action does not exist in controller.', () => {
-			// Arrange
-			const UNEXIST_ACTION = 'editProduct';
-
-			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
-				app: express.Express = express(),
-				router: express.Router = express.Router();
-
-			depContainer.bind<NormalProductController>(CONTROLLER_NORM, NormalProductController);
-
-			handler.name = MODULE;
-			handler.init({
-				expressApp: app,
-				router: router
-			});
-
-			// Act
-			let exception: Exception = null;
-			try {
-				handler.handle(UNEXIST_ACTION, CONTROLLER_NORM);
-			} catch (ex) {
-				exception = ex;
-			}
-
-			// Assert
-			expect(exception).to.be.not.null;
-			expect(exception).to.be.instanceOf(Exception);
-			expect(exception.message).to.equal('Specified action does not exist in controller!');
 		});
 
 		it('Should respond with status 200 if controller rejects.', (done) => {
@@ -282,10 +251,10 @@ describe('ExpressDirectRpcHandler', () => {
 					server.close();
 					server = null;
 				})
-				.catch(err => {
+				.catch(rawResponse => {
 					// If status 500 or request error.
 
-					console.error(err);
+					console.error(rawResponse.error);
 					expect(true, 'Request should be successful!').to.be.not.false;
 					server.close();
 					server = null;
@@ -340,5 +309,111 @@ describe('ExpressDirectRpcHandler', () => {
 				});
 			});
 		});
+		
+		it('Should respond with status 500 if registered controller cannot be resolved.', (done) => {
+			// Arrange
+			const ACTION = 'addProduct';
+
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
+
+			// Intentionally not binding controller
+			//depContainer.bind<NormalProductController>(CONTROLLER_NORM, NormalProductController);
+
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			handler.handle(ACTION, CONTROLLER_NORM);
+
+			let server = app.listen(3000, () => {
+				let request: IRpcRequest = {
+					from: '',
+					to: MODULE,
+					params: {}
+				},
+				options = {
+					method: 'POST',
+					uri: `http://localhost:3000/${MODULE}/${ACTION}`,
+					body: request,
+					json: true
+				};
+
+				requestMaker(options).then((res: IRpcResponse) => {
+					// If status 200
+
+					expect(true, 'Request should NOT be successful!').to.be.not.false;
+					server.close();
+					server = null;
+				})
+				.catch(rawResponse => {
+					// Assert
+					expect(rawResponse.statusCode).to.equal(500);
+					expect(rawResponse.error.data).to.contain('Cannot resolve dependency');
+					done();
+					server.close();
+					server = null;
+				});
+			});
+
+		});
+
+		it('Should respond with status 500 if specified action does not exist in controller.', (done) => {
+			// Arrange
+			const UNEXIST_ACTION = 'editProduct';
+
+			let depContainer = new DependencyContainer(),
+				handler = new ExpressDirectRpcHandler(depContainer),
+				app: express.Express = express(),
+				router: express.Router = express.Router();
+
+			depContainer.bind<NormalProductController>(CONTROLLER_NORM, NormalProductController);
+
+			handler.name = MODULE;
+			handler.init({
+				expressApp: app,
+				router: router
+			});
+
+			// Act
+			handler.handle(UNEXIST_ACTION, CONTROLLER_NORM);
+
+			let server = app.listen(3000, () => {
+				let request: IRpcRequest = {
+					from: '',
+					to: MODULE,
+					params: {}
+				},
+				options = {
+					method: 'POST',
+					uri: `http://localhost:3000/${MODULE}/${UNEXIST_ACTION}`,
+					body: request,
+					json: true
+				};
+
+				requestMaker(options).then((res: IRpcResponse) => {
+					// If status 200
+
+					expect(true, 'Request should NOT be successful!').to.be.not.false;
+					server.close();
+					server = null;
+				})
+				.catch(rawResponse => {
+					// Assert
+					expect(rawResponse.statusCode).to.equal(500);
+					expect(rawResponse.error.data).to.equal('Specified action does not exist in controller!');
+					done();
+					server.close();
+					server = null;
+				});
+			});
+
+		});
+
 	});
 });

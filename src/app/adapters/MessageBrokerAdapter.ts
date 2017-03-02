@@ -60,6 +60,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	private _consumeChanPrm: Promise<amqp.Channel>;
 
 	private _exchange: string;
+	private _queue: string;
 	private _subscriptions: Map<string, Set<string>>;
 
 	constructor(
@@ -72,6 +73,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 		let cfgAdt = this._configProvider;
 
 		this._exchange = cfgAdt.get(S.MSG_BROKER_EXCHANGE);
+		this._queue = cfgAdt.get(S.MSG_BROKER_QUEUE);
 		this.connect(cfgAdt.get(S.MSG_BROKER_HOST));
 		/*
 		this.connect({
@@ -182,10 +184,6 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 				let queueName = ch['queue'];
 
 				ch = await this._consumeChanPrm;
-
-				// Destroy the queue, any waiting messages will be re-routed to another queue by the exchange.
-				promises.push(ch.deleteQueue(queueName));
-
 				// Close consuming channel
 				promises.push(ch.close());
 			}
@@ -198,7 +196,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 
 			if (this._connectionPrm) {
 				let conn: amqp.Connection = await this._connectionPrm;
-				// Close connection
+				// Close connection, causing all temp queues to be deleted.
 				promises.push(conn.close());
 			}
 
@@ -237,11 +235,11 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	private async bindQueue(channelPromise: Promise<amqp.Channel>, matchingPattern: string): Promise<void> {
 		try {
 			let ch = await channelPromise,
-				queueName = ch['queue'],
-				
-				// Provide empty string as queue name to tell message broker to choose a unique name for us.
-				// Setting queue as "exclusive" to delete the queue when connection closes.
-				quResult = await ch.assertQueue(queueName || '', {exclusive: true});
+				isTempQueue = (!this._queue),
+				// If configuration doesn't provide queue name,
+				// we provide empty string as queue name to tell message broker to choose a unique name for us.
+				// Setting queue as "exclusive" to delete the temp queue when connection closes.
+				quResult = await ch.assertQueue(this._queue || '', {exclusive: isTempQueue});
 
 			await ch.bindQueue(quResult.queue, this._exchange, matchingPattern);
 

@@ -35,13 +35,13 @@ let ExpressDirectRpcHandler = ExpressDirectRpcHandler_1 = class ExpressDirectRpc
     handle(action, dependencyIdentifier, actionFactory) {
         Guard_1.Guard.assertIsMatch(null, ExpressDirectRpcHandler_1.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
         Guard_1.Guard.assertIsTruthy(this._router, '`init` method must be called first!');
-        let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
-        this._router.post(`/${action}`, this.buildHandleFunc(actionFn));
+        this._router.post(`/${action}`, this.buildHandleFunc.apply(this, arguments));
     }
-    buildHandleFunc(actionFn) {
+    buildHandleFunc(action, dependencyIdentifier, actionFactory) {
         return (req, res) => {
             let request = req.body;
             (new Promise((resolve, reject) => {
+                let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
                 // Execute controller's action
                 actionFn(request, resolve, reject);
             }))

@@ -8,6 +8,7 @@ export class SettingKeys {
 	public static readonly DB_CONN_STRING = 'database.connectionString';
 	public static readonly MSG_BROKER_HOST = 'messageBroker.host';
 	public static readonly MSG_BROKER_EXCHANGE = 'messageBroker.exchange';
+	public static readonly MSG_BROKER_QUEUE = 'messageBroker.queue';
 	public static readonly MSG_BROKER_RECONN_TIMEOUT = 'messageBroker.reconnectTimeout';
 	public static readonly SERVICE_NAME = 'service.name';
 };
