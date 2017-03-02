@@ -26,12 +26,12 @@ const Guard_1 = require("../utils/Guard");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
 let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
-    constructor(_configAdapter) {
-        this._configAdapter = _configAdapter;
+    constructor(_configProvider) {
+        this._configProvider = _configProvider;
         this._subscriptions = new Map();
     }
     init() {
-        let cfgAdt = this._configAdapter;
+        let cfgAdt = this._configProvider;
         this._exchange = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_EXCHANGE);
         this.connect(cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_HOST));
         /*

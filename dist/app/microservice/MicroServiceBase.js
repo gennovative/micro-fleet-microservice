@@ -105,7 +105,7 @@ class MicroServiceBase {
         this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rdc.DirectRpcCaller);
     }
     registerDirectRpcHandler() {
-        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rdh.ExpressDirectRpcHandler);
+        this._depContainer.bind(Types_1.Types.DIRECT_RPC_HANDLER, rdh.ExpressDirectRpcHandler);
     }
     registerMessageBrokerAdapter() {
         this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, mb.TopicMessageBrokerAdapter).asSingleton();
