@@ -50,8 +50,8 @@ exports.DbClient = DbClient;
  * Provides settings from package
  */
 let KnexDatabaseAdapter = class KnexDatabaseAdapter {
-    constructor(_configAdapter) {
-        this._configAdapter = _configAdapter;
+    constructor(_configProvider) {
+        this._configProvider = _configProvider;
         this._clientName = DbClient.POSTGRESQL;
         this._knex = knex;
     }
@@ -63,7 +63,7 @@ let KnexDatabaseAdapter = class KnexDatabaseAdapter {
     }
     init() {
         return new Promise(resolve => {
-            let cfgAdt = this._configAdapter, settings = {
+            let cfgAdt = this._configProvider, settings = {
                 client: this._clientName,
                 useNullAsDefault: true,
                 connection: this.buildConnSettings()
@@ -77,13 +77,13 @@ let KnexDatabaseAdapter = class KnexDatabaseAdapter {
             // Casting from Bluebird Promise to Node native Promise
             // This cast is for compiler, hence no effect to runtime performance.
             yield objection_1.Model.knex().destroy();
-            this._configAdapter = null;
+            this._configProvider = null;
             this._knex = null;
             this._clientName = null;
         });
     }
     buildConnSettings() {
-        let cfgAdt = this._configAdapter, value;
+        let cfgAdt = this._configProvider, value;
         // 1st priority: connect to a local file.
         value = cfgAdt.get(SettingKeys_1.SettingKeys.DB_FILE);
         if (value && value.length) {

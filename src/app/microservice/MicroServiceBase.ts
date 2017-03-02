@@ -114,7 +114,7 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDirectRpcHandler(): void {
-		this._depContainer.bind<rdh.IDirectRpcHandler>(T.DIRECT_RPC_CALLER, rdh.ExpressDirectRpcHandler);
+		this._depContainer.bind<rdh.IDirectRpcHandler>(T.DIRECT_RPC_HANDLER, rdh.ExpressDirectRpcHandler);
 	}
 
 	protected registerMessageBrokerAdapter(): void {

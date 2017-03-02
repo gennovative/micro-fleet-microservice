@@ -1,3 +1,4 @@
+/// <reference path="./objection.d.ts" />
 /**
  * If an object wants to be initialized when microservice proccess starts, it must
  * implements this interface to be able to add to adapter list.
