@@ -148,13 +148,13 @@ declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	    unsubscribe(consumerTag: string): Promise<void>;
 	}
 	export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
-	    private _configAdapter;
+	    private _configProvider;
 	    private _connectionPrm;
 	    private _publishChanPrm;
 	    private _consumeChanPrm;
 	    private _exchange;
 	    private _subscriptions;
-	    constructor(_configAdapter: IConfigurationProvider);
+	    constructor(_configProvider: IConfigurationProvider);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
 	    subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string>;
@@ -328,10 +328,10 @@ declare module 'back-lib-foundation/src/app/adapters/DatabaseAdapter' {
 	 * Provides settings from package
 	 */
 	export class KnexDatabaseAdapter implements IDatabaseAdapter {
-	    private _configAdapter;
+	    private _configProvider;
 	    private _clientName;
 	    private _knex;
-	    constructor(_configAdapter: IConfigurationProvider);
+	    constructor(_configProvider: IConfigurationProvider);
 	    clientName: string;
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;

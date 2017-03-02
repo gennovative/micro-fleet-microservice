@@ -1,4 +1,5 @@
 import { QueryBuilder } from 'objection';
+import { injectable } from '../utils/DependencyContainer';
 import { EntityBase } from '../persistence/EntityBase';
 import { Guard } from '../utils/Guard';
 
@@ -13,6 +14,7 @@ export interface IRepository<TModel extends IModelDTO> {
 	update(model: TModel): Promise<number>;
 }
 
+@injectable()
 export abstract class RepositoryBase<TEntity extends EntityBase, TModel extends IModelDTO>
 			implements IRepository<TModel> {
 
