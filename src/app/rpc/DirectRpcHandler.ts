@@ -49,16 +49,16 @@ export class ExpressDirectRpcHandler
 		Guard.assertIsMatch(null, ExpressDirectRpcHandler.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
 		Guard.assertIsTruthy(this._router, '`init` method must be called first!');
 
-		let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
-		this._router.post(`/${action}`, this.buildHandleFunc(actionFn));
+		this._router.post(`/${action}`, this.buildHandleFunc.apply(this, arguments));
 	}
 
 
-	private buildHandleFunc(actionFn: rpc.RpcControllerFunction): express.RequestHandler {
+	private buildHandleFunc(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): express.RequestHandler {
 		return (req: express.Request, res: express.Response) => {
 			let request: rpc.IRpcRequest = req.body;
 
 			(new Promise((resolve, reject) => {
+				let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
 				// Execute controller's action
 				actionFn(request, resolve, reject);
 			}))

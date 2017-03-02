@@ -134,7 +134,7 @@ gulp.task('resources', () => {
  * Generates TypeScript definition file (.d.ts)
  */
 const DEF_FILE = './typings/app.d.ts';
-gulp.task('definition', (done) => {
+gulp.task('definition', ['compile'], (done) => {
 	let pkg = require('./package.json'),
 	config = {
 		name: pkg['name'],

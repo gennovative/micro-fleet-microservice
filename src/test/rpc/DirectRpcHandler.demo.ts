@@ -57,35 +57,31 @@ class ExpressAdapter implements IHttpAdapter {
 		});
 	}
 
-	public init(): Promise<void> {
-		return <any>Promise.all([
-			this.handleRequests(),
-			this.initExpress()
-		]);
+	public async init(): Promise<void> {
+		this.handleRequests();
+		await this.initExpress();
 	}
 	
 	public dispose(): Promise<void> {
 		return Promise.resolve();
 	}
 
-	private handleRequests(): Promise<void> {
-		return new Promise<void>((resolve, reject) => {
-			let rpc = this._rpcHandler;
-			
-			// If controller has a method with same name (eg: 'getProduct')
-			rpc.handle('getProduct', PRODUCT_CONTROLLER);
+	private handleRequests(): void {
+		let rpc = this._rpcHandler;
+		
+		// If controller has a method with same name (eg: 'getProduct')
+		rpc.handle('getProduct', PRODUCT_CONTROLLER);
 
-			// If controller has different method name, or wants to do something
-			// more complicated.
-			let factory: RpcActionFactory = (controller: ProductController) => controller.remove.bind(controller);
+		// If controller has different method name, or wants to do something
+		// more complicated.
+		let factory: RpcActionFactory = (controller: ProductController) => controller.remove.bind(controller);
 
-			// More verbose version, same job.
-			// let factory: RpcActionFactory = (controller: ProductController) => {
-			//	return controller.remove.bind(controller);
-			// };
+		// More verbose version, same job.
+		// let factory: RpcActionFactory = (controller: ProductController) => {
+		//	return controller.remove.bind(controller);
+		// };
 
-			rpc.handle('deleteProduct', PRODUCT_CONTROLLER, factory);
-		});
+		rpc.handle('deleteProduct', PRODUCT_CONTROLLER, factory);
 	}
 
 	private initExpress(): Promise<void> {
@@ -94,7 +90,9 @@ class ExpressAdapter implements IHttpAdapter {
 				if (err) {
 					// Write log then reject
 					reject(err);
+					return;
 				}
+				resolve();
 			});
 		});
 	}

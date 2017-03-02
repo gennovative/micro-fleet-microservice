@@ -10,6 +10,7 @@ SettingKeys.DB_FILE = 'database.file';
 SettingKeys.DB_CONN_STRING = 'database.connectionString';
 SettingKeys.MSG_BROKER_HOST = 'messageBroker.host';
 SettingKeys.MSG_BROKER_EXCHANGE = 'messageBroker.exchange';
+SettingKeys.MSG_BROKER_QUEUE = 'messageBroker.queue';
 SettingKeys.MSG_BROKER_RECONN_TIMEOUT = 'messageBroker.reconnectTimeout';
 SettingKeys.SERVICE_NAME = 'service.name';
 exports.SettingKeys = SettingKeys;

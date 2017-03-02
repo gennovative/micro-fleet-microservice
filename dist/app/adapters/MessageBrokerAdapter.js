@@ -33,6 +33,7 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
     init() {
         let cfgAdt = this._configProvider;
         this._exchange = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_EXCHANGE);
+        this._queue = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_QUEUE);
         this.connect(cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_HOST));
         /*
         this.connect({
@@ -129,8 +130,6 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                 if (this._consumeChanPrm) {
                     let queueName = ch['queue'];
                     ch = yield this._consumeChanPrm;
-                    // Destroy the queue, any waiting messages will be re-routed to another queue by the exchange.
-                    promises.push(ch.deleteQueue(queueName));
                     // Close consuming channel
                     promises.push(ch.close());
                 }
@@ -141,7 +140,7 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                 }
                 if (this._connectionPrm) {
                     let conn = yield this._connectionPrm;
-                    // Close connection
+                    // Close connection, causing all temp queues to be deleted.
                     promises.push(conn.close());
                 }
                 yield Promise.all(promises);
@@ -176,10 +175,11 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
     bindQueue(channelPromise, matchingPattern) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                let ch = yield channelPromise, queueName = ch['queue'], 
-                // Provide empty string as queue name to tell message broker to choose a unique name for us.
-                // Setting queue as "exclusive" to delete the queue when connection closes.
-                quResult = yield ch.assertQueue(queueName || '', { exclusive: true });
+                let ch = yield channelPromise, isTempQueue = (!this._queue), 
+                // If configuration doesn't provide queue name,
+                // we provide empty string as queue name to tell message broker to choose a unique name for us.
+                // Setting queue as "exclusive" to delete the temp queue when connection closes.
+                quResult = yield ch.assertQueue(this._queue || '', { exclusive: isTempQueue });
                 yield ch.bindQueue(quResult.queue, this._exchange, matchingPattern);
                 // Store queue name for later use.
                 // In our system, each channel is associated with only one queue.

@@ -110,6 +110,7 @@ declare module 'back-lib-foundation/src/app/constants/SettingKeys' {
 	    static readonly DB_CONN_STRING: string;
 	    static readonly MSG_BROKER_HOST: string;
 	    static readonly MSG_BROKER_EXCHANGE: string;
+	    static readonly MSG_BROKER_QUEUE: string;
 	    static readonly MSG_BROKER_RECONN_TIMEOUT: string;
 	    static readonly SERVICE_NAME: string;
 	}
@@ -153,6 +154,7 @@ declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	    private _publishChanPrm;
 	    private _consumeChanPrm;
 	    private _exchange;
+	    private _queue;
 	    private _subscriptions;
 	    constructor(_configProvider: IConfigurationProvider);
 	    init(): Promise<void>;
@@ -377,7 +379,7 @@ declare module 'back-lib-foundation/src/app/rpc/DirectRpcHandler' {
 	    constructor(depContainer: IDependencyContainer);
 	    init(param: any): void;
 	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): void;
-	    private buildHandleFunc(actionFn);
+	    private buildHandleFunc(action, dependencyIdentifier, actionFactory?);
 	}
 
 }
