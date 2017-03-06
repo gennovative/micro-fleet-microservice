@@ -76,7 +76,7 @@ export class ConfigurationProvider implements IConfigurationProvider {
 	/**
 	 * Attempts to fetch settings from remote Configuration Service.
 	 */
-	public async fetch(): Promise<boolean> {
+	public async fetch(): Promise<boolean> { // TODO: Should be privately called.
 		let addressRaw = this.get(S.CONFIG_SERVICE_ADDRESSES);
 
 		if (!addressRaw || !addressRaw.length) { throw 'No address for Configuration Service!'; }

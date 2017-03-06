@@ -4,21 +4,21 @@ import * as ex from '../microservice/Exceptions';
 export class Guard {
 	private constructor() {}
 
-	public static assertDefined(name: string, target: any): void {
+	public static assertDefined(name: string, target: any, message?: string): void {
 		if (target === null || target === undefined) {
-			throw new ex.InvalidArgumentException(name, 'Must not be null or undefined!');
+			throw new ex.InvalidArgumentException(name, message || 'Must not be null or undefined!');
 		}
 	}
 
-	public static assertNotEmpty(name: string, target: any): void {
+	public static assertNotEmpty(name: string, target: any, message?: string): void {
 		if (_.isEmpty(target)) {
-			throw new ex.InvalidArgumentException(name, 'Must not be null, undefined or empty!');
+			throw new ex.InvalidArgumentException(name, message || 'Must not be null, undefined or empty!');
 		}
 	}
 	
-	public static assertIsFunction(name: string, target: any): void {
+	public static assertIsFunction(name: string, target: any, message?: string): void {
 		if (!_.isFunction(target)) {
-			throw new ex.InvalidArgumentException(name, 'Must not be null, undefined or empty!');
+			throw new ex.InvalidArgumentException(name, message || 'Must not be null, undefined or empty!');
 		}
 	}
 	

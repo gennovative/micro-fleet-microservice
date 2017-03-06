@@ -21,7 +21,7 @@ export interface IDirectRpcCaller extends rpc.IRpcCaller {
 }
 
 @injectable()
-export class DirectRpcCaller
+export class HttpRpcCaller
 			extends rpc.RpcCallerBase
 			implements IDirectRpcCaller {
 

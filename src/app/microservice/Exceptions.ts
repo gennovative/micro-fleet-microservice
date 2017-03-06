@@ -60,6 +60,6 @@ export class MinorException extends Exception {
 export class InvalidArgumentException extends Exception {
 
 	constructor(argName: string, message?: string) {
-		super(`The argument "${argName}" is invalid!${(message ? message : '')}`, true);
+		super(`The argument "${argName}" is invalid! ${(message ? message : '')}`, true);
 	}
 }

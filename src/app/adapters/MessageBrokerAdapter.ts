@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 
 import * as amqp from 'amqplib';
 import * as uuid from 'uuid';
+import * as _ from 'lodash';
 
 import { IConfigurationProvider } from './ConfigurationProvider';
 import { CriticalException, MinorException } from '../microservice/Exceptions';
@@ -10,7 +11,7 @@ import { Guard } from '../utils/Guard';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
-export type MessageHandleFunction = (msg: IMessage, ack: () => void, nack?: () => void) => void;
+export type MessageHandleFunction = (msg: IMessage, ack?: () => void, nack?: () => void) => void;
 export type RpcHandleFunction = (msg: IMessage, reply: (response: any) => void, deny?: () => void) => void;
 
 interface IQueueInfo {
@@ -21,20 +22,24 @@ interface IQueueInfo {
 export interface IMessage {
 	data: any;
 	raw: amqp.Message;
-	properties?: any;
+	properties?: IPublishOptions;
 }
 
-export interface IPublishOptions extends amqp.Options.Publish {
+export interface IPublishOptions {
+	contentType?: string;
+	contentEncoding?: string;
+	correlationId?: string;
+	replyTo?: string;
 }
 
 export interface IMessageBrokerAdapter extends IAdapter {
 	/**
 	 * Sends `message` to the broker and label the message with `topic`.
 	 * @param {string} topic - A name to label the message with. Should be in format "xxx.yyy.zzz".
-	 * @param {any} message - A message to send to broker.
+	 * @param {string | Json | JsonArray} payload - A message to send to broker.
 	 * @param {IPublishOptions} options - Options to add to message properties.
 	 */
-	publish(topic: string, message: any, options?: IPublishOptions): Promise<void>;
+	publish(topic: string, payload: string | Json | JsonArray, options?: IPublishOptions): Promise<void>;
 
 	/**
 	 * Listens to messages whose label matches `matchingPattern`.
@@ -42,12 +47,14 @@ export interface IMessageBrokerAdapter extends IAdapter {
 	 * @param {function} onMessage - Callback to invoke when there is an incomming message.
 	 * @return {string} - A promise with resolve to a consumer tag, which is used to unsubscribe later.
 	 */
-	subscribe(matchingPattern: string, onMessage: MessageHandleFunction): Promise<string>;
+	subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string>;
 
 	/**
 	 * Stop listening to a subscription that was made before.
 	 */
 	unsubscribe(consumerTag: string): Promise<void>;
+
+	onError(handler: Function): void;
 }
 
 @injectable()
@@ -62,34 +69,32 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	private _exchange: string;
 	private _queue: string;
 	private _subscriptions: Map<string, Set<string>>;
+	private _emitter: EventEmitter;
 
 	constructor(
 		@inject(T.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider
 	) {
 		this._subscriptions = new Map();
+		this._emitter = new EventEmitter();
 	}
 	
 	public init(): Promise<void> {
 		let cfgAdt = this._configProvider;
-
 		this._exchange = cfgAdt.get(S.MSG_BROKER_EXCHANGE);
 		this._queue = cfgAdt.get(S.MSG_BROKER_QUEUE);
-		this.connect(cfgAdt.get(S.MSG_BROKER_HOST));
-		/*
-		this.connect({
-			host: cfgAdt.get(S.MSG_BROKER_HOST),
-			exchange: cfgAdt.get(S.MSG_BROKER_EXCHANGE),
-			reconnectTimeout: cfgAdt.get(S.MSG_BROKER_RECONN_TIMEOUT)
-		});
-		//*/
-		return Promise.resolve();
+
+		let host = cfgAdt.get(S.MSG_BROKER_HOST),
+			username = cfgAdt.get(S.MSG_BROKER_USERNAME),
+			password = cfgAdt.get(S.MSG_BROKER_PASSWORD);
+		return <any>this.connect(host, username, password);
 	}
 
-	public async dispose(): Promise<void> {
-		this.disconnect();
-		this._connectionPrm = null;
-		this._publishChanPrm = null;
-		this._consumeChanPrm = null;
+	public dispose(): Promise<void> {
+		return this.disconnect().then(() => {
+			this._connectionPrm = null;
+			this._publishChanPrm = null;
+			this._consumeChanPrm = null;
+		});
 	}
 
 	public async subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string> {
@@ -101,20 +106,20 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 				// Create a new consuming channel if there is not already, and from now on we listen to this only channel.
 				channelPromise = this._consumeChanPrm = this.createChannel();
 			}
-			
-			let ch = await channelPromise;
-				
-			// The consuming channel should bind to only one queue, but that queue can be routed with multiple keys.
-			await this.bindQueue(channelPromise, matchingPattern);
 
-			let conResult = await ch.consume(null, 
+			let ch = await channelPromise;
+
+			// The consuming channel should bind to only one queue, but that queue can be routed with multiple keys.
+			let queueName = await this.bindQueue(channelPromise, matchingPattern);
+
+			let conResult = await ch.consume(queueName,
 				(msg: amqp.Message) => {
 					let ack = () => ch.ack(msg),
 						nack = () => ch.nack(msg);
 
 					onMessage(this.parseMessage(msg), ack, nack);
 				}, 
-				{noAck: noAck || false}
+				{noAck: (noAck === undefined ? true : noAck)}
 			);
 			this.moreSub(matchingPattern, conResult.consumerTag);
 			return conResult.consumerTag;
@@ -124,18 +129,20 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 		}
 	}
 
-	public async publish(topic: string, message: any, options?: IPublishOptions): Promise<void> {
+	public async publish(topic: string, payload: string | Json | JsonArray, options?: IPublishOptions): Promise<void> {
 		Guard.assertNotEmpty('topic', topic);
-		Guard.assertNotEmpty('message', message);
+		Guard.assertNotEmpty('message', payload);
 		try {
 			if (!this._publishChanPrm) {
 				// Create a new publishing channel if there is not already, and from now on we publish to this only channel.
 				this._publishChanPrm = this.createChannel();
 			}
-			let ch = await this._publishChanPrm;
+			let ch: amqp.Channel = await this._publishChanPrm,
+				opt: amqp.Options.Publish;
+			let [msg, opts] = this.buildMessage(payload, options);
 
 			// We publish to exchange, then the exchange will route to appropriate consuming queue.
-			ch.publish(this._exchange, topic, new Buffer(message), options);
+			ch.publish(this._exchange, topic, msg, opts);
 
 		} catch (err) {
 			return this.handleError(err, 'Publishing error');
@@ -163,26 +170,46 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 		}
 	}
 
+	public onError(handler: Function): void {
+		this._emitter.on('error', handler);
+	}
 
-	private connect(hostAddress: string): Promise<amqp.Connection> {
-		return this._connectionPrm = <any>amqp.connect(`amqp://${hostAddress}`)
+
+	private connect(hostAddress: string, username: string, password: string): Promise<amqp.Connection> {
+		let credentials = '';
+		
+		// Output:
+		// - "usr@pass"
+		// - "@pass"
+		// - "usr@"
+		// - ""
+		if (!_.isEmpty(username) || !_.isEmpty(password)) {
+			credentials = `${username || ''}:${password || ''}@`;
+		}
+
+		// URI format: amqp://usr:pass@10.1.2.3/vhost
+		return this._connectionPrm = <any>amqp.connect(`amqp://${credentials}${hostAddress}`)
+			.then((conn: amqp.Connection) => {
+				conn.on('error', (err) => {
+					this._emitter.emit('error', err);
+				});
+				return conn;
+			})
 			.catch(err => {
 				return this.handleError(err, 'Connection creation error');
 			});
 	}
 
-	private async disconnect() {
+	private async disconnect(): Promise<void> {
 		try {
 			if (!this._connectionPrm || !this._consumeChanPrm) {
 				return;
 			}
-			
+
 			let ch: amqp.Channel,
 				promises = [];
 
 			if (this._consumeChanPrm) {
-				let queueName = ch['queue'];
-
 				ch = await this._consumeChanPrm;
 				// Close consuming channel
 				promises.push(ch.close());
@@ -194,13 +221,15 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 				promises.push(ch.close());
 			}
 
+			// Make sure all channels are closed before we close connection.
+			// Otherwise we will have dangling channels until application shuts down.
+			await Promise.all(promises);
+
 			if (this._connectionPrm) {
 				let conn: amqp.Connection = await this._connectionPrm;
 				// Close connection, causing all temp queues to be deleted.
-				promises.push(conn.close());
+				return conn.close();
 			}
-
-			await Promise.all(promises);
 
 		} catch (err) {
 			return this.handleError(err, 'Connection closing error');
@@ -220,7 +249,10 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 				exResult = await ch.assertExchange(this._exchange, EXCHANGE_TYPE, {durable: true});
 
 			ch['queue'] = '';
-			return Promise.resolve(ch);
+			ch.on('error', (err) => {
+				this._emitter.emit('error', err);
+			});
+			return ch;
 
 		} catch (err) {
 			return this.handleError(err, 'Channel creation error');
@@ -232,7 +264,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	 * If `queueName` is not null, binds `matchingPattern` to the queue with that name.
 	 * @return {string} null if no queue is created, otherwise returns the new queue name.
 	 */
-	private async bindQueue(channelPromise: Promise<amqp.Channel>, matchingPattern: string): Promise<void> {
+	private async bindQueue(channelPromise: Promise<amqp.Channel>, matchingPattern: string): Promise<string> {
 		try {
 			let ch = await channelPromise,
 				isTempQueue = (!this._queue),
@@ -245,7 +277,7 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 
 			// Store queue name for later use.
 			// In our system, each channel is associated with only one queue.
-			ch['queue'] = quResult.queue;
+			return ch['queue'] = quResult.queue;
 
 		} catch (err) {
 			return this.handleError(err, 'Queue binding error');
@@ -307,11 +339,33 @@ export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 		return matchingPattern;
 	}
 
+	private buildMessage(payload: string | Json | JsonArray, options?: IPublishOptions): Array<any> {
+		let msg: string;
+		options = options || {};
+
+		if (_.isString(payload)) {
+			msg = payload;
+			options.contentType = 'text/plain';
+		} else {
+			msg = JSON.stringify(payload);
+			options.contentType = 'application/json';
+		}
+
+		return [Buffer.from(msg), options];
+	}
+
 	private parseMessage(raw: amqp.Message): IMessage {
-		return {
+		let msg: Partial<IMessage> = {
 			raw,
-			data: raw.content.toJSON().data,
 			properties: raw.properties || {}
 		};
+
+		if (msg.properties.contentType == 'text/plain') {
+			msg.data = raw.content.toString(msg.properties.contentEncoding);
+		} else {
+			msg.data = JSON.parse(<any>raw.content);
+		}
+
+		return <IMessage>msg;
 	}
 }

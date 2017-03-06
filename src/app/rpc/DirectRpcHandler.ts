@@ -10,7 +10,7 @@ export interface IDirectRpcHandler extends rpc.IRpcHandler {
 }
 
 @injectable()
-export class ExpressDirectRpcHandler
+export class ExpressRpcHandler
 			extends rpc.RpcHandlerBase
 			implements IDirectRpcHandler {
 
@@ -31,9 +31,10 @@ export class ExpressDirectRpcHandler
 	}
 
 
-	public init(param: any): void {
+	public init(param?: any): void {
 		Guard.assertIsFalsey(this._router, 'This RPC Caller is already initialized!');
 		Guard.assertIsTruthy(this._name, '`name` property must be set!');
+		Guard.assertDefined('param', param);
 		Guard.assertIsTruthy(param.expressApp, '`expressApp` with an instance of Express is required!');
 		Guard.assertIsTruthy(param.router, '`router` with an instance of Express Router is required!');
 
@@ -46,7 +47,7 @@ export class ExpressDirectRpcHandler
 	}
 
 	public handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory) {
-		Guard.assertIsMatch(null, ExpressDirectRpcHandler.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
+		Guard.assertIsMatch(null, ExpressRpcHandler.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
 		Guard.assertIsTruthy(this._router, '`init` method must be called first!');
 
 		this._router.post(`/${action}`, this.buildHandleFunc.apply(this, arguments));

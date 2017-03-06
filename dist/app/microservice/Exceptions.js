@@ -49,7 +49,7 @@ class MinorException extends Exception {
 exports.MinorException = MinorException;
 class InvalidArgumentException extends Exception {
     constructor(argName, message) {
-        super(`The argument "${argName}" is invalid!${(message ? message : '')}`, true);
+        super(`The argument "${argName}" is invalid! ${(message ? message : '')}`, true);
     }
 }
 exports.InvalidArgumentException = InvalidArgumentException;
