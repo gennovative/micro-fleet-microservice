@@ -12,6 +12,8 @@ SettingKeys.MSG_BROKER_HOST = 'messageBroker.host';
 SettingKeys.MSG_BROKER_EXCHANGE = 'messageBroker.exchange';
 SettingKeys.MSG_BROKER_QUEUE = 'messageBroker.queue';
 SettingKeys.MSG_BROKER_RECONN_TIMEOUT = 'messageBroker.reconnectTimeout';
+SettingKeys.MSG_BROKER_USERNAME = 'messageBroker.username';
+SettingKeys.MSG_BROKER_PASSWORD = 'messageBroker.password';
 SettingKeys.SERVICE_NAME = 'service.name';
 exports.SettingKeys = SettingKeys;
 ;

@@ -19,7 +19,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+const events_1 = require("events");
 const amqp = require("amqplib");
+const _ = require("lodash");
 const Exceptions_1 = require("../microservice/Exceptions");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
 const Guard_1 = require("../utils/Guard");
@@ -29,24 +31,17 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
     constructor(_configProvider) {
         this._configProvider = _configProvider;
         this._subscriptions = new Map();
+        this._emitter = new events_1.EventEmitter();
     }
     init() {
         let cfgAdt = this._configProvider;
         this._exchange = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_EXCHANGE);
         this._queue = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_QUEUE);
-        this.connect(cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_HOST));
-        /*
-        this.connect({
-            host: cfgAdt.get(S.MSG_BROKER_HOST),
-            exchange: cfgAdt.get(S.MSG_BROKER_EXCHANGE),
-            reconnectTimeout: cfgAdt.get(S.MSG_BROKER_RECONN_TIMEOUT)
-        });
-        //*/
-        return Promise.resolve();
+        let host = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_HOST), username = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_USERNAME), password = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_PASSWORD);
+        return this.connect(host, username, password);
     }
     dispose() {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.disconnect();
+        return this.disconnect().then(() => {
             this._connectionPrm = null;
             this._publishChanPrm = null;
             this._consumeChanPrm = null;
@@ -64,11 +59,11 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                 }
                 let ch = yield channelPromise;
                 // The consuming channel should bind to only one queue, but that queue can be routed with multiple keys.
-                yield this.bindQueue(channelPromise, matchingPattern);
-                let conResult = yield ch.consume(null, (msg) => {
+                let queueName = yield this.bindQueue(channelPromise, matchingPattern);
+                let conResult = yield ch.consume(queueName, (msg) => {
                     let ack = () => ch.ack(msg), nack = () => ch.nack(msg);
                     onMessage(this.parseMessage(msg), ack, nack);
-                }, { noAck: noAck || false });
+                }, { noAck: (noAck === undefined ? true : noAck) });
                 this.moreSub(matchingPattern, conResult.consumerTag);
                 return conResult.consumerTag;
             }
@@ -77,18 +72,19 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
             }
         });
     }
-    publish(topic, message, options) {
+    publish(topic, payload, options) {
         return __awaiter(this, void 0, void 0, function* () {
             Guard_1.Guard.assertNotEmpty('topic', topic);
-            Guard_1.Guard.assertNotEmpty('message', message);
+            Guard_1.Guard.assertNotEmpty('message', payload);
             try {
                 if (!this._publishChanPrm) {
                     // Create a new publishing channel if there is not already, and from now on we publish to this only channel.
                     this._publishChanPrm = this.createChannel();
                 }
-                let ch = yield this._publishChanPrm;
+                let ch = yield this._publishChanPrm, opt;
+                let [msg, opts] = this.buildMessage(payload, options);
                 // We publish to exchange, then the exchange will route to appropriate consuming queue.
-                ch.publish(this._exchange, topic, new Buffer(message), options);
+                ch.publish(this._exchange, topic, msg, opts);
             }
             catch (err) {
                 return this.handleError(err, 'Publishing error');
@@ -114,8 +110,27 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
             }
         });
     }
-    connect(hostAddress) {
-        return this._connectionPrm = amqp.connect(`amqp://${hostAddress}`)
+    onError(handler) {
+        this._emitter.on('error', handler);
+    }
+    connect(hostAddress, username, password) {
+        let credentials = '';
+        // Output:
+        // - "usr@pass"
+        // - "@pass"
+        // - "usr@"
+        // - ""
+        if (!_.isEmpty(username) || !_.isEmpty(password)) {
+            credentials = `${username || ''}:${password || ''}@`;
+        }
+        // URI format: amqp://usr:pass@10.1.2.3/vhost
+        return this._connectionPrm = amqp.connect(`amqp://${credentials}${hostAddress}`)
+            .then((conn) => {
+            conn.on('error', (err) => {
+                this._emitter.emit('error', err);
+            });
+            return conn;
+        })
             .catch(err => {
             return this.handleError(err, 'Connection creation error');
         });
@@ -128,7 +143,6 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                 }
                 let ch, promises = [];
                 if (this._consumeChanPrm) {
-                    let queueName = ch['queue'];
                     ch = yield this._consumeChanPrm;
                     // Close consuming channel
                     promises.push(ch.close());
@@ -138,12 +152,14 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                     // Close publishing channel
                     promises.push(ch.close());
                 }
+                // Make sure all channels are closed before we close connection.
+                // Otherwise we will have dangling channels until application shuts down.
+                yield Promise.all(promises);
                 if (this._connectionPrm) {
                     let conn = yield this._connectionPrm;
                     // Close connection, causing all temp queues to be deleted.
-                    promises.push(conn.close());
+                    return conn.close();
                 }
-                yield Promise.all(promises);
             }
             catch (err) {
                 return this.handleError(err, 'Connection closing error');
@@ -160,7 +176,10 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                 // but all queues and waiting messages will be lost.
                 exResult = yield ch.assertExchange(this._exchange, EXCHANGE_TYPE, { durable: true });
                 ch['queue'] = '';
-                return Promise.resolve(ch);
+                ch.on('error', (err) => {
+                    this._emitter.emit('error', err);
+                });
+                return ch;
             }
             catch (err) {
                 return this.handleError(err, 'Channel creation error');
@@ -183,7 +202,7 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
                 yield ch.bindQueue(quResult.queue, this._exchange, matchingPattern);
                 // Store queue name for later use.
                 // In our system, each channel is associated with only one queue.
-                ch['queue'] = quResult.queue;
+                return ch['queue'] = quResult.queue;
             }
             catch (err) {
                 return this.handleError(err, 'Queue binding error');
@@ -237,12 +256,31 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
         }
         return matchingPattern;
     }
+    buildMessage(payload, options) {
+        let msg;
+        options = options || {};
+        if (_.isString(payload)) {
+            msg = payload;
+            options.contentType = 'text/plain';
+        }
+        else {
+            msg = JSON.stringify(payload);
+            options.contentType = 'application/json';
+        }
+        return [Buffer.from(msg), options];
+    }
     parseMessage(raw) {
-        return {
+        let msg = {
             raw,
-            data: raw.content.toJSON().data,
             properties: raw.properties || {}
         };
+        if (msg.properties.contentType == 'text/plain') {
+            msg.data = raw.content.toString(msg.properties.contentEncoding);
+        }
+        else {
+            msg.data = JSON.parse(raw.content);
+        }
+        return msg;
     }
 };
 TopicMessageBrokerAdapter = __decorate([

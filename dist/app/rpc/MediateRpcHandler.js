@@ -26,31 +26,32 @@ let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends rpc.RpcHandl
     handle(action, dependencyIdentifier, actionFactory) {
         Guard_1.Guard.assertDefined('action', action);
         Guard_1.Guard.assertDefined('dependencyIdentifier', dependencyIdentifier);
-        let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
-        this._msgBrokerAdt.subscribe(`request.${this._name}.${action}`, this.buildHandleFunc(actionFn));
+        Guard_1.Guard.assertDefined(null, this._name, '`name` property is required.');
+        this._msgBrokerAdt.subscribe(`request.${this._name}.${action}`, this.buildHandleFunc.apply(this, arguments));
     }
-    buildHandleFunc(actionFn) {
-        return (msg, ack, nack) => {
-            let request = msg.data, replyTopic = msg.properties.replyTopic, correlationId = msg.properties.correlationId;
+    buildHandleFunc(action, dependencyIdentifier, actionFactory) {
+        return (msg) => {
+            let request = msg.data, replyTo = msg.properties.replyTo, correlationId = msg.properties.correlationId;
             (new Promise((resolve, reject) => {
+                let actionFn = this.resolveActionFunc(action, dependencyIdentifier, actionFactory);
                 // Execute controller's action
                 actionFn(request, resolve, reject);
             }))
                 .then(result => {
                 // Sends response to reply topic
-                return this._msgBrokerAdt.publish(replyTopic, this.createResponse(true, result, request.from), { correlationId });
+                return this._msgBrokerAdt.publish(replyTo, this.createResponse(true, result, request.from), { correlationId });
             })
-                .then(ack) // Only ack when the response has been sent, which means message broker can remove this message from queue.
                 .catch(error => {
+                let errMsg = error;
                 // If error is an uncaught Exception object, that means the action method
                 // has a problem. We should nack to tell message broker to send this message to someone else.
                 if (error instanceof ex.Exception) {
                     // TODO: Should log this unexpected error.
-                    nack();
+                    errMsg = error.message;
                 }
                 // If this is a custom error, which means the action method sends this error
                 // back to caller on purpose.
-                return this._msgBrokerAdt.publish(replyTopic, this.createResponse(false, error, request.from), { correlationId });
+                return this._msgBrokerAdt.publish(replyTo, this.createResponse(false, errMsg, request.from), { correlationId });
             });
         };
     }

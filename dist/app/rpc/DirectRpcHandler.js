@@ -17,13 +17,14 @@ const Guard_1 = require("../utils/Guard");
 const Types_1 = require("../constants/Types");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
 const rpc = require("./RpcCommon");
-let ExpressDirectRpcHandler = ExpressDirectRpcHandler_1 = class ExpressDirectRpcHandler extends rpc.RpcHandlerBase {
+let ExpressRpcHandler = ExpressRpcHandler_1 = class ExpressRpcHandler extends rpc.RpcHandlerBase {
     constructor(depContainer) {
         super(depContainer);
     }
     init(param) {
         Guard_1.Guard.assertIsFalsey(this._router, 'This RPC Caller is already initialized!');
         Guard_1.Guard.assertIsTruthy(this._name, '`name` property must be set!');
+        Guard_1.Guard.assertDefined('param', param);
         Guard_1.Guard.assertIsTruthy(param.expressApp, '`expressApp` with an instance of Express is required!');
         Guard_1.Guard.assertIsTruthy(param.router, '`router` with an instance of Express Router is required!');
         let app = this._app = param.expressApp;
@@ -33,7 +34,7 @@ let ExpressDirectRpcHandler = ExpressDirectRpcHandler_1 = class ExpressDirectRpc
         app.use(`/${this._name}`, this._router);
     }
     handle(action, dependencyIdentifier, actionFactory) {
-        Guard_1.Guard.assertIsMatch(null, ExpressDirectRpcHandler_1.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
+        Guard_1.Guard.assertIsMatch(null, ExpressRpcHandler_1.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
         Guard_1.Guard.assertIsTruthy(this._router, '`init` method must be called first!');
         this._router.post(`/${action}`, this.buildHandleFunc.apply(this, arguments));
     }
@@ -64,17 +65,17 @@ let ExpressDirectRpcHandler = ExpressDirectRpcHandler_1 = class ExpressDirectRpc
         };
     }
 };
-ExpressDirectRpcHandler.URL_TESTER = (function () {
+ExpressRpcHandler.URL_TESTER = (function () {
     let regexp = new RegExp(/^[a-zA-Z0-9_-]*$/);
     regexp.compile();
     return regexp;
 })();
-ExpressDirectRpcHandler = ExpressDirectRpcHandler_1 = __decorate([
+ExpressRpcHandler = ExpressRpcHandler_1 = __decorate([
     DependencyContainer_1.injectable(),
     __param(0, DependencyContainer_1.inject(Types_1.Types.DEPENDENCY_CONTAINER)),
     __metadata("design:paramtypes", [Object])
-], ExpressDirectRpcHandler);
-exports.ExpressDirectRpcHandler = ExpressDirectRpcHandler;
-var ExpressDirectRpcHandler_1;
+], ExpressRpcHandler);
+exports.ExpressRpcHandler = ExpressRpcHandler;
+var ExpressRpcHandler_1;
 
 //# sourceMappingURL=DirectRpcHandler.js.map

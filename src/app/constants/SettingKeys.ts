@@ -10,5 +10,7 @@ export class SettingKeys {
 	public static readonly MSG_BROKER_EXCHANGE = 'messageBroker.exchange';
 	public static readonly MSG_BROKER_QUEUE = 'messageBroker.queue';
 	public static readonly MSG_BROKER_RECONN_TIMEOUT = 'messageBroker.reconnectTimeout';
+	public static readonly MSG_BROKER_USERNAME = 'messageBroker.username';
+	public static readonly MSG_BROKER_PASSWORD = 'messageBroker.password';
 	public static readonly SERVICE_NAME = 'service.name';
 };

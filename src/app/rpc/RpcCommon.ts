@@ -6,13 +6,13 @@ import { injectable, IDependencyContainer } from '../utils/DependencyContainer';
 
 // Interface - Service contract
 
-export interface IRpcRequest {
+export interface IRpcRequest extends Json {
 	from: string;
 	to: string;
 	params: any;
 }
 
-export interface IRpcResponse {
+export interface IRpcResponse extends Json {
 	isSuccess: boolean;
 	from: string;
 	to: string;
@@ -62,7 +62,7 @@ export interface IRpcHandler {
 	 * Sets up this RPC handler with specified `param`. Each implementation class requires
 	 * different kinds of `param`.
 	 */
-	init(param: any): void;
+	init(param?: any): void;
 }
 
 

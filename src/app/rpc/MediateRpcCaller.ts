@@ -34,11 +34,12 @@ export class MessageBrokerRpcCaller
 		return new Promise<rpc.IRpcResponse>((resolve, reject) => {
 			// There are many requests to same `requestTopic` and they listen to same `responseTopic`,
 			// A request only carea for a response with same `correlationId`.
-			const correlationId = uuid.v4();
+			const correlationId = uuid.v4(),
+				replyTo = `response.${moduleName}.${action}`;
 
 			let emitter = new EventEmitter();
 
-			this._msgBrokerAdt.subscribe(`response.${moduleName}.${action}`, (msg: IMessage, ack: Function, nack?: Function) => {
+			this._msgBrokerAdt.subscribe(replyTo, (msg: IMessage) => {
 				let intervalId = setInterval(() => {
 					// There are chances that the message comes before the below
 					// `emitter.once` runs. So let's make sure we only emit event
@@ -67,7 +68,8 @@ export class MessageBrokerRpcCaller
 				};
 
 				// Send request, marking the message with correlationId.
-				return this._msgBrokerAdt.publish(`request.${moduleName}.${action}`, request, { correlationId });
+				return this._msgBrokerAdt.publish(`request.${moduleName}.${action}`, request, 
+					{ correlationId, replyTo });
 			})
 			.catch(err => {
 				reject(new ex.MinorException(`RPC error: ${err}`));

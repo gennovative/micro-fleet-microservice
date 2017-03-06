@@ -27,9 +27,9 @@ declare module 'back-lib-foundation/src/app/microservice/Exceptions' {
 declare module 'back-lib-foundation/src/app/utils/Guard' {
 	export class Guard {
 	    private constructor();
-	    static assertDefined(name: string, target: any): void;
-	    static assertNotEmpty(name: string, target: any): void;
-	    static assertIsFunction(name: string, target: any): void;
+	    static assertDefined(name: string, target: any, message?: string): void;
+	    static assertNotEmpty(name: string, target: any, message?: string): void;
+	    static assertIsFunction(name: string, target: any, message?: string): void;
 	    static assertIsTruthy(target: any, message: string, isCritical?: boolean): void;
 	    static assertIsFalsey(target: any, message: string, isCritical?: boolean): void;
 	    static assertIsMatch(name: string, rule: RegExp, target: string, message?: string): void;
@@ -112,6 +112,8 @@ declare module 'back-lib-foundation/src/app/constants/SettingKeys' {
 	    static readonly MSG_BROKER_EXCHANGE: string;
 	    static readonly MSG_BROKER_QUEUE: string;
 	    static readonly MSG_BROKER_RECONN_TIMEOUT: string;
+	    static readonly MSG_BROKER_USERNAME: string;
+	    static readonly MSG_BROKER_PASSWORD: string;
 	    static readonly SERVICE_NAME: string;
 	}
 
@@ -119,34 +121,39 @@ declare module 'back-lib-foundation/src/app/constants/SettingKeys' {
 declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	import * as amqp from 'amqplib';
 	import { IConfigurationProvider } from 'back-lib-foundation/src/app/adapters/ConfigurationProvider';
-	export type MessageHandleFunction = (msg: IMessage, ack: () => void, nack?: () => void) => void;
+	export type MessageHandleFunction = (msg: IMessage, ack?: () => void, nack?: () => void) => void;
 	export type RpcHandleFunction = (msg: IMessage, reply: (response: any) => void, deny?: () => void) => void;
 	export interface IMessage {
 	    data: any;
 	    raw: amqp.Message;
-	    properties?: any;
+	    properties?: IPublishOptions;
 	}
-	export interface IPublishOptions extends amqp.Options.Publish {
+	export interface IPublishOptions {
+	    contentType?: string;
+	    contentEncoding?: string;
+	    correlationId?: string;
+	    replyTo?: string;
 	}
 	export interface IMessageBrokerAdapter extends IAdapter {
 	    /**
 	     * Sends `message` to the broker and label the message with `topic`.
 	     * @param {string} topic - A name to label the message with. Should be in format "xxx.yyy.zzz".
-	     * @param {any} message - A message to send to broker.
+	     * @param {string | Json | JsonArray} payload - A message to send to broker.
 	     * @param {IPublishOptions} options - Options to add to message properties.
 	     */
-	    publish(topic: string, message: any, options?: IPublishOptions): Promise<void>;
+	    publish(topic: string, payload: string | Json | JsonArray, options?: IPublishOptions): Promise<void>;
 	    /**
 	     * Listens to messages whose label matches `matchingPattern`.
 	     * @param {string} matchingPattern - Pattern to match with message label. Should be in format "xx.*" or "xx.#.#".
 	     * @param {function} onMessage - Callback to invoke when there is an incomming message.
 	     * @return {string} - A promise with resolve to a consumer tag, which is used to unsubscribe later.
 	     */
-	    subscribe(matchingPattern: string, onMessage: MessageHandleFunction): Promise<string>;
+	    subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string>;
 	    /**
 	     * Stop listening to a subscription that was made before.
 	     */
 	    unsubscribe(consumerTag: string): Promise<void>;
+	    onError(handler: Function): void;
 	}
 	export class TopicMessageBrokerAdapter implements IMessageBrokerAdapter {
 	    private _configProvider;
@@ -156,13 +163,15 @@ declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	    private _exchange;
 	    private _queue;
 	    private _subscriptions;
+	    private _emitter;
 	    constructor(_configProvider: IConfigurationProvider);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
 	    subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string>;
-	    publish(topic: string, message: any, options?: IPublishOptions): Promise<void>;
+	    publish(topic: string, payload: string | Json | JsonArray, options?: IPublishOptions): Promise<void>;
 	    unsubscribe(consumerTag: string): Promise<void>;
-	    private connect(hostAddress);
+	    onError(handler: Function): void;
+	    private connect(hostAddress, username, password);
 	    private disconnect();
 	    private createChannel();
 	    /**
@@ -178,18 +187,19 @@ declare module 'back-lib-foundation/src/app/adapters/MessageBrokerAdapter' {
 	     * @return {string} the pattern name which should be unbound, othewise return null.
 	     */
 	    private lessSub(consumerTag);
+	    private buildMessage(payload, options?);
 	    private parseMessage(raw);
 	}
 
 }
 declare module 'back-lib-foundation/src/app/rpc/RpcCommon' {
 	import { IDependencyContainer } from 'back-lib-foundation/src/app/utils/DependencyContainer';
-	export interface IRpcRequest {
+	export interface IRpcRequest extends Json {
 	    from: string;
 	    to: string;
 	    params: any;
 	}
-	export interface IRpcResponse {
+	export interface IRpcResponse extends Json {
 	    isSuccess: boolean;
 	    from: string;
 	    to: string;
@@ -229,7 +239,7 @@ declare module 'back-lib-foundation/src/app/rpc/RpcCommon' {
 	     * Sets up this RPC handler with specified `param`. Each implementation class requires
 	     * different kinds of `param`.
 	     */
-	    init(param: any): void;
+	    init(param?: any): void;
 	}
 	export abstract class RpcCallerBase {
 	    protected _name: string;
@@ -255,7 +265,7 @@ declare module 'back-lib-foundation/src/app/rpc/DirectRpcCaller' {
 	     */
 	    baseAddress: string;
 	}
-	export class DirectRpcCaller extends rpc.RpcCallerBase implements IDirectRpcCaller {
+	export class HttpRpcCaller extends rpc.RpcCallerBase implements IDirectRpcCaller {
 	    private _baseAddress;
 	    private _requestMaker;
 	    constructor();
@@ -372,12 +382,12 @@ declare module 'back-lib-foundation/src/app/rpc/DirectRpcHandler' {
 	import * as rpc from 'back-lib-foundation/src/app/rpc/RpcCommon';
 	export interface IDirectRpcHandler extends rpc.IRpcHandler {
 	}
-	export class ExpressDirectRpcHandler extends rpc.RpcHandlerBase implements IDirectRpcHandler {
+	export class ExpressRpcHandler extends rpc.RpcHandlerBase implements IDirectRpcHandler {
 	    private static URL_TESTER;
 	    private _app;
 	    private _router;
 	    constructor(depContainer: IDependencyContainer);
-	    init(param: any): void;
+	    init(param?: any): void;
 	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): void;
 	    private buildHandleFunc(action, dependencyIdentifier, actionFactory?);
 	}
@@ -405,9 +415,9 @@ declare module 'back-lib-foundation/src/app/rpc/MediateRpcHandler' {
 	export class MessageBrokerRpcHandler extends rpc.RpcHandlerBase implements IMediateRpcHandler {
 	    private _msgBrokerAdt;
 	    constructor(depContainer: IDependencyContainer, _msgBrokerAdt: IMessageBrokerAdapter);
-	    init(param: any): void;
+	    init(param?: any): void;
 	    handle(action: string, dependencyIdentifier: string | symbol, actionFactory?: rpc.RpcActionFactory): void;
-	    private buildHandleFunc(actionFn);
+	    private buildHandleFunc(action, dependencyIdentifier, actionFactory?);
 	}
 
 }

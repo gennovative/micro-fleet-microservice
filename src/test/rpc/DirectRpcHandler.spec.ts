@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import * as express from 'express';
 import * as requestMaker from 'request-promise';
-import { ExpressDirectRpcHandler, DependencyContainer, injectable,
+import { ExpressRpcHandler, DependencyContainer, injectable,
 	IDirectRpcHandler, IRpcRequest, IRpcResponse, MinorException, Exception } from '../../app';
 
 const MODULE = 'TestHandler',
@@ -46,7 +46,7 @@ describe('ExpressDirectRpcHandler', () => {
 	describe('init', () => {
 		it('Should use `name` property to init Router', () => {
 			// Arrange
-			let handler = new ExpressDirectRpcHandler(null),
+			let handler = new ExpressRpcHandler(null),
 				app: express.Express = express();
 
 			// Act
@@ -73,7 +73,7 @@ describe('ExpressDirectRpcHandler', () => {
 			const ACTION = 'addProduct';
 
 			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
+				handler = new ExpressRpcHandler(depContainer),
 				app: express.Express = express(),
 				router: express.Router = express.Router();
 
@@ -119,7 +119,7 @@ describe('ExpressDirectRpcHandler', () => {
 			const ACTION = 'deleteProduct';
 
 			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
+				handler = new ExpressRpcHandler(depContainer),
 				app: express.Express = express(),
 				router: express.Router = express.Router();
 
@@ -166,7 +166,7 @@ describe('ExpressDirectRpcHandler', () => {
 				TEXT = 'echo...echooooo';
 
 			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
+				handler = new ExpressRpcHandler(depContainer),
 				app: express.Express = express(),
 				router: express.Router = express.Router();
 
@@ -217,7 +217,7 @@ describe('ExpressDirectRpcHandler', () => {
 			const ACTION = 'addProduct';
 
 			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
+				handler = new ExpressRpcHandler(depContainer),
 				app: express.Express = express(),
 				router: express.Router = express.Router();
 
@@ -267,7 +267,7 @@ describe('ExpressDirectRpcHandler', () => {
 			const ACTION = 'deleteProduct';
 
 			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
+				handler = new ExpressRpcHandler(depContainer),
 				app: express.Express = express(),
 				router: express.Router = express.Router();
 
@@ -315,7 +315,7 @@ describe('ExpressDirectRpcHandler', () => {
 			const ACTION = 'addProduct';
 
 			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
+				handler = new ExpressRpcHandler(depContainer),
 				app: express.Express = express(),
 				router: express.Router = express.Router();
 
@@ -368,7 +368,7 @@ describe('ExpressDirectRpcHandler', () => {
 			const UNEXIST_ACTION = 'editProduct';
 
 			let depContainer = new DependencyContainer(),
-				handler = new ExpressDirectRpcHandler(depContainer),
+				handler = new ExpressRpcHandler(depContainer),
 				app: express.Express = express(),
 				router: express.Router = express.Router();
 

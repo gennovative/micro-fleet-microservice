@@ -12,7 +12,7 @@ const request = require("request-promise");
 const Guard_1 = require("../utils/Guard");
 const DependencyContainer_1 = require("../utils/DependencyContainer");
 const rpc = require("./RpcCommon");
-let DirectRpcCaller = class DirectRpcCaller extends rpc.RpcCallerBase {
+let HttpRpcCaller = class HttpRpcCaller extends rpc.RpcCallerBase {
     constructor() {
         super();
         this._requestMaker = request;
@@ -47,10 +47,10 @@ let DirectRpcCaller = class DirectRpcCaller extends rpc.RpcCallerBase {
         });
     }
 };
-DirectRpcCaller = __decorate([
+HttpRpcCaller = __decorate([
     DependencyContainer_1.injectable(),
     __metadata("design:paramtypes", [])
-], DirectRpcCaller);
-exports.DirectRpcCaller = DirectRpcCaller;
+], HttpRpcCaller);
+exports.HttpRpcCaller = HttpRpcCaller;
 
 //# sourceMappingURL=DirectRpcCaller.js.map
