@@ -1,8 +1,7 @@
 import * as express from 'express-serve-static-core';
-import { CriticalException } from '../microservice/Exceptions';
+import { injectable, IDependencyContainer, Guard, CriticalException } from 'back-lib-common-util';
+
 import { IMessage } from '../adapters/MessageBrokerAdapter';
-import { Guard } from '../utils/Guard';
-import { injectable, IDependencyContainer } from '../utils/DependencyContainer';
 
 // Interface - Service contract
 

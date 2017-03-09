@@ -3,10 +3,9 @@ import { EventEmitter } from 'events';
 import * as uuid from 'uuid';
 import * as request from 'request-promise';
 
-import * as ex from '../microservice/Exceptions';
-import { Guard } from '../utils/Guard';
+import { injectable, inject, IDependencyContainer, Guard } from 'back-lib-common-util';
+
 import { Types as T } from '../constants/Types';
-import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
 import { IMessageBrokerAdapter, MessageHandleFunction, IMessage } from '../adapters/MessageBrokerAdapter';
 import * as rpc from './RpcCommon';
 

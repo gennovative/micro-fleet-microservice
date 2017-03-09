@@ -1,8 +1,9 @@
 import * as knex from 'knex';
 import { Model } from 'objection';
 
+import { injectable, inject } from 'back-lib-common-util';
+
 import { IConfigurationProvider } from './ConfigurationProvider';
-import { injectable, inject } from '../utils/DependencyContainer';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 

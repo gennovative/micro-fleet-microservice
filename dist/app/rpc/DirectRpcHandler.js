@@ -11,22 +11,21 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const bodyParser = require("body-parser");
-const ex = require("../microservice/Exceptions");
-const Guard_1 = require("../utils/Guard");
+const back_lib_common_util_1 = require("back-lib-common-util");
 const Types_1 = require("../constants/Types");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
 const rpc = require("./RpcCommon");
 let ExpressRpcHandler = ExpressRpcHandler_1 = class ExpressRpcHandler extends rpc.RpcHandlerBase {
     constructor(depContainer) {
         super(depContainer);
     }
     init(param) {
-        Guard_1.Guard.assertIsFalsey(this._router, 'This RPC Caller is already initialized!');
-        Guard_1.Guard.assertIsTruthy(this._name, '`name` property must be set!');
-        Guard_1.Guard.assertDefined('param', param);
-        Guard_1.Guard.assertIsTruthy(param.expressApp, '`expressApp` with an instance of Express is required!');
-        Guard_1.Guard.assertIsTruthy(param.router, '`router` with an instance of Express Router is required!');
+        back_lib_common_util_1.Guard.assertIsFalsey(this._router, 'This RPC Caller is already initialized!');
+        back_lib_common_util_1.Guard.assertIsTruthy(this._name, '`name` property must be set!');
+        back_lib_common_util_1.Guard.assertDefined('param', param);
+        back_lib_common_util_1.Guard.assertIsTruthy(param.expressApp, '`expressApp` with an instance of Express is required!');
+        back_lib_common_util_1.Guard.assertIsTruthy(param.router, '`router` with an instance of Express Router is required!');
         let app = this._app = param.expressApp;
         this._router = param.router;
         //app.use(bodyParser.urlencoded({extended: true})); // Parse Form values in POST request, but I don't think we need it in this case.
@@ -34,8 +33,8 @@ let ExpressRpcHandler = ExpressRpcHandler_1 = class ExpressRpcHandler extends rp
         app.use(`/${this._name}`, this._router);
     }
     handle(action, dependencyIdentifier, actionFactory) {
-        Guard_1.Guard.assertIsMatch(null, ExpressRpcHandler_1.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
-        Guard_1.Guard.assertIsTruthy(this._router, '`init` method must be called first!');
+        back_lib_common_util_1.Guard.assertIsMatch(null, ExpressRpcHandler_1.URL_TESTER, action, `Route "${action}" is not URL-safe!`);
+        back_lib_common_util_1.Guard.assertIsTruthy(this._router, '`init` method must be called first!');
         this._router.post(`/${action}`, this.buildHandleFunc.apply(this, arguments));
     }
     buildHandleFunc(action, dependencyIdentifier, actionFactory) {
@@ -53,7 +52,7 @@ let ExpressRpcHandler = ExpressRpcHandler_1 = class ExpressRpcHandler extends rp
                 let errMsg = error, statusCode = 200;
                 // If error is an uncaught Exception object, that means the action method
                 // has a problem. We should response with error status code.
-                if (error instanceof ex.Exception) {
+                if (error instanceof back_lib_common_util_1.Exception) {
                     // TODO: Should log this unexpected error.
                     statusCode = 500;
                     errMsg = error.message;
@@ -71,8 +70,8 @@ ExpressRpcHandler.URL_TESTER = (function () {
     return regexp;
 })();
 ExpressRpcHandler = ExpressRpcHandler_1 = __decorate([
-    DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.DEPENDENCY_CONTAINER)),
+    back_lib_common_util_1.injectable(),
+    __param(0, back_lib_common_util_1.inject(Types_1.Types.DEPENDENCY_CONTAINER)),
     __metadata("design:paramtypes", [Object])
 ], ExpressRpcHandler);
 exports.ExpressRpcHandler = ExpressRpcHandler;

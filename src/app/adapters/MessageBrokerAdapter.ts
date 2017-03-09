@@ -4,10 +4,9 @@ import * as amqp from 'amqplib';
 import * as uuid from 'uuid';
 import * as _ from 'lodash';
 
+import { injectable, inject, CriticalException, MinorException, Guard } from 'back-lib-common-util';
+
 import { IConfigurationProvider } from './ConfigurationProvider';
-import { CriticalException, MinorException } from '../microservice/Exceptions';
-import { injectable, inject } from '../utils/DependencyContainer';
-import { Guard } from '../utils/Guard';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 

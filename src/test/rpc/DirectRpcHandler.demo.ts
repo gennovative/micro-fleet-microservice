@@ -1,6 +1,7 @@
 import * as express from 'express';
-import { MicroServiceBase, inject, injectable, IDirectRpcHandler, IRpcRequest, 
-	RpcActionFactory, CriticalException, Types as T} from '../../app';
+import { inject, injectable, CriticalException} from 'back-lib-common-util';
+
+import { MicroServiceBase, IDirectRpcHandler, IRpcRequest, RpcActionFactory, Types as T} from '../../app';
 
 
 const HTTP_ADAPTER = Symbol('IHttpAdapter'),

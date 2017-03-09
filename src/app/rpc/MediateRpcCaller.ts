@@ -1,11 +1,9 @@
 import { EventEmitter } from 'events';
 
 import * as uuid from 'uuid';
+import { injectable, inject, IDependencyContainer, Guard, MinorException } from 'back-lib-common-util';
 
-import * as ex from '../microservice/Exceptions';
-import { Guard } from '../utils/Guard';
 import { Types as T } from '../constants/Types';
-import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
 import { IMessageBrokerAdapter, MessageHandleFunction, IMessage } from '../adapters/MessageBrokerAdapter';
 import * as rpc from './RpcCommon';
 
@@ -72,7 +70,7 @@ export class MessageBrokerRpcCaller
 					{ correlationId, replyTo });
 			})
 			.catch(err => {
-				reject(new ex.MinorException(`RPC error: ${err}`));
+				reject(new MinorException(`RPC error: ${err}`));
 			});
 		});
 	}

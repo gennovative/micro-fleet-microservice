@@ -1,3 +1,4 @@
+/// <reference types="back-lib-persistence" />
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -7,6 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
+const cm = require("back-lib-common-util");
 const cf = require("../adapters/ConfigurationProvider");
 const db = require("../adapters/DatabaseAdapter");
 const mb = require("../adapters/MessageBrokerAdapter");
@@ -14,8 +17,6 @@ const rdc = require("../rpc/DirectRpcCaller");
 const rdh = require("../rpc/DirectRpcHandler");
 const rmc = require("../rpc/MediateRpcCaller");
 const rmh = require("../rpc/MediateRpcHandler");
-const dep = require("../utils/DependencyContainer");
-const ex = require("./Exceptions");
 const Types_1 = require("../constants/Types");
 class MicroServiceBase {
     constructor() {
@@ -49,6 +50,8 @@ class MicroServiceBase {
         })
             .catch(err => {
             this.onError(err);
+            console.error('An error occured on initializing adapters, the application has to stop now.');
+            this.stop();
         });
     }
     /**
@@ -121,7 +124,7 @@ class MicroServiceBase {
         return automapper;
     }
     registerDependencies() {
-        let depCon = this._depContainer = new dep.DependencyContainer();
+        let depCon = this._depContainer = new cm.DependencyContainer();
         depCon.bindConstant(Types_1.Types.DEPENDENCY_CONTAINER, depCon);
         this.registerConfigProvider();
         this.registerDirectRpcCaller();
@@ -169,7 +172,7 @@ class MicroServiceBase {
                 initPromises = this._adapters.map(adt => adt.init());
             }
             else {
-                throw new ex.CriticalException('Fail to fetch configuration!');
+                throw new cm.CriticalException('Fail to fetch configuration!');
             }
             yield Promise.all(initPromises);
         });

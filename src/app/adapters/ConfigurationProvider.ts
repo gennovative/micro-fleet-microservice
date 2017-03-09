@@ -1,5 +1,6 @@
 import * as request from 'request-promise';
-import { inject, injectable } from '../utils/DependencyContainer';
+import { inject, injectable } from 'back-lib-common-util';
+
 import * as rdc from '../rpc/DirectRpcCaller';
 import * as rcm from '../rpc/RpcCommon';
 import { SettingKeys as S } from '../constants/SettingKeys';

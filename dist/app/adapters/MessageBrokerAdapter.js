@@ -19,12 +19,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
 const amqp = require("amqplib");
 const _ = require("lodash");
-const Exceptions_1 = require("../microservice/Exceptions");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
-const Guard_1 = require("../utils/Guard");
+const back_lib_common_util_1 = require("back-lib-common-util");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
 let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
@@ -49,8 +48,8 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
     }
     subscribe(matchingPattern, onMessage, noAck) {
         return __awaiter(this, void 0, void 0, function* () {
-            Guard_1.Guard.assertNotEmpty('matchingPattern', matchingPattern);
-            Guard_1.Guard.assertIsFunction('onMessage', onMessage);
+            back_lib_common_util_1.Guard.assertNotEmpty('matchingPattern', matchingPattern);
+            back_lib_common_util_1.Guard.assertIsFunction('onMessage', onMessage);
             try {
                 let channelPromise = this._consumeChanPrm;
                 if (!channelPromise) {
@@ -74,8 +73,8 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
     }
     publish(topic, payload, options) {
         return __awaiter(this, void 0, void 0, function* () {
-            Guard_1.Guard.assertNotEmpty('topic', topic);
-            Guard_1.Guard.assertNotEmpty('message', payload);
+            back_lib_common_util_1.Guard.assertNotEmpty('topic', topic);
+            back_lib_common_util_1.Guard.assertNotEmpty('message', payload);
             try {
                 if (!this._publishChanPrm) {
                     // Create a new publishing channel if there is not already, and from now on we publish to this only channel.
@@ -221,11 +220,11 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
         });
     }
     handleError(err, message) {
-        if (err instanceof Exceptions_1.CriticalException) {
+        if (err instanceof back_lib_common_util_1.CriticalException) {
             // If this is already a wrapped exception.
             return Promise.reject(err);
         }
-        return Promise.reject(new Exceptions_1.CriticalException(`${message}: ${err}`));
+        return Promise.reject(new back_lib_common_util_1.CriticalException(`${message}: ${err}`));
     }
     moreSub(matchingPattern, consumerTag) {
         let consumers = this._subscriptions.get(matchingPattern);
@@ -284,8 +283,8 @@ let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
     }
 };
 TopicMessageBrokerAdapter = __decorate([
-    DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.CONFIG_PROVIDER)),
+    back_lib_common_util_1.injectable(),
+    __param(0, back_lib_common_util_1.inject(Types_1.Types.CONFIG_PROVIDER)),
     __metadata("design:paramtypes", [Object])
 ], TopicMessageBrokerAdapter);
 exports.TopicMessageBrokerAdapter = TopicMessageBrokerAdapter;

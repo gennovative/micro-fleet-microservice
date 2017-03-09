@@ -1,7 +1,9 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
+import { CriticalException, injectable } from 'back-lib-common-util';
+
 import { MicroServiceBase, IConfigurationProvider, IDatabaseAdapter,
-	Types, CriticalException, injectable, DbClient, SettingKeys as S } from '../../app';
+	Types, DbClient, SettingKeys as S } from '../../app';
 
 chai.use(spies);
 const expect = chai.expect;
@@ -168,14 +170,15 @@ describe('MicroServiceBase', () => {
 			// Arrange
 			let service = new TestMarketingService();
 
-			service['onError'] = function() {
+			service['onError'] = function(err: CriticalException) {
 				expect(service['onError']).to.be.spy;
 				expect(service['onError']).to.be.called.once;
-				expect(service['onError']).to.be.called.with(ERROR_FAIL);
+				expect(err.message).to.equal(ERROR_FAIL.message);
 				done();
 			};
 
 			chai.spy.on(service, 'onError');
+			service['exitProcess'] = () => {};
 
 			service['onStarting'] = function() {
 				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
@@ -199,6 +202,7 @@ describe('MicroServiceBase', () => {
 			};
 
 			chai.spy.on(service, 'onError');
+			service['exitProcess'] = () => {};
 			
 			service['onStarting'] = function() {
 				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
@@ -208,7 +212,7 @@ describe('MicroServiceBase', () => {
 			// Act
 			service.start();
 		});
-	});
+	}); // describe 'MicroServiceBase'
 	
 	describe('onStarting', () => {
 		it('should catch all errors with onError event', (done) => {
@@ -245,7 +249,7 @@ describe('MicroServiceBase', () => {
 			// Act
 			service.start();
 		});
-	});
+	}); // describe 'onStarting'
 	
 	describe('onStopping', () => {
 		it('should catch all errors with onError event', (done) => {
@@ -261,6 +265,7 @@ describe('MicroServiceBase', () => {
 			};
 
 			chai.spy.on(service, 'onError');
+			service['exitProcess'] = () => {};
 			
 			service['onStarting'] = () => {
 				service['_adapters'].forEach((adt: IAdapter, idx) => {
@@ -288,10 +293,11 @@ describe('MicroServiceBase', () => {
 					throw ERROR_RANDOM;
 				};
 			})(service['onStopping']);
+
 			// Act
 			service.start();
 		});
-	});
+	}); // describe 'onStopping'
 	
 	describe('onStopped', () => {
 		it('should gracefully stop even when an error occurs', (done) => {
@@ -322,7 +328,7 @@ describe('MicroServiceBase', () => {
 			// Act
 			service.start();
 		});
-	});
+	}); // describe 'onStopped'
 
 	describe('stop', () => {
 		it('should dispose all adapters', (done) => {
@@ -431,5 +437,5 @@ describe('MicroServiceBase', () => {
 			// Act
 			service.start();
 		});
-	});
+	}); // describe 'stop'
 });
