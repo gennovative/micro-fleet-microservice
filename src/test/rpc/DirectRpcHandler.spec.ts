@@ -1,8 +1,9 @@
 import { expect } from 'chai';
 import * as express from 'express';
 import * as requestMaker from 'request-promise';
-import { ExpressRpcHandler, DependencyContainer, injectable,
-	IDirectRpcHandler, IRpcRequest, IRpcResponse, MinorException, Exception } from '../../app';
+import { inject, injectable, DependencyContainer, MinorException, Exception } from 'back-lib-common-util';
+
+import { ExpressRpcHandler, IDirectRpcHandler, IRpcRequest, IRpcResponse } from '../../app';
 
 const MODULE = 'TestHandler',
 	CONTROLLER_NORM = Symbol('NormalProductController'),

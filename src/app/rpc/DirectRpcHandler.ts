@@ -1,9 +1,10 @@
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
-import * as ex from '../microservice/Exceptions';
-import { Guard } from '../utils/Guard';
+
+import { injectable, inject, IDependencyContainer, Guard, Exception } from 'back-lib-common-util';
+
 import { Types as T } from '../constants/Types';
-import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
+import {  } from '../utils/DependencyContainer';
 import * as rpc from './RpcCommon';
 
 export interface IDirectRpcHandler extends rpc.IRpcHandler {
@@ -72,7 +73,7 @@ export class ExpressRpcHandler
 
 				// If error is an uncaught Exception object, that means the action method
 				// has a problem. We should response with error status code.
-				if (error instanceof ex.Exception) {
+				if (error instanceof Exception) {
 					// TODO: Should log this unexpected error.
 					statusCode = 500;
 					errMsg = error.message;

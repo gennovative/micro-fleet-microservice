@@ -19,8 +19,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const request = require("request-promise");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
+const back_lib_common_util_1 = require("back-lib-common-util");
 const rdc = require("../rpc/DirectRpcCaller");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
@@ -107,14 +108,15 @@ let ConfigurationProvider = class ConfigurationProvider {
                 }
             }
             catch (err) {
+                // TODO: Writing logs
             }
             return false;
         });
     }
 };
 ConfigurationProvider = __decorate([
-    DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.DIRECT_RPC_CALLER)),
+    back_lib_common_util_1.injectable(),
+    __param(0, back_lib_common_util_1.inject(Types_1.Types.DIRECT_RPC_CALLER)),
     __metadata("design:paramtypes", [Object])
 ], ConfigurationProvider);
 exports.ConfigurationProvider = ConfigurationProvider;

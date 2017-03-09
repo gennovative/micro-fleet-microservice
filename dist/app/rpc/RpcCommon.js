@@ -8,8 +8,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-const Guard_1 = require("../utils/Guard");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
+Object.defineProperty(exports, "__esModule", { value: true });
+const back_lib_common_util_1 = require("back-lib-common-util");
 // RPC Base classes
 let RpcCallerBase = class RpcCallerBase {
     get name() {
@@ -20,7 +20,7 @@ let RpcCallerBase = class RpcCallerBase {
     }
 };
 RpcCallerBase = __decorate([
-    DependencyContainer_1.injectable()
+    back_lib_common_util_1.injectable()
 ], RpcCallerBase);
 exports.RpcCallerBase = RpcCallerBase;
 let RpcHandlerBase = class RpcHandlerBase {
@@ -36,13 +36,13 @@ let RpcHandlerBase = class RpcHandlerBase {
     resolveActionFunc(action, depId, actFactory) {
         // Attempt to resolve controller instance
         let instance = this._depContainer.resolve(depId);
-        Guard_1.Guard.assertIsTruthy(instance, `Cannot resolve dependency ${depId.toString()}!`);
+        back_lib_common_util_1.Guard.assertIsTruthy(instance, `Cannot resolve dependency ${depId.toString()}!`);
         let actionFn = instance[action];
         // If default action is not available, attempt to get action from factory.
         if (!actionFn) {
             actionFn = (actFactory ? actFactory(instance) : null);
         }
-        Guard_1.Guard.assertIsTruthy(actionFn, 'Specified action does not exist in controller!');
+        back_lib_common_util_1.Guard.assertIsTruthy(actionFn, 'Specified action does not exist in controller!');
         return actionFn.bind(instance);
     }
     createResponse(isSuccess, data, replyTo) {
@@ -55,7 +55,7 @@ let RpcHandlerBase = class RpcHandlerBase {
     }
 };
 RpcHandlerBase = __decorate([
-    DependencyContainer_1.injectable(),
+    back_lib_common_util_1.injectable(),
     __metadata("design:paramtypes", [Object])
 ], RpcHandlerBase);
 exports.RpcHandlerBase = RpcHandlerBase;

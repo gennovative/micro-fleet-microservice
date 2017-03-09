@@ -1,4 +1,6 @@
-import { MicroServiceBase, inject, injectable, IDirectRpcCaller, IRpcResponse, MinorException, Types as T} from '../../app';
+import { inject, injectable, MinorException } from 'back-lib-common-util';
+
+import { MicroServiceBase, IDirectRpcCaller, IRpcResponse, Types as T} from '../../app';
 
 
 const PRODUCT_PROVIDER = Symbol('IProductProvider');

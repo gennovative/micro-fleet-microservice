@@ -1,7 +1,6 @@
-import * as ex from '../microservice/Exceptions';
-import { Guard } from '../utils/Guard';
+import { injectable, inject, IDependencyContainer, Guard, Exception } from 'back-lib-common-util';
+
 import { Types as T } from '../constants/Types';
-import { injectable, inject, IDependencyContainer } from '../utils/DependencyContainer';
 import { IMessageBrokerAdapter, MessageHandleFunction, IMessage } from '../adapters/MessageBrokerAdapter';
 import * as rpc from './RpcCommon';
 
@@ -53,7 +52,7 @@ export class MessageBrokerRpcHandler
 				let errMsg = error;
 				// If error is an uncaught Exception object, that means the action method
 				// has a problem. We should nack to tell message broker to send this message to someone else.
-				if (error instanceof ex.Exception) {
+				if (error instanceof Exception) {
 					// TODO: Should log this unexpected error.
 					errMsg = error.message;
 				}

@@ -1,3 +1,6 @@
+/// <reference types="back-lib-persistence" />
+
+import * as cm from 'back-lib-common-util';
 import * as cf from '../adapters/ConfigurationProvider';
 import * as db from '../adapters/DatabaseAdapter';
 import * as mb from '../adapters/MessageBrokerAdapter';
@@ -5,14 +8,12 @@ import * as rdc from '../rpc/DirectRpcCaller';
 import * as rdh from '../rpc/DirectRpcHandler';
 import * as rmc from '../rpc/MediateRpcCaller';
 import * as rmh from '../rpc/MediateRpcHandler';
-import * as dep from '../utils/DependencyContainer';
-import * as ex from './Exceptions';
 import { Types as T } from '../constants/Types';
 
 
 export abstract class MicroServiceBase {
 	protected _configAdapter: cf.IConfigurationProvider;
-	protected _depContainer: dep.IDependencyContainer;
+	protected _depContainer: cm.IDependencyContainer;
 	protected _adapters: IAdapter[];
 	protected _isStarted: boolean;
 	
@@ -50,6 +51,8 @@ export abstract class MicroServiceBase {
 			})
 			.catch(err => {
 				this.onError(err);
+				console.error('An error occured on initializing adapters, the application has to stop now.');
+				this.stop();
 			});
 	}
 
@@ -135,8 +138,8 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDependencies(): void {
-		let depCon: dep.IDependencyContainer = this._depContainer = new dep.DependencyContainer();
-		depCon.bindConstant<dep.IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
+		let depCon: cm.IDependencyContainer = this._depContainer = new cm.DependencyContainer();
+		depCon.bindConstant<cm.IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
 		this.registerConfigProvider();
 		this.registerDirectRpcCaller();
 		this.registerModelMapper();
@@ -190,7 +193,7 @@ export abstract class MicroServiceBase {
 		if (!cfgAdt.enableRemote || await cfgAdt.fetch()) {
 			initPromises = this._adapters.map(adt => adt.init());
 		} else {
-			throw new ex.CriticalException('Fail to fetch configuration!');
+			throw new cm.CriticalException('Fail to fetch configuration!');
 		}
 
 		await Promise.all(initPromises);

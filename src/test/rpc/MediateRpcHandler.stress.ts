@@ -1,7 +1,8 @@
 import * as uuid from 'uuid';
-import { IMediateRpcHandler, MessageBrokerRpcHandler, IMessage, IConfigurationProvider, TopicMessageBrokerAdapter,
-	DependencyContainer, injectable, IRpcRequest, IRpcResponse,
-	SettingKeys as S } from '../../app';
+import { injectable, DependencyContainer } from 'back-lib-common-util';
+
+import { IMediateRpcHandler, MessageBrokerRpcHandler, IMessage, IConfigurationProvider, 
+	TopicMessageBrokerAdapter, IRpcRequest, IRpcResponse, SettingKeys as S } from '../../app';
 
 
 const MODULE = 'TestHandler',
@@ -70,7 +71,7 @@ class CallerConfigurationProvider implements IConfigurationProvider {
 	public init(): Promise<void> {
 		return Promise.resolve();
 	}
-	
+
 	public dispose(): Promise<void> {
 		return Promise.resolve();
 	}

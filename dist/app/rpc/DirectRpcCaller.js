@@ -8,9 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const request = require("request-promise");
-const Guard_1 = require("../utils/Guard");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
+const back_lib_common_util_1 = require("back-lib-common-util");
 const rpc = require("./RpcCommon");
 let HttpRpcCaller = class HttpRpcCaller extends rpc.RpcCallerBase {
     constructor() {
@@ -26,9 +26,9 @@ let HttpRpcCaller = class HttpRpcCaller extends rpc.RpcCallerBase {
     init(param) {
     }
     call(moduleName, action, params) {
-        Guard_1.Guard.assertDefined('moduleName', moduleName);
-        Guard_1.Guard.assertDefined('action', action);
-        Guard_1.Guard.assertIsTruthy(this._baseAddress, 'Base URL must be set!');
+        back_lib_common_util_1.Guard.assertDefined('moduleName', moduleName);
+        back_lib_common_util_1.Guard.assertDefined('action', action);
+        back_lib_common_util_1.Guard.assertIsTruthy(this._baseAddress, 'Base URL must be set!');
         return new Promise((resolve, reject) => {
             let request = {
                 from: this._name,
@@ -48,7 +48,7 @@ let HttpRpcCaller = class HttpRpcCaller extends rpc.RpcCallerBase {
     }
 };
 HttpRpcCaller = __decorate([
-    DependencyContainer_1.injectable(),
+    back_lib_common_util_1.injectable(),
     __metadata("design:paramtypes", [])
 ], HttpRpcCaller);
 exports.HttpRpcCaller = HttpRpcCaller;

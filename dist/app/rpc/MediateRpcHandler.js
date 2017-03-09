@@ -11,10 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-const ex = require("../microservice/Exceptions");
-const Guard_1 = require("../utils/Guard");
+Object.defineProperty(exports, "__esModule", { value: true });
+const back_lib_common_util_1 = require("back-lib-common-util");
 const Types_1 = require("../constants/Types");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
 const rpc = require("./RpcCommon");
 let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends rpc.RpcHandlerBase {
     constructor(depContainer, _msgBrokerAdt) {
@@ -24,9 +23,9 @@ let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends rpc.RpcHandl
     init(param) {
     }
     handle(action, dependencyIdentifier, actionFactory) {
-        Guard_1.Guard.assertDefined('action', action);
-        Guard_1.Guard.assertDefined('dependencyIdentifier', dependencyIdentifier);
-        Guard_1.Guard.assertDefined(null, this._name, '`name` property is required.');
+        back_lib_common_util_1.Guard.assertDefined('action', action);
+        back_lib_common_util_1.Guard.assertDefined('dependencyIdentifier', dependencyIdentifier);
+        back_lib_common_util_1.Guard.assertDefined(null, this._name, '`name` property is required.');
         this._msgBrokerAdt.subscribe(`request.${this._name}.${action}`, this.buildHandleFunc.apply(this, arguments));
     }
     buildHandleFunc(action, dependencyIdentifier, actionFactory) {
@@ -45,7 +44,7 @@ let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends rpc.RpcHandl
                 let errMsg = error;
                 // If error is an uncaught Exception object, that means the action method
                 // has a problem. We should nack to tell message broker to send this message to someone else.
-                if (error instanceof ex.Exception) {
+                if (error instanceof back_lib_common_util_1.Exception) {
                     // TODO: Should log this unexpected error.
                     errMsg = error.message;
                 }
@@ -57,9 +56,9 @@ let MessageBrokerRpcHandler = class MessageBrokerRpcHandler extends rpc.RpcHandl
     }
 };
 MessageBrokerRpcHandler = __decorate([
-    DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.DEPENDENCY_CONTAINER)),
-    __param(1, DependencyContainer_1.inject(Types_1.Types.BROKER_ADAPTER)),
+    back_lib_common_util_1.injectable(),
+    __param(0, back_lib_common_util_1.inject(Types_1.Types.DEPENDENCY_CONTAINER)),
+    __param(1, back_lib_common_util_1.inject(Types_1.Types.BROKER_ADAPTER)),
     __metadata("design:paramtypes", [Object, Object])
 ], MessageBrokerRpcHandler);
 exports.MessageBrokerRpcHandler = MessageBrokerRpcHandler;

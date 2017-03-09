@@ -11,12 +11,11 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
 const uuid = require("uuid");
-const ex = require("../microservice/Exceptions");
-const Guard_1 = require("../utils/Guard");
+const back_lib_common_util_1 = require("back-lib-common-util");
 const Types_1 = require("../constants/Types");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
 const rpc = require("./RpcCommon");
 let MessageBrokerRpcCaller = class MessageBrokerRpcCaller extends rpc.RpcCallerBase {
     constructor(_msgBrokerAdt) {
@@ -26,8 +25,8 @@ let MessageBrokerRpcCaller = class MessageBrokerRpcCaller extends rpc.RpcCallerB
     init(param) {
     }
     call(moduleName, action, params) {
-        Guard_1.Guard.assertDefined('moduleName', moduleName);
-        Guard_1.Guard.assertDefined('action', action);
+        back_lib_common_util_1.Guard.assertDefined('moduleName', moduleName);
+        back_lib_common_util_1.Guard.assertDefined('action', action);
         return new Promise((resolve, reject) => {
             // There are many requests to same `requestTopic` and they listen to same `responseTopic`,
             // A request only carea for a response with same `correlationId`.
@@ -62,14 +61,14 @@ let MessageBrokerRpcCaller = class MessageBrokerRpcCaller extends rpc.RpcCallerB
                 return this._msgBrokerAdt.publish(`request.${moduleName}.${action}`, request, { correlationId, replyTo });
             })
                 .catch(err => {
-                reject(new ex.MinorException(`RPC error: ${err}`));
+                reject(new back_lib_common_util_1.MinorException(`RPC error: ${err}`));
             });
         });
     }
 };
 MessageBrokerRpcCaller = __decorate([
-    DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.BROKER_ADAPTER)),
+    back_lib_common_util_1.injectable(),
+    __param(0, back_lib_common_util_1.inject(Types_1.Types.BROKER_ADAPTER)),
     __metadata("design:paramtypes", [Object])
 ], MessageBrokerRpcCaller);
 exports.MessageBrokerRpcCaller = MessageBrokerRpcCaller;

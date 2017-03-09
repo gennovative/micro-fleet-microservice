@@ -1,14 +1,3 @@
-/// <reference path="./objection.d.ts" />
-
-/**
- * A data type representing Json object.
- */
-interface Json {
-	[x: string]: string | number | boolean | Date | Json | JsonArray;
-}
-
-interface JsonArray extends Array<string | number | boolean | Date | Json | JsonArray> { }
-
 /**
  * If an object wants to be initialized when microservice proccess starts, it must
  * implements this interface to be able to add to adapter list.
@@ -25,16 +14,3 @@ declare interface IAdapter {
 	 */
 	dispose(): Promise<void>;
 }
-
-/**
- * Represents a data transfer object, aka: business model.
- */
-declare interface IModelDTO {
-	id: number;
-}
-
-declare type AutoMapper = AutoMapperJs.AutoMapper;
-
-// Based on ES6 native Promise definition
-declare type PromiseResolveFn = (value?: any | PromiseLike<any>) => void;
-declare type PromiseRejectFn = (reason?: any) => void;

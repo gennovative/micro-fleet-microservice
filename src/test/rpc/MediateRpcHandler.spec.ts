@@ -1,8 +1,9 @@
 import { expect } from 'chai';
 import * as uuid from 'uuid';
+import { injectable, DependencyContainer, MinorException } from 'back-lib-common-util';
+
 import { MessageBrokerRpcHandler, IMessage, IConfigurationProvider, TopicMessageBrokerAdapter,
-	DependencyContainer, injectable, IRpcRequest, IRpcResponse, MinorException,
-	SettingKeys as S } from '../../app';
+	IRpcRequest, IRpcResponse, SettingKeys as S } from '../../app';
 
 
 const MODULE = 'TestHandler',

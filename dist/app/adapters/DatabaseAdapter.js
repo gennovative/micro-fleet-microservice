@@ -19,9 +19,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const knex = require("knex");
 const objection_1 = require("objection");
-const DependencyContainer_1 = require("../utils/DependencyContainer");
+const back_lib_common_util_1 = require("back-lib-common-util");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
 /**
@@ -108,8 +109,8 @@ let KnexDatabaseAdapter = class KnexDatabaseAdapter {
     }
 };
 KnexDatabaseAdapter = __decorate([
-    DependencyContainer_1.injectable(),
-    __param(0, DependencyContainer_1.inject(Types_1.Types.CONFIG_PROVIDER)),
+    back_lib_common_util_1.injectable(),
+    __param(0, back_lib_common_util_1.inject(Types_1.Types.CONFIG_PROVIDER)),
     __metadata("design:paramtypes", [Object])
 ], KnexDatabaseAdapter);
 exports.KnexDatabaseAdapter = KnexDatabaseAdapter;

@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 class SettingKeys {
 }
 SettingKeys.CONFIG_SERVICE_ADDRESSES = 'service.configuration.address';
