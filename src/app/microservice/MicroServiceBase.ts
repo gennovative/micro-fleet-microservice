@@ -132,9 +132,8 @@ export abstract class MicroServiceBase {
 		this._depContainer.bind<rmh.IMediateRpcHandler>(T.MEDIATE_RPC_HANDLER, rmh.MessageBrokerRpcHandler);
 	}
 
-	protected registerModelMapper(): AutoMapper {
+	protected registerModelMapper(): void {
 		this._depContainer.bindConstant<AutoMapper>(T.MODEL_MAPPER, automapper);
-		return automapper;
 	}
 
 	protected registerDependencies(): void {

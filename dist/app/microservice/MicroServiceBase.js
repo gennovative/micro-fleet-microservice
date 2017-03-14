@@ -121,7 +121,6 @@ class MicroServiceBase {
     }
     registerModelMapper() {
         this._depContainer.bindConstant(Types_1.Types.MODEL_MAPPER, automapper);
-        return automapper;
     }
     registerDependencies() {
         let depCon = this._depContainer = new cm.DependencyContainer();

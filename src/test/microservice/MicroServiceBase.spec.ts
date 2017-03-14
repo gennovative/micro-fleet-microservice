@@ -86,8 +86,11 @@ class PlainService extends MicroServiceBase {
 }
 
 class TestMarketingService extends MicroServiceBase {
-
-	protected /* override */ registerDependencies(): void {
+	
+	/**
+	 * @override
+	 */
+	protected registerDependencies(): void {
 		super.registerDependencies();
 		this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility);
 		this._depContainer.bind<ICustomAdapter>(CUSTOM_ADT, CustomAdapter);
@@ -101,13 +104,13 @@ class TestMarketingService extends MicroServiceBase {
 		//this.registerDbAdapter();
 		
 		// Call this if your service communicates via message broker.
-		// this.registerMessageBrokerAdapter();
-		
-		// Call this if your service needs to map between entities and DTO models.
-		//this.registerModelMapper();
+		// this.registerMessageBrokerAdapter();		
 	}
 
-	protected /* override */ onStarting(): void {
+	/**
+	 * @override
+	 */
+	protected onStarting(): void {
 		// Call this if your service works directly with database.
 		//this.addDbAdapter();
 
@@ -120,7 +123,10 @@ class TestMarketingService extends MicroServiceBase {
 		this.addAdapter(customAdapter);
 	}
 
-	protected /* override */ onError(error: any): void {
+	/**
+	 * @override
+	 */
+	protected onError(error: any): void {
 		super.onError(error);
 	}
 }

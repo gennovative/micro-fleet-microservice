@@ -1,3 +1,5 @@
+/// <reference types="back-lib-persistence" />
+
 import * as knex from 'knex';
 import { Model } from 'objection';
 
