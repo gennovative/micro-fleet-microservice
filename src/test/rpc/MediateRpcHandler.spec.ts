@@ -137,7 +137,7 @@ describe('MediateRpcHandler', () => {
 
 	describe('handle', function() {
 		// Uncomment this to have longer time to step debug.
-		this.timeout(30000);
+		//this.timeout(30000);
 		
 		beforeEach(done => {
 			depContainer = new DependencyContainer();
