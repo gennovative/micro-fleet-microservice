@@ -1,6 +1,7 @@
 /// <reference types="back-lib-persistence" />
 
 import * as cm from 'back-lib-common-util';
+import * as per from 'back-lib-persistence';
 import * as cf from '../adapters/ConfigurationProvider';
 import * as db from '../adapters/DatabaseAdapter';
 import * as mb from '../adapters/MessageBrokerAdapter';
@@ -76,15 +77,16 @@ export abstract class MicroServiceBase {
 			}
 		})();
 	}
-	
+
 	/**
 	 * @return Total number of adapters that have been added so far.
 	 */
 	protected addAdapter(adapter: IAdapter): number {
 		return this._adapters.push(adapter);
 	}
-	
-	// TODO: Should ha addAdapterFromContainer
+
+	// TODO 1: Should have addAdapterFromContainer
+	// TODO 2: Now I don't remember what TODO 1 means
 
 	protected addDbAdapter(): db.IDatabaseAdapter {
 		let dbAdt = this._depContainer.resolve<db.IDatabaseAdapter>(T.DB_ADAPTER);
@@ -105,6 +107,7 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDbAdapter(): void {
+		this._depContainer.bind<per.IDatabaseConnector>(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
 		this._depContainer.bind<db.IDatabaseAdapter>(T.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
 	}
 
@@ -133,12 +136,12 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerModelMapper(): void {
-		this._depContainer.bindConstant<AutoMapper>(T.MODEL_MAPPER, automapper);
+		this._depContainer.bindConstant<AutoMapper>(cm.Types.MODEL_MAPPER, automapper);
 	}
 
 	protected registerDependencies(): void {
 		let depCon: cm.IDependencyContainer = this._depContainer = new cm.DependencyContainer();
-		depCon.bindConstant<cm.IDependencyContainer>(T.DEPENDENCY_CONTAINER, depCon);
+		depCon.bindConstant<cm.IDependencyContainer>(cm.Types.DEPENDENCY_CONTAINER, depCon);
 		this.registerConfigProvider();
 		this.registerDirectRpcCaller();
 		this.registerModelMapper();
