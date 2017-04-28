@@ -2,8 +2,9 @@ import * as chai from 'chai';
 import * as spies from 'chai-spies';
 import * as _ from 'lodash';
 import { Model } from 'objection';
+import { IDatabaseConnector, IConnectionDetail, QueryCallback, DbClient } from 'back-lib-persistence';
 
-import { KnexDatabaseAdapter, IConfigurationProvider, DbClient, SettingKeys as S } from '../../app';
+import { KnexDatabaseAdapter, IConfigurationProvider, SettingKeys as S } from '../../app';
 
 chai.use(spies);
 
@@ -64,139 +65,40 @@ class MockConfigAdapter implements IConfigurationProvider {
 	}
 }
 
+class MockDbConnector implements IDatabaseConnector {
+	public addConnection(detail: IConnectionDetail, name?: string): void {
+	}
+
+	public dispose(): Promise<void> {
+		return Promise.resolve();
+	}
+
+	public query<TEntity>(EntityClass: any, callback: QueryCallback<TEntity>, ...names: string[]): Promise<any>[] {
+		return [Promise.resolve()];
+	}
+}
+
 describe('KnexDatabaseAdapter', () => {
 
-	describe('get clientName', () => {
-		it('should return value of `clientName`', () => {
-			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
-
-			// Act and assert
-			dbAdapter['_clientName'] = CLIENT_NAME;
-			expect(dbAdapter.clientName).to.equal(CLIENT_NAME);
-		});
-	});
-	
-	describe('set clientName', () => {
-		it('should set value for `clientName`', () => {
-			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
-
-			// Act and assert
-			dbAdapter.clientName = CLIENT_NAME;
-			expect(dbAdapter['_clientName']).to.equal(CLIENT_NAME);
-		});
-	});
-
 	describe('init', () => {
-		it('should configure database connection with Knex', async () => {
+		it('should configure database connection with database connector', async () => {
 			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter());
+			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(), new MockDbConnector()),
+				addConnSpy = chai.spy.on(dbAdapter['_dbConnector'], 'addConnection');
 			
-			// Replace with spy function
-			dbAdapter['_knex'] = chai.spy();
-
 			// Act
 			await dbAdapter.init();
 
 			// Assert
-			expect(dbAdapter['_knex']).to.be.spy;
-			expect(dbAdapter['_knex']).to.have.been.called.once;
+			expect(addConnSpy).to.be.spy;
+			expect(addConnSpy).to.have.been.called.once;
 		});
-		
-		it('should configure ObjectionJS with Knex', async () => {
-			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
-				modelKnex = Model.knex;
-			
-			dbAdapter.clientName = DbClient.SQLITE3;
-			// Spy on this method, because we need the real function be called.
-			chai.spy.on(dbAdapter, '_knex');
-			chai.spy.on(Model, 'knex');
 
-			// Act
-			await dbAdapter.init();
-
-			// Assert
-			expect(Model.knex).to.be.spy;
-			expect(Model.knex).to.have.been.called.once;
-			
-			// Give back original function, because this is global library.
-			Model['knex'] = modelKnex;
-		});
-		
-		it('should configure connection with file name settings', async () => {
-			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
-				expectedSettings;
-			
-			dbAdapter.clientName = DbClient.SQLITE3;
-			expectedSettings = {
-					client: dbAdapter.clientName, 
-					useNullAsDefault: true,
-					connection: { 
-						filename: CONN_FILE
-					}
-				};
-			
-			// Spy on this method, because we need the real function be called.
-			chai.spy.on(dbAdapter, '_knex');
-
-			// Act
-			await dbAdapter.init();
-
-			// Assert
-			expect(dbAdapter['_knex']).to.be.spy;
-			expect(dbAdapter['_knex']).to.have.been.called.with(expectedSettings);
-		});
-		
-		it('should configure connection with connection string', async () => {
-			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_STRING)),
-				expectedSettings = {
-					client: dbAdapter.clientName,
-					useNullAsDefault: true,
-					connection: CONN_STRING
-				};
-			dbAdapter['_knex'] = chai.spy();
-
-			// Act
-			await dbAdapter.init();
-
-			// Assert
-			expect(dbAdapter['_knex']).to.be.spy;
-			expect(dbAdapter['_knex']).to.have.been.called.with(expectedSettings);
-		});
-		
-		it('should configure connection with host credentials', async () => {
-			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_CREDENTIALS)),
-				expectedSettings = {
-					client: dbAdapter.clientName,
-					useNullAsDefault: true,
-					connection: {
-						host: CONN_HOST,
-						user: CONN_USER,
-						password: CONN_PASS,
-						database: CONN_DB,
-					}
-				};
-			dbAdapter['_knex'] = chai.spy();
-
-			// Act
-			await dbAdapter.init();
-
-			// Assert
-			expect(dbAdapter['_knex']).to.be.spy;
-			expect(dbAdapter['_knex']).to.have.been.called.with(expectedSettings);
-		});
-		
 		it('should throw exception if there is no settings for database connection', async () => {
 			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter('')),
+			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(''), new MockDbConnector()),
 				exception = null,
 				isSuccess = false;
-			dbAdapter['_knex'] = chai.spy();
 
 			// Act
 			try {
@@ -211,17 +113,16 @@ describe('KnexDatabaseAdapter', () => {
 			expect(exception).to.be.not.null;
 			expect(exception).to.equal('No database settings!');
 		});
-	});
+	}); // describe 'init'
 	
 	describe('dispose', () => {
 		it('should release all resources', async () => {
 			// Arrange
 
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE)),
+			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE), new MockDbConnector()),
 				callMe = chai.spy();
 
 			// Act
-			dbAdapter.clientName = DbClient.SQLITE3;
 			await dbAdapter.init();
 			await dbAdapter.dispose();
 
@@ -232,5 +133,5 @@ describe('KnexDatabaseAdapter', () => {
 			});
 			expect(callMe).to.be.called;
 		});
-	});
+	}); // describe 'dispose'
 });

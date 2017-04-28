@@ -11,10 +11,10 @@
 	"engines": {
 		"node": ">= 6.9.4"
 	},
-	"repository": "git@bitbucket.org:gennovahall/back-lib-foundation.git",
+	"repository": "git@bitbucket.org:firstinteractive/back-lib-foundation.git",
 	"dependencies": {
 		"amqplib": "^0.5.1",
-		"back-lib-common-util": "git+ssh://git@bitbucket.org/gennovahall/back-lib-common-util.git#1.0.0",
+		"back-lib-common-util": "git@bitbucket.org:firstinteractive/back-lib-common-util.git#development",
 		"body-parser": "^1.16.1",
 		"express": "^4.14.0",
 		"lodash": "^4.17.4",
@@ -23,7 +23,7 @@
 		"uuid": "^3.0.1"
 	},
 	"peerDependencies": {
-		"back-lib-persistence": "git@bitbucket.org:gennovahall/back-lib-persistence.git#1.0.0"
+		"back-lib-persistence": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-persistence.git#development"
 	},
 	"devDependencies": {
 		"@types/amqplib": "^0.5.1",

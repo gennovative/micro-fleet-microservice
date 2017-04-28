@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const cm = require("back-lib-common-util");
+const per = require("back-lib-persistence");
 const cf = require("../adapters/ConfigurationProvider");
 const db = require("../adapters/DatabaseAdapter");
 const mb = require("../adapters/MessageBrokerAdapter");
@@ -82,7 +83,8 @@ class MicroServiceBase {
     addAdapter(adapter) {
         return this._adapters.push(adapter);
     }
-    // TODO: Should ha addAdapterFromContainer
+    // TODO 1: Should have addAdapterFromContainer
+    // TODO 2: Now I don't remember what TODO 1 means
     addDbAdapter() {
         let dbAdt = this._depContainer.resolve(Types_1.Types.DB_ADAPTER);
         this.addAdapter(dbAdt);
@@ -99,6 +101,7 @@ class MicroServiceBase {
         return dbAdt;
     }
     registerDbAdapter() {
+        this._depContainer.bind(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
         this._depContainer.bind(Types_1.Types.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
     }
     registerConfigProvider() {
@@ -120,11 +123,11 @@ class MicroServiceBase {
         this._depContainer.bind(Types_1.Types.MEDIATE_RPC_HANDLER, rmh.MessageBrokerRpcHandler);
     }
     registerModelMapper() {
-        this._depContainer.bindConstant(Types_1.Types.MODEL_MAPPER, automapper);
+        this._depContainer.bindConstant(cm.Types.MODEL_MAPPER, automapper);
     }
     registerDependencies() {
         let depCon = this._depContainer = new cm.DependencyContainer();
-        depCon.bindConstant(Types_1.Types.DEPENDENCY_CONTAINER, depCon);
+        depCon.bindConstant(cm.Types.DEPENDENCY_CONTAINER, depCon);
         this.registerConfigProvider();
         this.registerDirectRpcCaller();
         this.registerModelMapper();

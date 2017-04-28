@@ -1,9 +1,11 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
 import { CriticalException, injectable } from 'back-lib-common-util';
+import { DbClient } from 'back-lib-persistence';
 
 import { MicroServiceBase, IConfigurationProvider, IDatabaseAdapter,
-	Types, DbClient, SettingKeys as S } from '../../app';
+	Types, SettingKeys as S } from '../../app';
+
 
 chai.use(spies);
 const expect = chai.expect;
