@@ -2,13 +2,14 @@
 
 import * as cm from 'back-lib-common-util';
 import * as per from 'back-lib-persistence';
+import { IDirectRpcCaller, HttpRpcCaller, IDirectRpcHandler, ExpressRpcHandler,
+	IMediateRpcCaller, MessageBrokerRpcCaller, IMediateRpcHandler, MessageBrokerRpcHandler,
+	IRpcResponse, IMessageBrokerConnector, TopicMessageBrokerConnector,
+	Types as ComT } from 'back-lib-service-communication';
+
 import * as cf from '../adapters/ConfigurationProvider';
 import * as db from '../adapters/DatabaseAdapter';
-import * as mb from '../adapters/MessageBrokerAdapter';
-import * as rdc from '../rpc/DirectRpcCaller';
-import * as rdh from '../rpc/DirectRpcHandler';
-import * as rmc from '../rpc/MediateRpcCaller';
-import * as rmh from '../rpc/MediateRpcHandler';
+import { MessageBrokerAdapter } from '../adapters/MessageBrokerAdapter';
 import { Types as T } from '../constants/Types';
 
 
@@ -100,8 +101,8 @@ export abstract class MicroServiceBase {
 		return cfgAdt;
 	}
 
-	protected addMessageBrokerAdapter(): mb.IMessageBrokerAdapter {
-		let dbAdt = this._depContainer.resolve<mb.IMessageBrokerAdapter>(T.BROKER_ADAPTER);
+	protected addMessageBrokerAdapter(): MessageBrokerAdapter {
+		let dbAdt = this._depContainer.resolve<MessageBrokerAdapter>(T.BROKER_ADAPTER);
 		this.addAdapter(dbAdt);
 		return dbAdt;
 	}
@@ -116,23 +117,24 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDirectRpcCaller(): void {
-		this._depContainer.bind<rdc.IDirectRpcCaller>(T.DIRECT_RPC_CALLER, rdc.HttpRpcCaller);
+		this._depContainer.bind<IDirectRpcCaller>(ComT.DIRECT_RPC_CALLER, HttpRpcCaller);
 	}
 
 	protected registerDirectRpcHandler(): void {
-		this._depContainer.bind<rdh.IDirectRpcHandler>(T.DIRECT_RPC_HANDLER, rdh.ExpressRpcHandler);
+		this._depContainer.bind<IDirectRpcHandler>(ComT.DIRECT_RPC_HANDLER, ExpressRpcHandler);
 	}
 
 	protected registerMessageBrokerAdapter(): void {
-		this._depContainer.bind<mb.IMessageBrokerAdapter>(T.BROKER_ADAPTER, mb.TopicMessageBrokerAdapter).asSingleton();
+		this._depContainer.bind<IMessageBrokerConnector>(ComT.MSG_BROKER_CONNECTOR, TopicMessageBrokerConnector).asSingleton();
+		this._depContainer.bind<MessageBrokerAdapter>(T.BROKER_ADAPTER, MessageBrokerAdapter).asSingleton();
 	}
 
 	protected registerMediateRpcCaller(): void {
-		this._depContainer.bind<rmc.IMediateRpcCaller>(T.MEDIATE_RPC_CALLER, rmc.MessageBrokerRpcCaller);
+		this._depContainer.bind<IMediateRpcCaller>(ComT.MEDIATE_RPC_CALLER, MessageBrokerRpcCaller);
 	}
 
 	protected registerMediateRpcHandler(): void {
-		this._depContainer.bind<rmh.IMediateRpcHandler>(T.MEDIATE_RPC_HANDLER, rmh.MessageBrokerRpcHandler);
+		this._depContainer.bind<IMediateRpcHandler>(ComT.MEDIATE_RPC_HANDLER, MessageBrokerRpcHandler);
 	}
 
 	protected registerModelMapper(): void {

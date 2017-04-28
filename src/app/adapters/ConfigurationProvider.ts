@@ -1,8 +1,7 @@
 import * as request from 'request-promise';
 import { inject, injectable } from 'back-lib-common-util';
+import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
 
-import * as rdc from '../rpc/DirectRpcCaller';
-import * as rcm from '../rpc/RpcCommon';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
@@ -24,7 +23,7 @@ export class ConfigurationProvider implements IConfigurationProvider {
 	private _enableRemote: boolean;
 
 	constructor(
-		@inject(T.DIRECT_RPC_CALLER) private _rpcCaller: rdc.IDirectRpcCaller
+		@inject(ComT.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
 	) {
 		this._remoteSettings = {};
 		this._requestMaker = request;
@@ -100,7 +99,7 @@ export class ConfigurationProvider implements IConfigurationProvider {
 
 		try {
 			this._rpcCaller.baseAddress = address;
-			let res: rcm.IRpcResponse = await this._rpcCaller.call('ConfigurationSvc', 'instance', {
+			let res: IRpcResponse = await this._rpcCaller.call('ConfigurationSvc', 'instance', {
 				name: serviceName
 			});
 			if (res.isSuccess) {

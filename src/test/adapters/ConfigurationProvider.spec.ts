@@ -1,6 +1,8 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
 import * as _ from 'lodash';
+import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
+
 import * as app from '../../app';
 
 const S = app.SettingKeys;
@@ -8,11 +10,11 @@ const S = app.SettingKeys;
 chai.use(spies);
 const expect = chai.expect;
 
-class MockDirectRpcCaller implements app.IDirectRpcCaller {
+class MockDirectRpcCaller implements IDirectRpcCaller {
 	public name: string;
 	public baseAddress: string;
 	
-	public call(moduleName: string, action: string, params: any): Promise<app.IRpcResponse> {
+	public call(moduleName: string, action: string, params: any): Promise<IRpcResponse> {
 		return null;
 	}
 	

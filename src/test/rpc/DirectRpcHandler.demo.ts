@@ -1,7 +1,8 @@
 import * as express from 'express';
-import { inject, injectable, CriticalException} from 'back-lib-common-util';
+import { inject, injectable, CriticalException } from 'back-lib-common-util';
+import { IDirectRpcHandler, IRpcRequest, RpcActionFactory, Types as ComT} from 'back-lib-service-communication';
 
-import { MicroServiceBase, IDirectRpcHandler, IRpcRequest, RpcActionFactory, Types as T} from '../../app';
+import { MicroServiceBase } from '../../app';
 
 
 const HTTP_ADAPTER = Symbol('IHttpAdapter'),
@@ -48,7 +49,7 @@ class ExpressAdapter implements IHttpAdapter {
 	private _express: express.Express;
 
 	constructor(
-		@inject(T.DIRECT_RPC_HANDLER) private _rpcHandler: IDirectRpcHandler
+		@inject(ComT.DIRECT_RPC_HANDLER) private _rpcHandler: IDirectRpcHandler
 	) {
 		this._express = express();
 		this._rpcHandler.name = 'ProductService'; // Some class implementation may require `name`, some may not.

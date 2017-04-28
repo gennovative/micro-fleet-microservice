@@ -11,282 +11,36 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const events_1 = require("events");
-const amqp = require("amqplib");
-const _ = require("lodash");
 const back_lib_common_util_1 = require("back-lib-common-util");
+const back_lib_service_communication_1 = require("back-lib-service-communication");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
-let TopicMessageBrokerAdapter = class TopicMessageBrokerAdapter {
-    constructor(_configProvider) {
+let MessageBrokerAdapter = class MessageBrokerAdapter {
+    constructor(_configProvider, _msgBrokerCnn) {
         this._configProvider = _configProvider;
-        this._subscriptions = new Map();
-        this._emitter = new events_1.EventEmitter();
+        this._msgBrokerCnn = _msgBrokerCnn;
     }
     init() {
-        let cfgAdt = this._configProvider;
-        this._exchange = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_EXCHANGE);
-        this._queue = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_QUEUE);
-        let host = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_HOST), username = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_USERNAME), password = cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_PASSWORD);
-        return this.connect(host, username, password);
+        let cfgAdt = this._configProvider, opts = {
+            hostAddress: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_HOST),
+            username: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_USERNAME),
+            password: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_PASSWORD),
+            exchange: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_EXCHANGE),
+            queue: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_QUEUE)
+        };
+        return this._msgBrokerCnn.connect(opts);
     }
     dispose() {
-        return this.disconnect().then(() => {
-            this._connectionPrm = null;
-            this._publishChanPrm = null;
-            this._consumeChanPrm = null;
-        });
-    }
-    subscribe(matchingPattern, onMessage, noAck) {
-        return __awaiter(this, void 0, void 0, function* () {
-            back_lib_common_util_1.Guard.assertNotEmpty('matchingPattern', matchingPattern);
-            back_lib_common_util_1.Guard.assertIsFunction('onMessage', onMessage);
-            try {
-                let channelPromise = this._consumeChanPrm;
-                if (!channelPromise) {
-                    // Create a new consuming channel if there is not already, and from now on we listen to this only channel.
-                    channelPromise = this._consumeChanPrm = this.createChannel();
-                }
-                let ch = yield channelPromise;
-                // The consuming channel should bind to only one queue, but that queue can be routed with multiple keys.
-                let queueName = yield this.bindQueue(channelPromise, matchingPattern);
-                let conResult = yield ch.consume(queueName, (msg) => {
-                    let ack = () => ch.ack(msg), nack = () => ch.nack(msg);
-                    onMessage(this.parseMessage(msg), ack, nack);
-                }, { noAck: (noAck === undefined ? true : noAck) });
-                this.moreSub(matchingPattern, conResult.consumerTag);
-                return conResult.consumerTag;
-            }
-            catch (err) {
-                return this.handleError(err, 'Subscription error');
-            }
-        });
-    }
-    publish(topic, payload, options) {
-        return __awaiter(this, void 0, void 0, function* () {
-            back_lib_common_util_1.Guard.assertNotEmpty('topic', topic);
-            back_lib_common_util_1.Guard.assertNotEmpty('message', payload);
-            try {
-                if (!this._publishChanPrm) {
-                    // Create a new publishing channel if there is not already, and from now on we publish to this only channel.
-                    this._publishChanPrm = this.createChannel();
-                }
-                let ch = yield this._publishChanPrm, opt;
-                let [msg, opts] = this.buildMessage(payload, options);
-                // We publish to exchange, then the exchange will route to appropriate consuming queue.
-                ch.publish(this._exchange, topic, msg, opts);
-            }
-            catch (err) {
-                return this.handleError(err, 'Publishing error');
-            }
-        });
-    }
-    unsubscribe(consumerTag) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this._consumeChanPrm) {
-                    return;
-                }
-                let ch = yield this._consumeChanPrm;
-                // onMessage callback will never be called again.
-                yield ch.cancel(consumerTag);
-                let unusedPattern = this.lessSub(consumerTag);
-                if (unusedPattern) {
-                    this.unbindQueue(this._consumeChanPrm, unusedPattern);
-                }
-            }
-            catch (err) {
-                return this.handleError(err, 'Unsubscription error');
-            }
-        });
-    }
-    onError(handler) {
-        this._emitter.on('error', handler);
-    }
-    connect(hostAddress, username, password) {
-        let credentials = '';
-        // Output:
-        // - "usr@pass"
-        // - "@pass"
-        // - "usr@"
-        // - ""
-        if (!_.isEmpty(username) || !_.isEmpty(password)) {
-            credentials = `${username || ''}:${password || ''}@`;
-        }
-        // URI format: amqp://usr:pass@10.1.2.3/vhost
-        return this._connectionPrm = amqp.connect(`amqp://${credentials}${hostAddress}`)
-            .then((conn) => {
-            conn.on('error', (err) => {
-                this._emitter.emit('error', err);
-            });
-            return conn;
-        })
-            .catch(err => {
-            return this.handleError(err, 'Connection creation error');
-        });
-    }
-    disconnect() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this._connectionPrm || !this._consumeChanPrm) {
-                    return;
-                }
-                let ch, promises = [];
-                if (this._consumeChanPrm) {
-                    ch = yield this._consumeChanPrm;
-                    // Close consuming channel
-                    promises.push(ch.close());
-                }
-                if (this._publishChanPrm) {
-                    ch = yield this._publishChanPrm;
-                    // Close publishing channel
-                    promises.push(ch.close());
-                }
-                // Make sure all channels are closed before we close connection.
-                // Otherwise we will have dangling channels until application shuts down.
-                yield Promise.all(promises);
-                if (this._connectionPrm) {
-                    let conn = yield this._connectionPrm;
-                    // Close connection, causing all temp queues to be deleted.
-                    return conn.close();
-                }
-            }
-            catch (err) {
-                return this.handleError(err, 'Connection closing error');
-            }
-        });
-    }
-    createChannel() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const EXCHANGE_TYPE = 'topic';
-            try {
-                let conn = yield this._connectionPrm, ch = yield conn.createChannel(), 
-                // Tell message broker to create an exchange with this name if there's not any already.
-                // Setting exchange as "durable" means the exchange with same name will be re-created after the message broker restarts,
-                // but all queues and waiting messages will be lost.
-                exResult = yield ch.assertExchange(this._exchange, EXCHANGE_TYPE, { durable: true });
-                ch['queue'] = '';
-                ch.on('error', (err) => {
-                    this._emitter.emit('error', err);
-                });
-                return ch;
-            }
-            catch (err) {
-                return this.handleError(err, 'Channel creation error');
-            }
-        });
-    }
-    /**
-     * If `queueName` is null, creates a queue and binds it to `matchingPattern`.
-     * If `queueName` is not null, binds `matchingPattern` to the queue with that name.
-     * @return {string} null if no queue is created, otherwise returns the new queue name.
-     */
-    bindQueue(channelPromise, matchingPattern) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                let ch = yield channelPromise, isTempQueue = (!this._queue), 
-                // If configuration doesn't provide queue name,
-                // we provide empty string as queue name to tell message broker to choose a unique name for us.
-                // Setting queue as "exclusive" to delete the temp queue when connection closes.
-                quResult = yield ch.assertQueue(this._queue || '', { exclusive: isTempQueue });
-                yield ch.bindQueue(quResult.queue, this._exchange, matchingPattern);
-                // Store queue name for later use.
-                // In our system, each channel is associated with only one queue.
-                return ch['queue'] = quResult.queue;
-            }
-            catch (err) {
-                return this.handleError(err, 'Queue binding error');
-            }
-        });
-    }
-    unbindQueue(channelPromise, matchingPattern) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                let ch = yield channelPromise, queueName = ch['queue'];
-                yield ch.unbindQueue(queueName, this._exchange, matchingPattern);
-            }
-            catch (err) {
-                return this.handleError(err, 'Queue unbinding error');
-            }
-        });
-    }
-    handleError(err, message) {
-        if (err instanceof back_lib_common_util_1.CriticalException) {
-            // If this is already a wrapped exception.
-            return Promise.reject(err);
-        }
-        return Promise.reject(new back_lib_common_util_1.CriticalException(`${message}: ${err}`));
-    }
-    moreSub(matchingPattern, consumerTag) {
-        let consumers = this._subscriptions.get(matchingPattern);
-        if (!consumers) {
-            this._subscriptions.set(matchingPattern, new Set(consumerTag));
-            return;
-        }
-        consumers.add(consumerTag);
-    }
-    /**
-     * @return {string} the pattern name which should be unbound, othewise return null.
-     */
-    lessSub(consumerTag) {
-        let subscriptions = this._subscriptions, matchingPattern = null;
-        for (let sub of subscriptions) {
-            if (!sub[1].has(consumerTag)) {
-                continue;
-            }
-            // Remove this tag from consumer list.
-            sub[1].delete(consumerTag);
-            // If consumer list becomes empty.
-            if (!sub[1].size) {
-                // Mark this pattern as unused and should be unbound.
-                matchingPattern = sub[0];
-                subscriptions.delete(matchingPattern);
-            }
-            break;
-        }
-        return matchingPattern;
-    }
-    buildMessage(payload, options) {
-        let msg;
-        options = options || {};
-        if (_.isString(payload)) {
-            msg = payload;
-            options.contentType = 'text/plain';
-        }
-        else {
-            msg = JSON.stringify(payload);
-            options.contentType = 'application/json';
-        }
-        return [Buffer.from(msg), options];
-    }
-    parseMessage(raw) {
-        let msg = {
-            raw,
-            properties: raw.properties || {}
-        };
-        if (msg.properties.contentType == 'text/plain') {
-            msg.data = raw.content.toString(msg.properties.contentEncoding);
-        }
-        else {
-            msg.data = JSON.parse(raw.content);
-        }
-        return msg;
+        return this._msgBrokerCnn.disconnect();
     }
 };
-TopicMessageBrokerAdapter = __decorate([
+MessageBrokerAdapter = __decorate([
     back_lib_common_util_1.injectable(),
     __param(0, back_lib_common_util_1.inject(Types_1.Types.CONFIG_PROVIDER)),
-    __metadata("design:paramtypes", [Object])
-], TopicMessageBrokerAdapter);
-exports.TopicMessageBrokerAdapter = TopicMessageBrokerAdapter;
+    __param(1, back_lib_common_util_1.inject(back_lib_service_communication_1.Types.MSG_BROKER_CONNECTOR)),
+    __metadata("design:paramtypes", [Object, Object])
+], MessageBrokerAdapter);
+exports.MessageBrokerAdapter = MessageBrokerAdapter;
 
 //# sourceMappingURL=MessageBrokerAdapter.js.map

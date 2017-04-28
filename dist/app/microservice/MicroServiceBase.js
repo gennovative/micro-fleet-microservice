@@ -11,13 +11,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const cm = require("back-lib-common-util");
 const per = require("back-lib-persistence");
+const back_lib_service_communication_1 = require("back-lib-service-communication");
 const cf = require("../adapters/ConfigurationProvider");
 const db = require("../adapters/DatabaseAdapter");
-const mb = require("../adapters/MessageBrokerAdapter");
-const rdc = require("../rpc/DirectRpcCaller");
-const rdh = require("../rpc/DirectRpcHandler");
-const rmc = require("../rpc/MediateRpcCaller");
-const rmh = require("../rpc/MediateRpcHandler");
+const MessageBrokerAdapter_1 = require("../adapters/MessageBrokerAdapter");
 const Types_1 = require("../constants/Types");
 class MicroServiceBase {
     constructor() {
@@ -108,19 +105,20 @@ class MicroServiceBase {
         this._depContainer.bind(Types_1.Types.CONFIG_PROVIDER, cf.ConfigurationProvider).asSingleton();
     }
     registerDirectRpcCaller() {
-        this._depContainer.bind(Types_1.Types.DIRECT_RPC_CALLER, rdc.HttpRpcCaller);
+        this._depContainer.bind(back_lib_service_communication_1.Types.DIRECT_RPC_CALLER, back_lib_service_communication_1.HttpRpcCaller);
     }
     registerDirectRpcHandler() {
-        this._depContainer.bind(Types_1.Types.DIRECT_RPC_HANDLER, rdh.ExpressRpcHandler);
+        this._depContainer.bind(back_lib_service_communication_1.Types.DIRECT_RPC_HANDLER, back_lib_service_communication_1.ExpressRpcHandler);
     }
     registerMessageBrokerAdapter() {
-        this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, mb.TopicMessageBrokerAdapter).asSingleton();
+        this._depContainer.bind(back_lib_service_communication_1.Types.MSG_BROKER_CONNECTOR, back_lib_service_communication_1.TopicMessageBrokerConnector).asSingleton();
+        this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, MessageBrokerAdapter_1.MessageBrokerAdapter).asSingleton();
     }
     registerMediateRpcCaller() {
-        this._depContainer.bind(Types_1.Types.MEDIATE_RPC_CALLER, rmc.MessageBrokerRpcCaller);
+        this._depContainer.bind(back_lib_service_communication_1.Types.MEDIATE_RPC_CALLER, back_lib_service_communication_1.MessageBrokerRpcCaller);
     }
     registerMediateRpcHandler() {
-        this._depContainer.bind(Types_1.Types.MEDIATE_RPC_HANDLER, rmh.MessageBrokerRpcHandler);
+        this._depContainer.bind(back_lib_service_communication_1.Types.MEDIATE_RPC_HANDLER, back_lib_service_communication_1.MessageBrokerRpcHandler);
     }
     registerModelMapper() {
         this._depContainer.bindConstant(cm.Types.MODEL_MAPPER, automapper);

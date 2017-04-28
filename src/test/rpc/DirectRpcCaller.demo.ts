@@ -1,6 +1,7 @@
 import { inject, injectable, MinorException } from 'back-lib-common-util';
+import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
 
-import { MicroServiceBase, IDirectRpcCaller, IRpcResponse, Types as T} from '../../app';
+import { MicroServiceBase } from '../../app';
 
 
 const PRODUCT_PROVIDER = Symbol('IProductProvider');
@@ -17,7 +18,7 @@ interface IProductProvider {
 class MockProductProvider implements IProductProvider {
 	
 	constructor(
-		@inject(T.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
+		@inject(ComT.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
 	) {
 		this._rpcCaller.name = 'MockProvider'; // Not very important, for logging purpose.
 		this._rpcCaller.baseAddress = 'product.com'; // NOTE: No "http://" at the head. No "/" at the end.

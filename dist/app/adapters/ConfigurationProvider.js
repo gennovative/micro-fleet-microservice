@@ -22,9 +22,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const request = require("request-promise");
 const back_lib_common_util_1 = require("back-lib-common-util");
-const rdc = require("../rpc/DirectRpcCaller");
+const back_lib_service_communication_1 = require("back-lib-service-communication");
 const SettingKeys_1 = require("../constants/SettingKeys");
-const Types_1 = require("../constants/Types");
 /**
  * Provides settings from package
  */
@@ -116,7 +115,7 @@ let ConfigurationProvider = class ConfigurationProvider {
 };
 ConfigurationProvider = __decorate([
     back_lib_common_util_1.injectable(),
-    __param(0, back_lib_common_util_1.inject(Types_1.Types.DIRECT_RPC_CALLER)),
+    __param(0, back_lib_common_util_1.inject(back_lib_service_communication_1.Types.DIRECT_RPC_CALLER)),
     __metadata("design:paramtypes", [Object])
 ], ConfigurationProvider);
 exports.ConfigurationProvider = ConfigurationProvider;
