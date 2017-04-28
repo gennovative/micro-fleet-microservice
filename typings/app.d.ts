@@ -1,3 +1,5 @@
+/// <reference path="./globals.d.ts" />
+
 declare module 'back-lib-foundation/constants/SettingKeys' {
 	export class SettingKeys {
 	    static readonly CONFIG_SERVICE_ADDRESSES: string;
