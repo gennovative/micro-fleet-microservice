@@ -14,8 +14,8 @@
   "repository": "git@bitbucket.org:firstinteractive/back-lib-foundation.git",
   "dependencies": {
     "amqplib": "^0.5.1",
-    "back-lib-common-util": "git@bitbucket.org:firstinteractive/back-lib-common-util.git#development",
-    "back-lib-service-communication": "git@bitbucket.org:firstinteractive/back-lib-service-communication.git#development",
+    "back-lib-common-util": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-util.git#development",
+    "back-lib-service-communication": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-service-communication.git#development",
     "body-parser": "^1.16.1",
     "express": "^4.14.0",
     "lodash": "^4.17.4",
