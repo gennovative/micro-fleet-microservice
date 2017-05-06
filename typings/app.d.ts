@@ -1,4 +1,4 @@
-/// <reference path="./globals.d.ts" />
+/// <reference path="./global.d.ts" />
 
 declare module 'back-lib-foundation/constants/SettingKeys' {
 	export class SettingKeys {
