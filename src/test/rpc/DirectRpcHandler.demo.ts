@@ -5,7 +5,7 @@ import { IDirectRpcHandler, IRpcRequest, RpcActionFactory, Types as ComT} from '
 import { MicroServiceBase } from '../../app';
 
 
-const HTTP_ADAPTER = Symbol('IHttpAdapter'),
+const HTTP_ADDON = Symbol('IHttpAddOn'),
 	PRODUCT_CONTROLLER = Symbol('ProductController');
 
 // NOTE: Should put in ~/app/controllers/ProductController.ts
@@ -41,11 +41,11 @@ class ProductController {
 	}
 }
 
-interface IHttpAdapter extends IAdapter {
+interface IHttpAddOn extends IServiceAddOn {
 }
 
 @injectable()
-class ExpressAdapter implements IHttpAdapter {
+class ExpressAddOn implements IHttpAddOn {
 	private _express: express.Express;
 
 	constructor(
@@ -53,10 +53,7 @@ class ExpressAdapter implements IHttpAdapter {
 	) {
 		this._express = express();
 		this._rpcHandler.name = 'ProductService'; // Some class implementation may require `name`, some may not.
-		this._rpcHandler.init({ 
-			expressApp: this._express,
-			router: express.Router()
-		});
+		this._rpcHandler.init();
 	}
 
 	public async init(): Promise<void> {
@@ -101,12 +98,16 @@ class ExpressAdapter implements IHttpAdapter {
 }
 
 class MockMicroService extends MicroServiceBase {
-	protected /* override */ registerDependencies(): void {
+	
+	/**
+	 * @override
+	 */
+	protected registerDependencies(): void {
 		super.registerDependencies();
 
 		this.registerDirectRpcHandler();
 
-		this._depContainer.bind<IHttpAdapter>(HTTP_ADAPTER, ExpressAdapter).asSingleton();
+		this._depContainer.bind<IHttpAddOn>(HTTP_ADDON, ExpressAddOn).asSingleton();
 		
 		// NOTE: It's OK to map a class to itself without interface.
 		this._depContainer
@@ -115,13 +116,17 @@ class MockMicroService extends MicroServiceBase {
 			;
 		
 		
-		// No need to call this, because MicroServiceBase already calls it for ConfigAdapter to use.
-		// this.registerConfigAdapter();
+		// No need to call these, because MicroServiceBase already calls them.
+		// this.registerConfigProvider();
 		// this.registerDirectRpcCaller();
+		// this.registerModelMapper();
 	}
 
-	protected /* override */ onStarting(): void {
-		let httpAdt = this._depContainer.resolve<IHttpAdapter>(HTTP_ADAPTER);
-		this.addAdapter(httpAdt);
+	/**
+	 * @override
+	 */
+	protected onStarting(): void {
+		let httpAdt = this._depContainer.resolve<IHttpAddOn>(HTTP_ADDON);
+		this.attachAddOn(httpAdt);
 	}
 }

@@ -1,4 +1,3 @@
-/// <reference types="back-lib-persistence" />
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -11,14 +10,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const cm = require("back-lib-common-util");
 const per = require("back-lib-persistence");
-const back_lib_service_communication_1 = require("back-lib-service-communication");
-const cf = require("../adapters/ConfigurationProvider");
-const db = require("../adapters/DatabaseAdapter");
-const MessageBrokerAdapter_1 = require("../adapters/MessageBrokerAdapter");
+const com = require("back-lib-service-communication");
+const cfg = require("../addons/ConfigurationProvider");
+const db = require("../addons/DatabaseAddOn");
+const MessageBrokerAddOn_1 = require("../addons/MessageBrokerAddOn");
 const Types_1 = require("../constants/Types");
 class MicroServiceBase {
     constructor() {
-        this._adapters = [];
+        this._addons = [];
         this._isStarted = false;
     }
     get isStarted() {
@@ -29,9 +28,9 @@ class MicroServiceBase {
      */
     start() {
         this.registerDependencies();
-        this.addConfigAdapter();
+        this.attachConfigProvider();
         try {
-            // A chance for derived class to add more adapters or do some customizations.
+            // A chance for derived class to add more add-ons or do some customizations.
             this.onStarting();
         }
         catch (ex) {
@@ -40,7 +39,7 @@ class MicroServiceBase {
             this.stop();
             return;
         }
-        this.initAdapters()
+        this.initAddOns()
             .then(() => {
             this._isStarted = true;
             this.handleGracefulShutdown();
@@ -48,7 +47,7 @@ class MicroServiceBase {
         })
             .catch(err => {
             this.onError(err);
-            console.error('An error occured on initializing adapters, the application has to stop now.');
+            console.error('An error occured on initializing add-ons, the application has to stop now.');
             this.stop();
         });
     }
@@ -60,7 +59,7 @@ class MicroServiceBase {
             try {
                 this.onStopping();
                 this._depContainer.dispose();
-                yield this.disposeAdapters();
+                yield this.disposeAddOns();
                 this._isStarted = false;
                 this.onStopped();
             }
@@ -75,50 +74,54 @@ class MicroServiceBase {
         }))();
     }
     /**
-     * @return Total number of adapters that have been added so far.
+     * @return Total number of add-ons that have been added so far.
      */
-    addAdapter(adapter) {
-        return this._adapters.push(adapter);
+    attachAddOn(addon) {
+        return this._addons.push(addon);
     }
-    // TODO 1: Should have addAdapterFromContainer
-    // TODO 2: Now I don't remember what TODO 1 means
-    addDbAdapter() {
-        let dbAdt = this._depContainer.resolve(Types_1.Types.DB_ADAPTER);
-        this.addAdapter(dbAdt);
+    attachDbAddOn() {
+        let dbAdt = this._depContainer.resolve(Types_1.Types.DB_ADDON);
+        this.attachAddOn(dbAdt);
         return dbAdt;
     }
-    addConfigAdapter() {
-        let cfgAdt = this._configAdapter = this._depContainer.resolve(Types_1.Types.CONFIG_PROVIDER);
-        this.addAdapter(cfgAdt);
+    attachConfigProvider() {
+        let cfgAdt = this._configProvider = this._depContainer.resolve(Types_1.Types.CONFIG_PROVIDER);
+        this.attachAddOn(cfgAdt);
         return cfgAdt;
     }
-    addMessageBrokerAdapter() {
-        let dbAdt = this._depContainer.resolve(Types_1.Types.BROKER_ADAPTER);
-        this.addAdapter(dbAdt);
+    attachMessageBrokerAddOn() {
+        let dbAdt = this._depContainer.resolve(Types_1.Types.BROKER_ADDON);
+        this.attachAddOn(dbAdt);
         return dbAdt;
     }
-    registerDbAdapter() {
+    registerDbAddOn() {
         this._depContainer.bind(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
-        this._depContainer.bind(Types_1.Types.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
+        this._depContainer.bind(Types_1.Types.DB_ADDON, db.KnexDatabaseAddOn).asSingleton();
     }
     registerConfigProvider() {
-        this._depContainer.bind(Types_1.Types.CONFIG_PROVIDER, cf.ConfigurationProvider).asSingleton();
+        this._depContainer.bind(Types_1.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
     }
     registerDirectRpcCaller() {
-        this._depContainer.bind(back_lib_service_communication_1.Types.DIRECT_RPC_CALLER, back_lib_service_communication_1.HttpRpcCaller);
+        this._depContainer.bind(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller);
     }
     registerDirectRpcHandler() {
-        this._depContainer.bind(back_lib_service_communication_1.Types.DIRECT_RPC_HANDLER, back_lib_service_communication_1.ExpressRpcHandler);
+        this._depContainer.bind(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler);
     }
-    registerMessageBrokerAdapter() {
-        this._depContainer.bind(back_lib_service_communication_1.Types.MSG_BROKER_CONNECTOR, back_lib_service_communication_1.TopicMessageBrokerConnector).asSingleton();
-        this._depContainer.bind(Types_1.Types.BROKER_ADAPTER, MessageBrokerAdapter_1.MessageBrokerAdapter).asSingleton();
+    registerMessageBrokerAddOn() {
+        this._depContainer.bind(com.Types.MSG_BROKER_CONNECTOR, com.TopicMessageBrokerConnector).asSingleton();
+        this._depContainer.bind(Types_1.Types.BROKER_ADDON, MessageBrokerAddOn_1.MessageBrokerAddOn).asSingleton();
     }
     registerMediateRpcCaller() {
-        this._depContainer.bind(back_lib_service_communication_1.Types.MEDIATE_RPC_CALLER, back_lib_service_communication_1.MessageBrokerRpcCaller);
+        if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
+            this.registerMessageBrokerAddOn();
+        }
+        this._depContainer.bind(com.Types.MEDIATE_RPC_CALLER, com.MessageBrokerRpcCaller);
     }
     registerMediateRpcHandler() {
-        this._depContainer.bind(back_lib_service_communication_1.Types.MEDIATE_RPC_HANDLER, back_lib_service_communication_1.MessageBrokerRpcHandler);
+        if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
+            this.registerMessageBrokerAddOn();
+        }
+        this._depContainer.bind(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler);
     }
     registerModelMapper() {
         this._depContainer.bindConstant(cm.Types.MODEL_MAPPER, automapper);
@@ -160,16 +163,16 @@ class MicroServiceBase {
      */
     onStopped() {
     }
-    initAdapters() {
+    initAddOns() {
         return __awaiter(this, void 0, void 0, function* () {
-            let cfgAdt = this._configAdapter, initPromises;
-            // Config adapter must be initialized first, because all other adapters
+            let cfgPrvd = this._configProvider, initPromises;
+            // Configuration provider must be initialized first, because all other add-ons
             // depend on it.
-            yield cfgAdt.init();
+            yield cfgPrvd.init();
             // If remote config is disabled or
             // if remote config is enanbed and fetching successfully.
-            if (!cfgAdt.enableRemote || (yield cfgAdt.fetch())) {
-                initPromises = this._adapters.map(adt => adt.init());
+            if (!cfgPrvd.enableRemote || (yield cfgPrvd.fetch())) {
+                initPromises = this._addons.map(adt => adt.init());
             }
             else {
                 throw new cm.CriticalException('Fail to fetch configuration!');
@@ -177,9 +180,9 @@ class MicroServiceBase {
             yield Promise.all(initPromises);
         });
     }
-    disposeAdapters() {
+    disposeAddOns() {
         return __awaiter(this, void 0, void 0, function* () {
-            let disposePromises = this._adapters.map(adt => {
+            let disposePromises = this._addons.map(adt => {
                 // let adtName = adt.constructor.toString().substring(0, 20);
                 // console.log('DISPOSING: ' + adtName);
                 return adt.dispose();

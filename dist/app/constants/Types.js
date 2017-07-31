@@ -3,11 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 class Types {
 }
 Types.MODEL_MAPPER = Symbol('AutoMapper');
-Types.BROKER_ADAPTER = Symbol('IMessageBrokerAdapter');
+Types.BROKER_ADDON = Symbol('IMessageBrokerAddOn');
 Types.CONFIG_PROVIDER = Symbol('IConfigurationProvider');
-Types.DB_ADAPTER = Symbol('IDatabaseAdapter');
+Types.DB_ADDON = Symbol('IDatabaseAddOn');
 Types.DEPENDENCY_CONTAINER = Symbol('IDependencyContainer');
 exports.Types = Types;
-;
 
 //# sourceMappingURL=Types.js.map

@@ -10,56 +10,84 @@ const S = app.SettingKeys;
 chai.use(spies);
 const expect = chai.expect;
 
+// Mock fetched config
+
+const CONFIG_SVC_ADDRESSES = ['127.0.0.1', '127.0.0.2', '127.0.0.3'],
+	SUCCESS_CONFIG = {
+		[S.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq'
+	};
+
 class MockDirectRpcCaller implements IDirectRpcCaller {
 	public name: string;
 	public baseAddress: string;
 	
 	public call(moduleName: string, action: string, params: any): Promise<IRpcResponse> {
-		return null;
+		return new Promise((resolve, reject) => {
+			let res: IRpcResponse = {
+				isSuccess: true,
+				data: null,
+				from: 'MockConfigSvc',
+				to: 'ThisSvc'
+			};
+			if (this.baseAddress == CONFIG_SVC_ADDRESSES[0]) {
+				// Force to throw error on first address attempt.
+				reject('Connection rejected!');
+			} else if (this.baseAddress == CONFIG_SVC_ADDRESSES[1]) {
+				// Force to fail on second attempt.
+				res.isSuccess = false;
+				resolve(res);
+			} else {
+				res.data = SUCCESS_CONFIG;
+				resolve(res);
+			}
+		});
 	}
 	
 	public init(param: any): void {
 	}
+
+	public onError(handler: (err) => void): void {
+	}
 }
 
-describe.skip('ConfigurationProvider', () => {
+describe('ConfigurationProvider', () => {
 	
 	describe('init', () => {
 		it('should load file config', async () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller());
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
 
 			// Act
-			await configAdapter.init();
+			await configPrvd.init();
 
 			// Assert			
-			expect(configAdapter['_fileSettings']).to.be.not.null;
+			expect(configPrvd['_fileSettings']).to.be.not.null;
 		});
 		
 		it('should not load file settings if cannot load file', async () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller());
-			configAdapter['_configFilePath'] = 'dummy.json';
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
+			configPrvd['_configFilePath'] = 'dummy.json';
 
 			// Act
-			await configAdapter.init();
+			await configPrvd.init();
 
 			// Assert
-			expect(configAdapter['_fileSettings']).to.be.empty;
+			expect(configPrvd['_fileSettings']).to.be.empty;
 		});
 	});
 
 	describe('get enableRemote', () => {
 		it('should return value of `enableRemote`', () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller());
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
 
 			// Act and assert
-			configAdapter['_enableRemote'] = false;
-			expect(configAdapter.enableRemote).to.be.false;
+			configPrvd['_enableRemote'] = false;
+			expect(configPrvd.enableRemote).to.be.false;
 			
-			configAdapter['_enableRemote'] = true;
-			expect(configAdapter.enableRemote).to.be.true;
+			configPrvd['_enableRemote'] = true;
+			expect(configPrvd.enableRemote).to.be.true;
 
 		});
 	});
@@ -67,14 +95,14 @@ describe.skip('ConfigurationProvider', () => {
 	describe('set enableRemote', () => {
 		it('should set value for `enableRemote`', () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller());
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
 
 			// Act and assert
-			configAdapter.enableRemote = false;
-			expect(configAdapter['_enableRemote']).to.be.false;
+			configPrvd.enableRemote = false;
+			expect(configPrvd['_enableRemote']).to.be.false;
 			
-			configAdapter.enableRemote = true;
-			expect(configAdapter['_enableRemote']).to.be.true;
+			configPrvd.enableRemote = true;
+			expect(configPrvd['_enableRemote']).to.be.true;
 
 		});
 	});
@@ -82,13 +110,13 @@ describe.skip('ConfigurationProvider', () => {
 	describe('get', () => {
 		it('should read appconfig.json and return value', async () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				appConfigs = require('../../../appconfig.json'),
 				value;
 
 			// Act
-			await configAdapter.init();
-			value = configAdapter.get(S.CONFIG_SERVICE_ADDRESSES);
+			await configPrvd.init();
+			value = configPrvd.get(S.CONFIG_SERVICE_ADDRESSES);
 
 			// Assert
 			expect(value).to.equals(appConfigs[S.CONFIG_SERVICE_ADDRESSES]);
@@ -97,12 +125,12 @@ describe.skip('ConfigurationProvider', () => {
 		it('should read settings from environment variable', async () => {
 			// Arrange
 			process.env[S.CONFIG_SERVICE_ADDRESSES] = '127.0.0.1';
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller());
-			configAdapter['_configFilePath'] = 'dummy.json';
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
+			configPrvd['_configFilePath'] = 'dummy.json';
 
 			// Act
-			await configAdapter.init();
-			let value = configAdapter.get(S.CONFIG_SERVICE_ADDRESSES);
+			await configPrvd.init();
+			let value = configPrvd.get(S.CONFIG_SERVICE_ADDRESSES);
 			
 			// Assert
 			expect(value).to.equals(process.env[S.CONFIG_SERVICE_ADDRESSES]);
@@ -113,14 +141,14 @@ describe.skip('ConfigurationProvider', () => {
 			let settings = { // Mock fetched config
 					[S.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq'
 				},
-				configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+				configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				value;
 			
-			configAdapter['_remoteSettings'] = settings;
+			configPrvd['_remoteSettings'] = settings;
 			
 			// Act
-			await configAdapter.init();
-			value = configAdapter.get(S.MSG_BROKER_HOST);
+			await configPrvd.init();
+			value = configPrvd.get(S.MSG_BROKER_HOST);
 
 			// Assert
 			expect(value).to.equals(settings[S.MSG_BROKER_HOST]);
@@ -128,12 +156,13 @@ describe.skip('ConfigurationProvider', () => {
 		
 		it('should return `null` if cannot find setting for specified key', async () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+			const NO_EXIST_KEY = 'imaginary-key';
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				value;
 
 			// Act
-			await configAdapter.init();
-			value = configAdapter.get(S.MSG_BROKER_HOST);
+			await configPrvd.init();
+			value = configPrvd.get(NO_EXIST_KEY);
 
 			// Assert
 			expect(value).to.be.null;
@@ -143,18 +172,18 @@ describe.skip('ConfigurationProvider', () => {
 	describe('fetch', () => {
 		it('should throw error if there is no address for Configuration Service', async () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				isSuccess = false;
 
 			// Make it no way to accidentially get a meaningful address.
-			configAdapter['_configFilePath'] = 'dummy.json';
-			configAdapter['_remoteSettings'] = {};
+			configPrvd['_configFilePath'] = 'dummy.json';
+			configPrvd['_remoteSettings'] = {};
 			process.env[S.CONFIG_SERVICE_ADDRESSES] = '';
 
 			// Act then assert
-			await configAdapter.init();
+			await configPrvd.init();
 			try {
-				await configAdapter.fetch();
+				await configPrvd.fetch();
 				isSuccess = true;
 				expect(isSuccess).to.be.false;
 			} catch (err) {
@@ -166,44 +195,16 @@ describe.skip('ConfigurationProvider', () => {
 		it('should try each address in the list until success', async () => {
 			// Arrange
 			// Mock config service addresses
-			let addresses = ['127.0.0.1', '127.0.0.2', '127.0.0.3'];
-			process.env[S.CONFIG_SERVICE_ADDRESSES] = `${addresses[0]};${addresses[1]};${addresses[2]}`;
+			process.env[S.CONFIG_SERVICE_ADDRESSES] = `${CONFIG_SVC_ADDRESSES[0]};${CONFIG_SVC_ADDRESSES[1]};${CONFIG_SVC_ADDRESSES[2]}`;
 
-			// Mock fetched config
-			let successConfig = {
-					success: true,
-					settings: {
-						[S.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq'
-					}
-				},
-				failConfig = {
-					success: false
-				};
-
-			// Mock function to make request to config service.
-			let requestFn = function(options) {
-				return new Promise((resolve, reject) => {
-					if (options.uri == addresses[0]) {
-						// Force to throw error on first address attempt.
-						reject('Connection rejected!');
-					} else if (options.uri == addresses[1]) {
-						// Force to fail on second attempt.
-						resolve(failConfig);
-					} else {
-						resolve(successConfig);
-					}
-				});
-			};
-
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				value;
-			configAdapter['_requestMaker'] = requestFn;
 
 			// Act then assert
-			await configAdapter.init();
-			await configAdapter.fetch();
-			value = configAdapter.get(S.MSG_BROKER_HOST);
-			expect(value).to.equals(successConfig.settings[S.MSG_BROKER_HOST]);
+			await configPrvd.init();
+			await configPrvd.fetch();
+			value = configPrvd.get(S.MSG_BROKER_HOST);
+			expect(value).to.equals(SUCCESS_CONFIG[S.MSG_BROKER_HOST]);
 		});
 
 		it('should reject if no address in the list is accessible and private _settings must be an empty object', async () => {
@@ -219,19 +220,19 @@ describe.skip('ConfigurationProvider', () => {
 				});
 			};
 
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				isSuccess = false, value;
-			configAdapter['_requestMaker'] = requestFn;
+			configPrvd['_requestMaker'] = requestFn;
 
 			// Act then assert
-			await configAdapter.init();
+			await configPrvd.init();
 			try {
-				await configAdapter.fetch();
+				await configPrvd.fetch();
 				isSuccess = true;
 				expect(isSuccess).to.be.false;
 			} catch (err) {
 				expect(isSuccess).to.be.false;
-				expect(configAdapter['_remoteSettings']).to.be.empty;
+				expect(configPrvd['_remoteSettings']).to.be.empty;
 				expect(err).to.be.not.null;
 			}
 		});
@@ -240,16 +241,16 @@ describe.skip('ConfigurationProvider', () => {
 	describe('dispose', () => {
 		it('should release all resources', async () => {
 			// Arrange
-			let configAdapter = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				callMe = chai.spy();
 
 			// Act
-			await configAdapter.dispose();
+			await configPrvd.dispose();
 
 			// Assert
-			_.forOwn(configAdapter, (value, key) => {
+			_.forOwn(configPrvd, (value, key) => {
 				callMe();
-				expect(configAdapter[key], key).to.be.null;
+				expect(configPrvd[key], key).to.be.null;
 			});
 			expect(callMe).to.be.called;
 		});

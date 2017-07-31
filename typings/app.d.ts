@@ -22,16 +22,16 @@ declare module 'back-lib-foundation/constants/SettingKeys' {
 declare module 'back-lib-foundation/constants/Types' {
 	export class Types {
 	    static readonly MODEL_MAPPER: symbol;
-	    static readonly BROKER_ADAPTER: symbol;
+	    static readonly BROKER_ADDON: symbol;
 	    static readonly CONFIG_PROVIDER: symbol;
-	    static readonly DB_ADAPTER: symbol;
+	    static readonly DB_ADDON: symbol;
 	    static readonly DEPENDENCY_CONTAINER: symbol;
 	}
 
 }
-declare module 'back-lib-foundation/adapters/ConfigurationProvider' {
+declare module 'back-lib-foundation/addons/ConfigurationProvider' {
 	import { IDirectRpcCaller } from 'back-lib-service-communication';
-	export interface IConfigurationProvider extends IAdapter {
+	export interface IConfigurationProvider extends IServiceAddOn {
 	    enableRemote: boolean;
 	    get(key: string): string;
 	    fetch(): Promise<boolean>;
@@ -40,7 +40,7 @@ declare module 'back-lib-foundation/adapters/ConfigurationProvider' {
 	 * Provides settings from package
 	 */
 	export class ConfigurationProvider implements IConfigurationProvider {
-	    constructor(_rpcCaller: IDirectRpcCaller);
+	    	    	    	    	    	    constructor(_rpcCaller: IDirectRpcCaller);
 	    enableRemote: boolean;
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
@@ -53,31 +53,30 @@ declare module 'back-lib-foundation/adapters/ConfigurationProvider' {
 	     * Attempts to fetch settings from remote Configuration Service.
 	     */
 	    fetch(): Promise<boolean>;
-	}
+	    	}
 
 }
-declare module 'back-lib-foundation/adapters/DatabaseAdapter' {
-	/// <reference types="back-lib-persistence" />
+declare module 'back-lib-foundation/addons/DatabaseAddOn' {
 	import { IDatabaseConnector } from 'back-lib-persistence';
-	import { IConfigurationProvider } from 'back-lib-foundation/adapters/ConfigurationProvider';
-	export interface IDatabaseAdapter extends IAdapter {
+	import { IConfigurationProvider } from 'back-lib-foundation/addons/ConfigurationProvider';
+	export interface IDatabaseAddOn extends IServiceAddOn {
 	    dispose(): Promise<void>;
 	}
 	/**
 	 * Provides settings from package
 	 */
-	export class KnexDatabaseAdapter implements IDatabaseAdapter {
-	    constructor(_configProvider: IConfigurationProvider, _dbConnector: IDatabaseConnector);
+	export class KnexDatabaseAddOn implements IDatabaseAddOn {
+	    	    	    constructor(_configProvider: IConfigurationProvider, _dbConnector: IDatabaseConnector);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
-	}
+	    	}
 
 }
-declare module 'back-lib-foundation/adapters/MessageBrokerAdapter' {
+declare module 'back-lib-foundation/addons/MessageBrokerAddOn' {
 	import { IMessageBrokerConnector } from 'back-lib-service-communication';
-	import { IConfigurationProvider } from 'back-lib-foundation/adapters/ConfigurationProvider';
-	export class MessageBrokerAdapter implements IAdapter {
-	    constructor(_configProvider: IConfigurationProvider, _msgBrokerCnn: IMessageBrokerConnector);
+	import { IConfigurationProvider } from 'back-lib-foundation/addons/ConfigurationProvider';
+	export class MessageBrokerAddOn implements IServiceAddOn {
+	    	    	    constructor(_configProvider: IConfigurationProvider, _msgBrokerCnn: IMessageBrokerConnector);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
 	}
@@ -85,13 +84,13 @@ declare module 'back-lib-foundation/adapters/MessageBrokerAdapter' {
 }
 declare module 'back-lib-foundation/microservice/MicroServiceBase' {
 	import * as cm from 'back-lib-common-util';
-	import * as cf from 'back-lib-foundation/adapters/ConfigurationProvider';
-	import * as db from 'back-lib-foundation/adapters/DatabaseAdapter';
-	import { MessageBrokerAdapter } from 'back-lib-foundation/adapters/MessageBrokerAdapter';
+	import * as cfg from 'back-lib-foundation/addons/ConfigurationProvider';
+	import * as db from 'back-lib-foundation/addons/DatabaseAddOn';
+	import { MessageBrokerAddOn } from 'back-lib-foundation/addons/MessageBrokerAddOn';
 	export abstract class MicroServiceBase {
-	    protected _configAdapter: cf.IConfigurationProvider;
+	    protected _configProvider: cfg.IConfigurationProvider;
 	    protected _depContainer: cm.IDependencyContainer;
-	    protected _adapters: IAdapter[];
+	    protected _addons: IServiceAddOn[];
 	    protected _isStarted: boolean;
 	    constructor();
 	    readonly isStarted: boolean;
@@ -104,17 +103,17 @@ declare module 'back-lib-foundation/microservice/MicroServiceBase' {
 	     */
 	    stop(exitProcess?: boolean): void;
 	    /**
-	     * @return Total number of adapters that have been added so far.
+	     * @return Total number of add-ons that have been added so far.
 	     */
-	    protected addAdapter(adapter: IAdapter): number;
-	    protected addDbAdapter(): db.IDatabaseAdapter;
-	    protected addConfigAdapter(): cf.IConfigurationProvider;
-	    protected addMessageBrokerAdapter(): MessageBrokerAdapter;
-	    protected registerDbAdapter(): void;
+	    protected attachAddOn(addon: IServiceAddOn): number;
+	    protected attachDbAddOn(): db.IDatabaseAddOn;
+	    protected attachConfigProvider(): cfg.IConfigurationProvider;
+	    protected attachMessageBrokerAddOn(): MessageBrokerAddOn;
+	    protected registerDbAddOn(): void;
 	    protected registerConfigProvider(): void;
 	    protected registerDirectRpcCaller(): void;
 	    protected registerDirectRpcHandler(): void;
-	    protected registerMessageBrokerAdapter(): void;
+	    protected registerMessageBrokerAddOn(): void;
 	    protected registerMediateRpcCaller(): void;
 	    protected registerMediateRpcHandler(): void;
 	    protected registerModelMapper(): void;
@@ -141,15 +140,20 @@ declare module 'back-lib-foundation/microservice/MicroServiceBase' {
 	     * considered stopped successfully. The process will be killed after this.
 	     */
 	    protected onStopped(): void;
-	}
+	    	    	    	    /**
+	     * Gracefully shutdown the application when user presses Ctrl-C in Console/Terminal,
+	     * or when the OS is trying to stop the service process.
+	     *
+	     */
+	    	}
 
 }
 declare module 'back-lib-foundation' {
 	import 'reflect-metadata';
 	import 'automapper-ts';
-	export * from 'back-lib-foundation/adapters/ConfigurationProvider';
-	export * from 'back-lib-foundation/adapters/DatabaseAdapter';
-	export * from 'back-lib-foundation/adapters/MessageBrokerAdapter';
+	export * from 'back-lib-foundation/addons/ConfigurationProvider';
+	export * from 'back-lib-foundation/addons/DatabaseAddOn';
+	export * from 'back-lib-foundation/addons/MessageBrokerAddOn';
 	export * from 'back-lib-foundation/constants/SettingKeys';
 	export * from 'back-lib-foundation/constants/Types';
 	export * from 'back-lib-foundation/microservice/MicroServiceBase';

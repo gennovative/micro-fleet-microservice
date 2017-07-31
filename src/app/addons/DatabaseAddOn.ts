@@ -1,15 +1,12 @@
 
-import * as knex from 'knex';
-import { Model } from 'objection';
-
-import { IDatabaseConnector, IConnectionDetail, DbClient, Types as CmT } from 'back-lib-persistence';
+import { IDatabaseConnector, IConnectionDetail, DbClient, Types as PerT } from 'back-lib-persistence';
 import { injectable, inject } from 'back-lib-common-util';
 
 import { IConfigurationProvider } from './ConfigurationProvider';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
-export interface IDatabaseAdapter extends IAdapter {
+export interface IDatabaseAddOn extends IServiceAddOn {
 	dispose(): Promise<void>;
 }
 
@@ -17,11 +14,11 @@ export interface IDatabaseAdapter extends IAdapter {
  * Provides settings from package
  */
 @injectable()
-export class KnexDatabaseAdapter implements IDatabaseAdapter {
+export class KnexDatabaseAddOn implements IDatabaseAddOn {
 	
 	constructor(
 		@inject(T.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
-		@inject(CmT.DB_CONNECTOR) private _dbConnector: IDatabaseConnector
+		@inject(PerT.DB_CONNECTOR) private _dbConnector: IDatabaseConnector
 	) {
 	}
 

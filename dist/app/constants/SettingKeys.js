@@ -17,6 +17,5 @@ SettingKeys.MSG_BROKER_USERNAME = 'messageBroker.username';
 SettingKeys.MSG_BROKER_PASSWORD = 'messageBroker.password';
 SettingKeys.SERVICE_NAME = 'service.name';
 exports.SettingKeys = SettingKeys;
-;
 
 //# sourceMappingURL=SettingKeys.js.map

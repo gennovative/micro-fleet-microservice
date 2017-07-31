@@ -27,7 +27,7 @@ const Types_1 = require("../constants/Types");
 /**
  * Provides settings from package
  */
-let KnexDatabaseAdapter = class KnexDatabaseAdapter {
+let KnexDatabaseAddOn = class KnexDatabaseAddOn {
     constructor(_configProvider, _dbConnector) {
         this._configProvider = _configProvider;
         this._dbConnector = _dbConnector;
@@ -80,12 +80,12 @@ let KnexDatabaseAdapter = class KnexDatabaseAdapter {
         throw 'No database settings!';
     }
 };
-KnexDatabaseAdapter = __decorate([
+KnexDatabaseAddOn = __decorate([
     back_lib_common_util_1.injectable(),
     __param(0, back_lib_common_util_1.inject(Types_1.Types.CONFIG_PROVIDER)),
     __param(1, back_lib_common_util_1.inject(back_lib_persistence_1.Types.DB_CONNECTOR)),
     __metadata("design:paramtypes", [Object, Object])
-], KnexDatabaseAdapter);
-exports.KnexDatabaseAdapter = KnexDatabaseAdapter;
+], KnexDatabaseAddOn);
+exports.KnexDatabaseAddOn = KnexDatabaseAddOn;
 
-//# sourceMappingURL=DatabaseAdapter.js.map
+//# sourceMappingURL=DatabaseAddOn.js.map

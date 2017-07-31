@@ -20,7 +20,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const request = require("request-promise");
+const back_lib_common_contracts_1 = require("back-lib-common-contracts");
 const back_lib_common_util_1 = require("back-lib-common-util");
 const back_lib_service_communication_1 = require("back-lib-service-communication");
 const SettingKeys_1 = require("../constants/SettingKeys");
@@ -32,7 +32,6 @@ let ConfigurationProvider = class ConfigurationProvider {
         this._rpcCaller = _rpcCaller;
         this._configFilePath = `${process.cwd()}/appconfig.json`;
         this._remoteSettings = {};
-        this._requestMaker = request;
         this._enableRemote = false;
         if (this._rpcCaller) {
             this._rpcCaller.name = 'ConfigurationProvider';
@@ -60,7 +59,6 @@ let ConfigurationProvider = class ConfigurationProvider {
             this._configFilePath = null;
             this._fileSettings = null;
             this._remoteSettings = null;
-            this._requestMaker = null;
             this._enableRemote = null;
             this._rpcCaller = null;
             resolve();
@@ -95,19 +93,21 @@ let ConfigurationProvider = class ConfigurationProvider {
     }
     attemptFetch(address) {
         return __awaiter(this, void 0, void 0, function* () {
-            let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_NAME);
             try {
+                let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_NAME), ipAddress = ''; // If this service runs inside a Docker container, 
+                // this should be the host's IP address.
                 this._rpcCaller.baseAddress = address;
-                let res = yield this._rpcCaller.call('ConfigurationSvc', 'instance', {
-                    name: serviceName
-                });
+                let req = new back_lib_common_contracts_1.GetSettingRequest();
+                req.slug = serviceName;
+                req.ipAddress = ipAddress;
+                let res = yield this._rpcCaller.call('SettingService', 'getSetting', req);
                 if (res.isSuccess) {
                     this._remoteSettings = res.data;
                     return true;
                 }
             }
             catch (err) {
-                // TODO: Writing logs
+                console.warn(err);
             }
             return false;
         });

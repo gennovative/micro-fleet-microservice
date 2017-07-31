@@ -1,11 +1,11 @@
-import * as request from 'request-promise';
+import { GetSettingRequest } from 'back-lib-common-contracts';
 import { inject, injectable } from 'back-lib-common-util';
 import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
 
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
-export interface IConfigurationProvider extends IAdapter {
+export interface IConfigurationProvider extends IServiceAddOn {
 	enableRemote: boolean;
 	get(key: string): string;
 	fetch(): Promise<boolean>;
@@ -18,7 +18,6 @@ export interface IConfigurationProvider extends IAdapter {
 export class ConfigurationProvider implements IConfigurationProvider {
 	private _configFilePath = `${process.cwd()}/appconfig.json`;
 	private _fileSettings;
-	private _requestMaker;
 	private _remoteSettings;
 	private _enableRemote: boolean;
 
@@ -26,7 +25,6 @@ export class ConfigurationProvider implements IConfigurationProvider {
 		@inject(ComT.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
 	) {
 		this._remoteSettings = {};
-		this._requestMaker = request;
 		this._enableRemote = false;
 		if (this._rpcCaller) {
 			this._rpcCaller.name = 'ConfigurationProvider';
@@ -57,7 +55,6 @@ export class ConfigurationProvider implements IConfigurationProvider {
 			this._configFilePath = null;
 			this._fileSettings = null;
 			this._remoteSettings = null;
-			this._requestMaker = null;
 			this._enableRemote = null;
 			this._rpcCaller = null;
 			resolve();
@@ -95,19 +92,24 @@ export class ConfigurationProvider implements IConfigurationProvider {
 
 
 	private async attemptFetch(address: string): Promise<boolean> {
-		let serviceName = this.get(S.SERVICE_NAME);
 
 		try {
+			let serviceName = this.get(S.SERVICE_NAME),
+				ipAddress = ''; // If this service runs inside a Docker container, 
+								// this should be the host's IP address.
+
 			this._rpcCaller.baseAddress = address;
-			let res: IRpcResponse = await this._rpcCaller.call('ConfigurationSvc', 'instance', {
-				name: serviceName
-			});
+			let req = new GetSettingRequest();
+			req.slug = serviceName;
+			req.ipAddress = ipAddress;
+
+			let res: IRpcResponse = await this._rpcCaller.call('SettingService', 'getSetting', req);
 			if (res.isSuccess) {
 				this._remoteSettings = res.data;
 				return true;
 			}
 		} catch (err) {
-			// TODO: Writing logs
+			console.warn(err);
 		}
 		return false;
 	}

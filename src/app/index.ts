@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import 'automapper-ts';
 
-export * from './adapters/ConfigurationProvider';
-export * from './adapters/DatabaseAdapter';
-export * from './adapters/MessageBrokerAdapter';
+export * from './addons/ConfigurationProvider';
+export * from './addons/DatabaseAddOn';
+export * from './addons/MessageBrokerAddOn';
 export * from './constants/SettingKeys';
 export * from './constants/Types';
 export * from './microservice/MicroServiceBase';

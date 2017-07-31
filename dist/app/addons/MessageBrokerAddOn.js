@@ -16,7 +16,7 @@ const back_lib_common_util_1 = require("back-lib-common-util");
 const back_lib_service_communication_1 = require("back-lib-service-communication");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
-let MessageBrokerAdapter = class MessageBrokerAdapter {
+let MessageBrokerAddOn = class MessageBrokerAddOn {
     constructor(_configProvider, _msgBrokerCnn) {
         this._configProvider = _configProvider;
         this._msgBrokerCnn = _msgBrokerCnn;
@@ -35,12 +35,12 @@ let MessageBrokerAdapter = class MessageBrokerAdapter {
         return this._msgBrokerCnn.disconnect();
     }
 };
-MessageBrokerAdapter = __decorate([
+MessageBrokerAddOn = __decorate([
     back_lib_common_util_1.injectable(),
     __param(0, back_lib_common_util_1.inject(Types_1.Types.CONFIG_PROVIDER)),
     __param(1, back_lib_common_util_1.inject(back_lib_service_communication_1.Types.MSG_BROKER_CONNECTOR)),
     __metadata("design:paramtypes", [Object, Object])
-], MessageBrokerAdapter);
-exports.MessageBrokerAdapter = MessageBrokerAdapter;
+], MessageBrokerAddOn);
+exports.MessageBrokerAddOn = MessageBrokerAddOn;
 
-//# sourceMappingURL=MessageBrokerAdapter.js.map
+//# sourceMappingURL=MessageBrokerAddOn.js.map

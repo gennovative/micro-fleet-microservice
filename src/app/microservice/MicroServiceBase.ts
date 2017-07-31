@@ -1,26 +1,21 @@
-/// <reference types="back-lib-persistence" />
-
 import * as cm from 'back-lib-common-util';
 import * as per from 'back-lib-persistence';
-import { IDirectRpcCaller, HttpRpcCaller, IDirectRpcHandler, ExpressRpcHandler,
-	IMediateRpcCaller, MessageBrokerRpcCaller, IMediateRpcHandler, MessageBrokerRpcHandler,
-	IRpcResponse, IMessageBrokerConnector, TopicMessageBrokerConnector,
-	Types as ComT } from 'back-lib-service-communication';
+import * as com from 'back-lib-service-communication';
 
-import * as cf from '../adapters/ConfigurationProvider';
-import * as db from '../adapters/DatabaseAdapter';
-import { MessageBrokerAdapter } from '../adapters/MessageBrokerAdapter';
+import * as cfg from '../addons/ConfigurationProvider';
+import * as db from '../addons/DatabaseAddOn';
+import { MessageBrokerAddOn } from '../addons/MessageBrokerAddOn';
 import { Types as T } from '../constants/Types';
 
 
 export abstract class MicroServiceBase {
-	protected _configAdapter: cf.IConfigurationProvider;
+	protected _configProvider: cfg.IConfigurationProvider;
 	protected _depContainer: cm.IDependencyContainer;
-	protected _adapters: IAdapter[];
+	protected _addons: IServiceAddOn[];
 	protected _isStarted: boolean;
 	
 	constructor() {
-		this._adapters = [];
+		this._addons = [];
 		this._isStarted = false;
 	}
 
@@ -33,10 +28,10 @@ export abstract class MicroServiceBase {
 	 */
 	public start(): void {
 		this.registerDependencies();
-		this.addConfigAdapter();
+		this.attachConfigProvider();
 
 		try {
-			// A chance for derived class to add more adapters or do some customizations.
+			// A chance for derived class to add more add-ons or do some customizations.
 			this.onStarting();
 		} catch (ex) {
 			this.onError(ex);
@@ -45,7 +40,7 @@ export abstract class MicroServiceBase {
 			return;
 		}
 
-		this.initAdapters()
+		this.initAddOns()
 			.then(() => {
 				this._isStarted = true;
 				this.handleGracefulShutdown();
@@ -53,7 +48,7 @@ export abstract class MicroServiceBase {
 			})
 			.catch(err => {
 				this.onError(err);
-				console.error('An error occured on initializing adapters, the application has to stop now.');
+				console.error('An error occured on initializing add-ons, the application has to stop now.');
 				this.stop();
 			});
 	}
@@ -66,7 +61,7 @@ export abstract class MicroServiceBase {
 			try {
 				this.onStopping();
 				this._depContainer.dispose();
-				await this.disposeAdapters();
+				await this.disposeAddOns();
 				this._isStarted = false;
 				this.onStopped();
 			} catch (ex) {
@@ -80,61 +75,64 @@ export abstract class MicroServiceBase {
 	}
 
 	/**
-	 * @return Total number of adapters that have been added so far.
+	 * @return Total number of add-ons that have been added so far.
 	 */
-	protected addAdapter(adapter: IAdapter): number {
-		return this._adapters.push(adapter);
+	protected attachAddOn(addon: IServiceAddOn): number {
+		return this._addons.push(addon);
 	}
 
-	// TODO 1: Should have addAdapterFromContainer
-	// TODO 2: Now I don't remember what TODO 1 means
-
-	protected addDbAdapter(): db.IDatabaseAdapter {
-		let dbAdt = this._depContainer.resolve<db.IDatabaseAdapter>(T.DB_ADAPTER);
-		this.addAdapter(dbAdt);
+	protected attachDbAddOn(): db.IDatabaseAddOn {
+		let dbAdt = this._depContainer.resolve<db.IDatabaseAddOn>(T.DB_ADDON);
+		this.attachAddOn(dbAdt);
 		return dbAdt;
 	}
 
-	protected addConfigAdapter(): cf.IConfigurationProvider {
-		let cfgAdt = this._configAdapter = this._depContainer.resolve<cf.IConfigurationProvider>(T.CONFIG_PROVIDER);
-		this.addAdapter(cfgAdt);
+	protected attachConfigProvider(): cfg.IConfigurationProvider {
+		let cfgAdt = this._configProvider = this._depContainer.resolve<cfg.IConfigurationProvider>(T.CONFIG_PROVIDER);
+		this.attachAddOn(cfgAdt);
 		return cfgAdt;
 	}
 
-	protected addMessageBrokerAdapter(): MessageBrokerAdapter {
-		let dbAdt = this._depContainer.resolve<MessageBrokerAdapter>(T.BROKER_ADAPTER);
-		this.addAdapter(dbAdt);
+	protected attachMessageBrokerAddOn(): MessageBrokerAddOn {
+		let dbAdt = this._depContainer.resolve<MessageBrokerAddOn>(T.BROKER_ADDON);
+		this.attachAddOn(dbAdt);
 		return dbAdt;
 	}
 
-	protected registerDbAdapter(): void {
+	protected registerDbAddOn(): void {
 		this._depContainer.bind<per.IDatabaseConnector>(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
-		this._depContainer.bind<db.IDatabaseAdapter>(T.DB_ADAPTER, db.KnexDatabaseAdapter).asSingleton();
+		this._depContainer.bind<db.IDatabaseAddOn>(T.DB_ADDON, db.KnexDatabaseAddOn).asSingleton();
 	}
 
 	protected registerConfigProvider(): void {
-		this._depContainer.bind<cf.IConfigurationProvider>(T.CONFIG_PROVIDER, cf.ConfigurationProvider).asSingleton();
+		this._depContainer.bind<cfg.IConfigurationProvider>(T.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
 	}
 
 	protected registerDirectRpcCaller(): void {
-		this._depContainer.bind<IDirectRpcCaller>(ComT.DIRECT_RPC_CALLER, HttpRpcCaller);
+		this._depContainer.bind<com.IDirectRpcCaller>(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller);
 	}
 
 	protected registerDirectRpcHandler(): void {
-		this._depContainer.bind<IDirectRpcHandler>(ComT.DIRECT_RPC_HANDLER, ExpressRpcHandler);
+		this._depContainer.bind<com.IDirectRpcHandler>(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler);
 	}
 
-	protected registerMessageBrokerAdapter(): void {
-		this._depContainer.bind<IMessageBrokerConnector>(ComT.MSG_BROKER_CONNECTOR, TopicMessageBrokerConnector).asSingleton();
-		this._depContainer.bind<MessageBrokerAdapter>(T.BROKER_ADAPTER, MessageBrokerAdapter).asSingleton();
+	protected registerMessageBrokerAddOn(): void {
+		this._depContainer.bind<com.IMessageBrokerConnector>(com.Types.MSG_BROKER_CONNECTOR, com.TopicMessageBrokerConnector).asSingleton();
+		this._depContainer.bind<MessageBrokerAddOn>(T.BROKER_ADDON, MessageBrokerAddOn).asSingleton();
 	}
 
 	protected registerMediateRpcCaller(): void {
-		this._depContainer.bind<IMediateRpcCaller>(ComT.MEDIATE_RPC_CALLER, MessageBrokerRpcCaller);
+		if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
+			this.registerMessageBrokerAddOn();
+		}
+		this._depContainer.bind<com.IMediateRpcCaller>(com.Types.MEDIATE_RPC_CALLER, com.MessageBrokerRpcCaller);
 	}
 
 	protected registerMediateRpcHandler(): void {
-		this._depContainer.bind<IMediateRpcHandler>(ComT.MEDIATE_RPC_HANDLER, MessageBrokerRpcHandler);
+		if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
+			this.registerMessageBrokerAddOn();
+		}
+		this._depContainer.bind<com.IMediateRpcHandler>(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler);
 	}
 
 	protected registerModelMapper(): void {
@@ -153,7 +151,7 @@ export abstract class MicroServiceBase {
 	 * Invoked whenever any error occurs in the application.
 	 */
 	protected onError(error: any): void {
-		 /* istanbul ignore next */
+		/* istanbul ignore next */
 		let msg = (error.toString ? error.toString() : error + '');
 		console.error(msg); // Should log to file.
 	}
@@ -184,18 +182,18 @@ export abstract class MicroServiceBase {
 	protected onStopped(): void {
 	}
 
-	private async initAdapters(): Promise<void> {
-		let cfgAdt = this._configAdapter,
+	private async initAddOns(): Promise<void> {
+		let cfgPrvd = this._configProvider,
 			initPromises;
 
-		// Config adapter must be initialized first, because all other adapters
+		// Configuration provider must be initialized first, because all other add-ons
 		// depend on it.
-		await cfgAdt.init();
+		await cfgPrvd.init();
 
 		// If remote config is disabled or
 		// if remote config is enanbed and fetching successfully.
-		if (!cfgAdt.enableRemote || await cfgAdt.fetch()) {
-			initPromises = this._adapters.map(adt => adt.init());
+		if (!cfgPrvd.enableRemote || await cfgPrvd.fetch()) {
+			initPromises = this._addons.map(adt => adt.init());
 		} else {
 			throw new cm.CriticalException('Fail to fetch configuration!');
 		}
@@ -203,8 +201,8 @@ export abstract class MicroServiceBase {
 		await Promise.all(initPromises);
 	}
 
-	private async disposeAdapters(): Promise<void> {
-		let disposePromises = this._adapters.map(adt => {
+	private async disposeAddOns(): Promise<void> {
+		let disposePromises = this._addons.map(adt => {
 			// let adtName = adt.constructor.toString().substring(0, 20);
 			// console.log('DISPOSING: ' + adtName);
 			return adt.dispose(); 

@@ -49,8 +49,9 @@ class MockMicroService extends MicroServiceBase {
 
 		this._depContainer.bind<IProductProvider>(PRODUCT_PROVIDER, MockProductProvider);
 		
-		// No need to call this, because MicroServiceBase already calls it for ConfigAdapter to use.
-		// this.registerConfigAdapter();
+		// No need to call these, because MicroServiceBase already calls them.
+		// this.registerConfigProvider();
 		// this.registerDirectRpcCaller();
+		// this.registerModelMapper();
 	}
 }

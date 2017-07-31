@@ -3,7 +3,7 @@ import * as spies from 'chai-spies';
 import { CriticalException, injectable } from 'back-lib-common-util';
 import { DbClient } from 'back-lib-persistence';
 
-import { MicroServiceBase, IConfigurationProvider, IDatabaseAdapter,
+import { MicroServiceBase, IConfigurationProvider, IDatabaseAddOn,
 	Types, SettingKeys as S } from '../../app';
 
 
@@ -14,7 +14,7 @@ const expect = chai.expect;
 
 // In reality, should edit file /constants/Types.ts
 const EXAMPLE_SVC = Symbol('IDummyService'),
-	CUSTOM_ADT = Symbol('ICustomAdapter');
+	CUSTOM_ADT = Symbol('ICustomAddOn');
 
 
 interface IExampleUtility { }
@@ -22,10 +22,10 @@ interface IExampleUtility { }
 class ExampleUtility implements IExampleUtility { }
 
 
-interface ICustomAdapter extends IAdapter { }
+interface ICustomAddOn extends IServiceAddOn { }
 
 @injectable()
-class CustomAdapter implements ICustomAdapter {	
+class CustomAddOn implements ICustomAddOn {	
 	public init(): Promise<void> {
 		return new Promise<void>(resolve => {
 			// Do some async stuff here
@@ -47,7 +47,7 @@ const BEHAV_FALSE = 'behav_false',
 	BEHAV_THROW = 'behav_throw',
 	ERROR_RANDOM = new CriticalException('A random error!'),
 	ERROR_FAIL = new CriticalException('Fail to fetch configuration!'),
-	CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`;
+	CONN_FILE = `${process.cwd()}/database-addon-test.sqlite`;
 
 @injectable()
 class MockConfigService implements IConfigurationProvider {
@@ -95,18 +95,18 @@ class TestMarketingService extends MicroServiceBase {
 	protected registerDependencies(): void {
 		super.registerDependencies();
 		this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility);
-		this._depContainer.bind<ICustomAdapter>(CUSTOM_ADT, CustomAdapter);
+		this._depContainer.bind<ICustomAddOn>(CUSTOM_ADT, CustomAddOn);
 
-		// In reality, we can merely call `registerConfigAdapter` method. However,
+		// In reality, we can merely call `registerConfigAddOn` method. However,
 		// in this case, we want to inject our mock instance instead.
-		//// this.registerConfigAdapter();
+		//// this.registerConfigAddOn();
 		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigService).asSingleton();
 		
 		// Call this if your service works directly with database.
-		//this.registerDbAdapter();
+		//this.registerDbAddOn();
 		
 		// Call this if your service communicates via message broker.
-		// this.registerMessageBrokerAdapter();		
+		// this.registerMessageBrokerAddOn();		
 	}
 
 	/**
@@ -114,15 +114,15 @@ class TestMarketingService extends MicroServiceBase {
 	 */
 	protected onStarting(): void {
 		// Call this if your service works directly with database.
-		//this.addDbAdapter();
+		//this.addDbAddOn();
 
 		// Call this if your service communicates via message broker.
-		// this.addMessageBrokerAdapter();
+		// this.addMessageBrokerAddOn();
 		
-		// Use this if you have a home-made adapter.
-		// All added adapters' init method will be called 
-		let customAdapter = this._depContainer.resolve<ICustomAdapter>(CUSTOM_ADT);
-		this.addAdapter(customAdapter);
+		// Use this if you have a home-made add-on.
+		// All added add-ons' init method will be called 
+		let customAddOn = this._depContainer.resolve<ICustomAddOn>(CUSTOM_ADT);
+		this.attachAddOn(customAddOn);
 	}
 
 	/**
@@ -276,9 +276,9 @@ describe('MicroServiceBase', () => {
 			service['exitProcess'] = () => {};
 			
 			service['onStarting'] = () => {
-				service['_adapters'].forEach((adt: IAdapter, idx) => {
+				service['_addons'].forEach((adt: IServiceAddOn, idx) => {
 					if (adt['clientName']) {
-						// Search for database adapter and
+						// Search for database add-on and
 						// tell it to work with testing Sqlite3 file.
 						adt['clientName'] = DbClient.SQLITE3;
 					}
@@ -339,7 +339,7 @@ describe('MicroServiceBase', () => {
 	}); // describe 'onStopped'
 
 	describe('stop', () => {
-		it('should dispose all adapters', (done) => {
+		it('should dispose all add-ons', (done) => {
 			// Arrange
 			let service = new TestMarketingService(),
 				adpArr = [];
@@ -350,10 +350,10 @@ describe('MicroServiceBase', () => {
 					// to make it covered.
 					original.apply(service);
 
-					adpArr = service['_adapters'];
-					adpArr.forEach((adt: IAdapter, idx) => {
+					adpArr = service['_addons'];
+					adpArr.forEach((adt: IServiceAddOn, idx) => {
 						if (adt['clientName']) {
-							// Search for database adapter and
+							// Search for database add-on and
 							// tell it to work with testing Sqlite3 file.
 							adt['clientName'] = DbClient.SQLITE3;
 						}
@@ -363,7 +363,7 @@ describe('MicroServiceBase', () => {
 
 			service['onStarted'] = () => {
 				// Transform all dispose functions to spies
-				adpArr.forEach((adt: IAdapter, idx) => {
+				adpArr.forEach((adt: IServiceAddOn, idx) => {
 					//console.log(`SPY ${idx}:` + adt.constructor.toString().substring(0, 20));
 					chai.spy.on(adt, 'dispose');
 				});
@@ -392,7 +392,7 @@ describe('MicroServiceBase', () => {
 			let service = new PlainService(),
 				exitProcess = process.exit;
 						
-			process.exit = chai.spy('process.exit', () => {
+			process.exit = <any>chai.spy('process.exit', () => {
 				// Assert
 				expect(process.exit).to.be.spy;
 				expect(process.exit).to.be.called.once;
@@ -413,7 +413,7 @@ describe('MicroServiceBase', () => {
 				service.stop();
 			};
 
-			service['disposeAdapters'] = () => {
+			service['disposeAddOns'] = () => {
 				return new Promise<void>((resolve, reject) => {
 					reject(ERROR_RANDOM);
 				});
@@ -428,7 +428,7 @@ describe('MicroServiceBase', () => {
 			let service = new PlainService(),
 				exitProcess = process.exit;
 			
-			process.exit = chai.spy('process.exit', () => {
+			process.exit = <any>chai.spy('process.exit', () => {
 				// Assert
 				expect(process.exit).to.be.spy;
 				expect(process.exit).to.be.called.once;

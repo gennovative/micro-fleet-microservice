@@ -7,7 +7,7 @@ import { Types as T } from '../constants/Types';
 
 
 @injectable()
-export class MessageBrokerAdapter implements IAdapter {
+export class MessageBrokerAddOn implements IServiceAddOn {
 
 	constructor(
 		@inject(T.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,

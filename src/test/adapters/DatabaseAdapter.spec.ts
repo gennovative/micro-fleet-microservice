@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 import { Model } from 'objection';
 import { IDatabaseConnector, IConnectionDetail, QueryCallback, DbClient } from 'back-lib-persistence';
 
-import { KnexDatabaseAdapter, IConfigurationProvider, SettingKeys as S } from '../../app';
+import { KnexDatabaseAddOn, IConfigurationProvider, SettingKeys as S } from '../../app';
 
 chai.use(spies);
 
@@ -16,11 +16,11 @@ const expect = chai.expect,
 	CONN_USER = 'dbUser',
 	CONN_PASS = 'secret',
 	CONN_DB = 'randomDb',
-	CONN_FILE = `${process.cwd()}/database-adapter-test.sqlite`,
+	CONN_FILE = `${process.cwd()}/database-addon-test.sqlite`,
 	CONN_STRING = 'msql://localhost@user:pass',
 	CLIENT_NAME = DbClient.POSTGRESQL;
 
-class MockConfigAdapter implements IConfigurationProvider {
+class MockConfigAddOn implements IConfigurationProvider {
 	
 	constructor(private _mode: string = MODE_CREDENTIALS) {
 	}
@@ -73,21 +73,21 @@ class MockDbConnector implements IDatabaseConnector {
 		return Promise.resolve();
 	}
 
-	public query<TEntity>(EntityClass: any, callback: QueryCallback<TEntity>, ...names: string[]): Promise<any>[] {
+	public prepare<TEntity>(EntityClass: any, callback: QueryCallback<TEntity>, ...names: string[]): Promise<any>[] {
 		return [Promise.resolve()];
 	}
 }
 
-describe('KnexDatabaseAdapter', () => {
+describe('KnexDatabaseAddOn', () => {
 
 	describe('init', () => {
 		it('should configure database connection with database connector', async () => {
 			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(), new MockDbConnector()),
-				addConnSpy = chai.spy.on(dbAdapter['_dbConnector'], 'addConnection');
+			let dbAddOn = new KnexDatabaseAddOn(new MockConfigAddOn(), new MockDbConnector()),
+				addConnSpy = chai.spy.on(dbAddOn['_dbConnector'], 'addConnection');
 			
 			// Act
-			await dbAdapter.init();
+			await dbAddOn.init();
 
 			// Assert
 			expect(addConnSpy).to.be.spy;
@@ -96,13 +96,13 @@ describe('KnexDatabaseAdapter', () => {
 
 		it('should throw exception if there is no settings for database connection', async () => {
 			// Arrange
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(''), new MockDbConnector()),
+			let dbAddOn = new KnexDatabaseAddOn(new MockConfigAddOn(''), new MockDbConnector()),
 				exception = null,
 				isSuccess = false;
 
 			// Act
 			try {
-				await dbAdapter.init();
+				await dbAddOn.init();
 				isSuccess = true;
 			} catch (ex) {
 				exception = ex;
@@ -119,17 +119,17 @@ describe('KnexDatabaseAdapter', () => {
 		it('should release all resources', async () => {
 			// Arrange
 
-			let dbAdapter = new KnexDatabaseAdapter(new MockConfigAdapter(MODE_FILE), new MockDbConnector()),
+			let dbAddOn = new KnexDatabaseAddOn(new MockConfigAddOn(MODE_FILE), new MockDbConnector()),
 				callMe = chai.spy();
 
 			// Act
-			await dbAdapter.init();
-			await dbAdapter.dispose();
+			await dbAddOn.init();
+			await dbAddOn.dispose();
 
 			// Assert
-			_.forOwn(dbAdapter, (value, key) => {
+			_.forOwn(dbAddOn, (value, key) => {
 				callMe();
-				expect(dbAdapter[key], key).to.be.null;
+				expect(dbAddOn[key], key).to.be.null;
 			});
 			expect(callMe).to.be.called;
 		});
