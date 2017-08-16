@@ -117,7 +117,6 @@ declare module 'back-lib-foundation/microservice/MicroServiceBase' {
 	    protected registerMessageBrokerAddOn(): void;
 	    protected registerMediateRpcCaller(): void;
 	    protected registerMediateRpcHandler(): void;
-	    protected registerModelMapper(): void;
 	    protected registerDependencies(): void;
 	    /**
 	     * Invoked whenever any error occurs in the application.

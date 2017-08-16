@@ -135,16 +135,11 @@ export abstract class MicroServiceBase {
 		this._depContainer.bind<com.IMediateRpcHandler>(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler);
 	}
 
-	protected registerModelMapper(): void {
-		this._depContainer.bindConstant<AutoMapper>(cm.Types.MODEL_MAPPER, automapper);
-	}
-
 	protected registerDependencies(): void {
 		let depCon: cm.IDependencyContainer = this._depContainer = new cm.DependencyContainer();
 		depCon.bindConstant<cm.IDependencyContainer>(cm.Types.DEPENDENCY_CONTAINER, depCon);
 		this.registerConfigProvider();
 		this.registerDirectRpcCaller();
-		this.registerModelMapper();
 	}
 	
 	/**

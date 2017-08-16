@@ -123,15 +123,11 @@ class MicroServiceBase {
         }
         this._depContainer.bind(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler);
     }
-    registerModelMapper() {
-        this._depContainer.bindConstant(cm.Types.MODEL_MAPPER, automapper);
-    }
     registerDependencies() {
         let depCon = this._depContainer = new cm.DependencyContainer();
         depCon.bindConstant(cm.Types.DEPENDENCY_CONTAINER, depCon);
         this.registerConfigProvider();
         this.registerDirectRpcCaller();
-        this.registerModelMapper();
     }
     /**
      * Invoked whenever any error occurs in the application.
