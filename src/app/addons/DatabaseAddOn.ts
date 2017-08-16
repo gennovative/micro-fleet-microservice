@@ -80,10 +80,10 @@ export class DatabaseAddOn implements IDatabaseAddOn {
 		value = provider.get(S.DB_HOST + connIdx);
 		if (value) {
 			cnnDetail.host = {
-				address: provider.get(S.DB_HOST),
-				user: provider.get(S.DB_USER),
-				password: provider.get(S.DB_PASSWORD),
-				database: provider.get(S.DB_NAME),
+				address: provider.get(S.DB_HOST + connIdx),
+				user: provider.get(S.DB_USER + connIdx),
+				password: provider.get(S.DB_PASSWORD + connIdx),
+				database: provider.get(S.DB_NAME + connIdx),
 			};
 			return cnnDetail;
 		}

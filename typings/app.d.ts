@@ -150,8 +150,6 @@ declare module 'back-lib-foundation/microservice/MicroServiceBase' {
 
 }
 declare module 'back-lib-foundation' {
-	import 'reflect-metadata';
-	import 'automapper-ts';
 	export * from 'back-lib-foundation/addons/ConfigurationProvider';
 	export * from 'back-lib-foundation/addons/DatabaseAddOn';
 	export * from 'back-lib-foundation/addons/MessageBrokerAddOn';

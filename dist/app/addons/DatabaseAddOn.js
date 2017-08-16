@@ -84,10 +84,10 @@ let DatabaseAddOn = class DatabaseAddOn {
         value = provider.get(SettingKeys_1.SettingKeys.DB_HOST + connIdx);
         if (value) {
             cnnDetail.host = {
-                address: provider.get(SettingKeys_1.SettingKeys.DB_HOST),
-                user: provider.get(SettingKeys_1.SettingKeys.DB_USER),
-                password: provider.get(SettingKeys_1.SettingKeys.DB_PASSWORD),
-                database: provider.get(SettingKeys_1.SettingKeys.DB_NAME),
+                address: provider.get(SettingKeys_1.SettingKeys.DB_HOST + connIdx),
+                user: provider.get(SettingKeys_1.SettingKeys.DB_USER + connIdx),
+                password: provider.get(SettingKeys_1.SettingKeys.DB_PASSWORD + connIdx),
+                database: provider.get(SettingKeys_1.SettingKeys.DB_NAME + connIdx),
             };
             return cnnDetail;
         }
