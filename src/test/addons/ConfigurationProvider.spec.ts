@@ -1,6 +1,8 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
 import * as _ from 'lodash';
+import { SettingItem, SettingItemDataType } from 'back-lib-common-contracts';
+import { CriticalException } from 'back-lib-common-util';
 import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
 
 import * as app from '../../app';
@@ -13,9 +15,28 @@ const expect = chai.expect;
 // Mock fetched config
 
 const CONFIG_SVC_ADDRESSES = ['127.0.0.1', '127.0.0.2', '127.0.0.3'],
-	SUCCESS_CONFIG = {
-		[S.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq'
-	};
+	SUCCESS_CONFIG: SettingItem[] = [
+		{
+			name: S.SETTINGS_SERVICE_ADDRESSES,
+			dataType: SettingItemDataType.String,
+			value: JSON.stringify(CONFIG_SVC_ADDRESSES)
+		},
+		{
+			name: S.MSG_BROKER_HOST,
+			dataType: SettingItemDataType.String,
+			value: '127.0.0.1/rabbitmq'
+		},
+		{
+			name: 'max_conn',
+			dataType: SettingItemDataType.Number,
+			value: '999'
+		},
+		{
+			name: 'auto_restart',
+			dataType: SettingItemDataType.Boolean,
+			value: 'true'
+		}
+	];
 
 class MockDirectRpcCaller implements IDirectRpcCaller {
 	public name: string;
@@ -116,24 +137,24 @@ describe('ConfigurationProvider', () => {
 
 			// Act
 			await configPrvd.init();
-			value = configPrvd.get(S.CONFIG_SERVICE_ADDRESSES);
+			value = configPrvd.get(S.SETTINGS_SERVICE_ADDRESSES);
 
 			// Assert
-			expect(value).to.equals(appConfigs[S.CONFIG_SERVICE_ADDRESSES]);
+			expect(value).to.equals(appConfigs[S.SETTINGS_SERVICE_ADDRESSES]);
 		});
 
 		it('should read settings from environment variable', async () => {
 			// Arrange
-			process.env[S.CONFIG_SERVICE_ADDRESSES] = '127.0.0.1';
+			process.env[S.SETTINGS_SERVICE_ADDRESSES] = '127.0.0.1';
 			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
 			configPrvd['_configFilePath'] = 'dummy.json';
 
 			// Act
 			await configPrvd.init();
-			let value = configPrvd.get(S.CONFIG_SERVICE_ADDRESSES);
+			let value = configPrvd.get(S.SETTINGS_SERVICE_ADDRESSES);
 			
 			// Assert
-			expect(value).to.equals(process.env[S.CONFIG_SERVICE_ADDRESSES]);
+			expect(value).to.equals(process.env[S.SETTINGS_SERVICE_ADDRESSES]);
 		});
 
 		it('should read settings from fetched Configuration Service', async () => {
@@ -178,7 +199,7 @@ describe('ConfigurationProvider', () => {
 			// Make it no way to accidentially get a meaningful address.
 			configPrvd['_configFilePath'] = 'dummy.json';
 			configPrvd['_remoteSettings'] = {};
-			process.env[S.CONFIG_SERVICE_ADDRESSES] = '';
+			process.env[S.SETTINGS_SERVICE_ADDRESSES] = '';
 
 			// Act then assert
 			await configPrvd.init();
@@ -188,14 +209,15 @@ describe('ConfigurationProvider', () => {
 				expect(isSuccess).to.be.false;
 			} catch (err) {
 				expect(isSuccess).to.be.false;
-				expect(err).to.equal('No address for Configuration Service!');
+				expect(err).to.be.instanceOf(CriticalException);
+				expect(err.message).to.equal('No address for Configuration Service!');
 			}
 		});
 
 		it('should try each address in the list until success', async () => {
 			// Arrange
 			// Mock config service addresses
-			process.env[S.CONFIG_SERVICE_ADDRESSES] = `${CONFIG_SVC_ADDRESSES[0]};${CONFIG_SVC_ADDRESSES[1]};${CONFIG_SVC_ADDRESSES[2]}`;
+			process.env[S.SETTINGS_SERVICE_ADDRESSES] = JSON.stringify(CONFIG_SVC_ADDRESSES);
 
 			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
 				value;
@@ -204,14 +226,14 @@ describe('ConfigurationProvider', () => {
 			await configPrvd.init();
 			await configPrvd.fetch();
 			value = configPrvd.get(S.MSG_BROKER_HOST);
-			expect(value).to.equals(SUCCESS_CONFIG[S.MSG_BROKER_HOST]);
+			expect(value).to.equals(SUCCESS_CONFIG[1].value);
 		});
 
 		it('should reject if no address in the list is accessible and private _settings must be an empty object', async () => {
 			// Arrange
 			// Mock config service addresses
 			let addresses = ['127.0.0.1', '127.0.0.2'];
-			process.env[S.CONFIG_SERVICE_ADDRESSES] = `${addresses[0]};${addresses[1]}`;
+			process.env[S.SETTINGS_SERVICE_ADDRESSES] = JSON.stringify(addresses);
 
 			// Mock function to make request to config service.
 			let requestFn = function(options) {

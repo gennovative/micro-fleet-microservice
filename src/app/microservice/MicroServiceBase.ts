@@ -101,7 +101,7 @@ export abstract class MicroServiceBase {
 
 	protected registerDbAddOn(): void {
 		this._depContainer.bind<per.IDatabaseConnector>(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
-		this._depContainer.bind<db.IDatabaseAddOn>(T.DB_ADDON, db.KnexDatabaseAddOn).asSingleton();
+		this._depContainer.bind<db.IDatabaseAddOn>(T.DB_ADDON, db.DatabaseAddOn).asSingleton();
 	}
 
 	protected registerConfigProvider(): void {

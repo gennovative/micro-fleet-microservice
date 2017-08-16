@@ -25,17 +25,16 @@ const back_lib_common_util_1 = require("back-lib-common-util");
 const back_lib_service_communication_1 = require("back-lib-service-communication");
 const SettingKeys_1 = require("../constants/SettingKeys");
 /**
- * Provides settings from package
+ * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
 let ConfigurationProvider = class ConfigurationProvider {
     constructor(_rpcCaller) {
         this._rpcCaller = _rpcCaller;
         this._configFilePath = `${process.cwd()}/appconfig.json`;
+        back_lib_common_util_1.Guard.assertArgDefined('_rpcCaller', _rpcCaller);
         this._remoteSettings = {};
         this._enableRemote = false;
-        if (this._rpcCaller) {
-            this._rpcCaller.name = 'ConfigurationProvider';
-        }
+        this._rpcCaller.name = 'ConfigurationProvider';
     }
     get enableRemote() {
         return this._enableRemote;
@@ -77,24 +76,23 @@ let ConfigurationProvider = class ConfigurationProvider {
      */
     fetch() {
         return __awaiter(this, void 0, void 0, function* () {
-            let addressRaw = this.get(SettingKeys_1.SettingKeys.CONFIG_SERVICE_ADDRESSES);
-            if (!addressRaw || !addressRaw.length) {
-                throw 'No address for Configuration Service!';
+            let addresses = JSON.parse(this.get(SettingKeys_1.SettingKeys.SETTINGS_SERVICE_ADDRESSES));
+            if (!addresses || !addresses.length) {
+                throw new back_lib_common_util_1.CriticalException('No address for Configuration Service!');
             }
-            let addressList = addressRaw.split(';'), i = 0;
-            for (; i < addressList.length; i++) {
-                if (yield this.attemptFetch(addressList[i])) {
+            for (let addr of addresses) {
+                if (yield this.attemptFetch(addr)) {
                     // Stop trying if success
                     return true;
                 }
             }
-            throw 'Cannot connect to any address of Configuration Service!';
+            throw new back_lib_common_util_1.CriticalException('Cannot connect to any address of Configuration Service!');
         });
     }
     attemptFetch(address) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_NAME), ipAddress = ''; // If this service runs inside a Docker container, 
+                let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_SLUG), ipAddress = ''; // If this service runs inside a Docker container, 
                 // this should be the host's IP address.
                 this._rpcCaller.baseAddress = address;
                 let req = new back_lib_common_contracts_1.GetSettingRequest();
@@ -102,7 +100,7 @@ let ConfigurationProvider = class ConfigurationProvider {
                 req.ipAddress = ipAddress;
                 let res = yield this._rpcCaller.call('SettingService', 'getSetting', req);
                 if (res.isSuccess) {
-                    this._remoteSettings = res.data;
+                    this._remoteSettings = this.parseSettings(res.data);
                     return true;
                 }
             }
@@ -111,6 +109,23 @@ let ConfigurationProvider = class ConfigurationProvider {
             }
             return false;
         });
+    }
+    parseSettings(raw) {
+        let map = {}, settings = back_lib_common_contracts_1.SettingItem.translator.whole(raw);
+        for (let st of settings) {
+            map[st.name] = this.parseValue(st.value, st.dataType);
+        }
+        return map;
+    }
+    parseValue(val, type) {
+        if (type == back_lib_common_contracts_1.SettingItemDataType.Number) {
+            return parseFloat(val);
+        }
+        else if (type == back_lib_common_contracts_1.SettingItemDataType.Boolean) {
+            // val = 'true' | 'false'; (lowercase)
+            return JSON.parse(val);
+        }
+        return val; // string data type
     }
 };
 ConfigurationProvider = __decorate([

@@ -1,4 +1,4 @@
-import { injectable, inject } from 'back-lib-common-util';
+import { injectable, inject, Guard } from 'back-lib-common-util';
 import { IMessageBrokerConnector, IConnectionOptions, Types as ComT } from 'back-lib-service-communication';
 
 import { IConfigurationProvider } from './ConfigurationProvider';
@@ -13,6 +13,8 @@ export class MessageBrokerAddOn implements IServiceAddOn {
 		@inject(T.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
 		@inject(ComT.MSG_BROKER_CONNECTOR) private _msgBrokerCnn: IMessageBrokerConnector
 	) {
+		Guard.assertArgDefined('_configProvider', _configProvider);
+		Guard.assertArgDefined('_msgBrokerCnn', _msgBrokerCnn);
 	}
 	
 	public init(): Promise<void> {

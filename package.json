@@ -1,13 +1,14 @@
 {
   "name": "back-lib-foundation",
   "private": true,
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "Provides base class for all microservices.",
   "main": "./dist/app/index.js",
   "types": "./typings/app.d.ts",
   "repository": "git@bitbucket.org:firstinteractive/back-lib-foundation.git",
   "engines": {
-    "node": "~7.10.1"
+    "node": "~7.10.1",
+    "npm": "~4.6.1"
   },
   "dependencies": {
     "back-lib-common-contracts": "git+ssh://git@bitbucket.org/firstinteractive/back-lib-common-contracts.git#1.0.0",

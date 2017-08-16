@@ -20,6 +20,8 @@ let MessageBrokerAddOn = class MessageBrokerAddOn {
     constructor(_configProvider, _msgBrokerCnn) {
         this._configProvider = _configProvider;
         this._msgBrokerCnn = _msgBrokerCnn;
+        back_lib_common_util_1.Guard.assertArgDefined('_configProvider', _configProvider);
+        back_lib_common_util_1.Guard.assertArgDefined('_msgBrokerCnn', _msgBrokerCnn);
     }
     init() {
         let cfgAdt = this._configProvider, opts = {

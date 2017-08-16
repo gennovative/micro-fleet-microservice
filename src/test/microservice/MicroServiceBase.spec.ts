@@ -5,6 +5,8 @@ import { DbClient } from 'back-lib-persistence';
 
 import { MicroServiceBase, IConfigurationProvider, IDatabaseAddOn,
 	Types, SettingKeys as S } from '../../app';
+import rabbitOpts from '../rabbit-options';
+import DB_DETAILS from '../database-details';
 
 
 chai.use(spies);
@@ -66,9 +68,19 @@ class MockConfigService implements IConfigurationProvider {
 		return Promise.resolve();
 	}
 
-	public get(key: string): string {
+	public get(key: string): number & boolean & string {
 		switch (key) {
-			case S.DB_FILE: return CONN_FILE;
+			case S.DB_NUM_CONN: return <any>1;
+			case S.DB_ENGINE + '0': return <any>DB_DETAILS.clientName;
+			case S.DB_HOST + '0': return <any>DB_DETAILS.host.address;
+			case S.DB_USER + '0': return <any>DB_DETAILS.host.user;
+			case S.DB_PASSWORD + '0': return <any>DB_DETAILS.host.password;
+			case S.DB_NAME + '0': return <any>DB_DETAILS.host.database;
+			case S.MSG_BROKER_HOST: return <any>rabbitOpts.caller.hostAddress;
+			case S.MSG_BROKER_USERNAME: return <any>rabbitOpts.caller.username;
+			case S.MSG_BROKER_PASSWORD: return <any>rabbitOpts.caller.password;
+			case S.MSG_BROKER_EXCHANGE: return <any>rabbitOpts.caller.exchange;
+			case S.MSG_BROKER_QUEUE: return <any>rabbitOpts.caller.queue;
 			default: return null;
 		}
 	}
@@ -97,16 +109,33 @@ class TestMarketingService extends MicroServiceBase {
 		this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility);
 		this._depContainer.bind<ICustomAddOn>(CUSTOM_ADT, CustomAddOn);
 
-		// In reality, we can merely call `registerConfigAddOn` method. However,
-		// in this case, we want to inject our mock instance instead.
-		//// this.registerConfigAddOn();
+		// `registerConfigProvider()` is already called by MicroServiceBase.
+		// However, in this case, we want to override with our mock instance.
 		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigService).asSingleton();
 		
 		// Call this if your service works directly with database.
-		//this.registerDbAddOn();
+		this.registerDbAddOn();
+
+		// If your service accepts direct incoming requests.
+		this.registerDirectRpcHandler();
+
+		// If your service sends direct incoming requests.
+		//// Already called by MicroServiceBase
+		// this.registerDirectRpcCaller();
 		
-		// Call this if your service communicates via message broker.
-		// this.registerMessageBrokerAddOn();		
+		// If your service communicates via message broker.
+		//// Internally called by `registerMediateRpcCaller` and `registerMediateRpcHandler`
+		// this.registerMessageBrokerAddOn();
+
+		// If your service sends requests via message broker.
+		this.registerMediateRpcCaller();
+
+		// If your service accepts incoming requests via message broker.
+		this.registerMediateRpcHandler();
+
+		// If your service wants to translate models of different layers.
+		//// Already called by MicroServiceBase
+		// this.registerModelMapper();
 	}
 
 	/**
@@ -114,10 +143,10 @@ class TestMarketingService extends MicroServiceBase {
 	 */
 	protected onStarting(): void {
 		// Call this if your service works directly with database.
-		//this.addDbAddOn();
+		this.attachDbAddOn();
 
 		// Call this if your service communicates via message broker.
-		// this.addMessageBrokerAddOn();
+		this.attachMessageBrokerAddOn();
 		
 		// Use this if you have a home-made add-on.
 		// All added add-ons' init method will be called 
@@ -138,7 +167,9 @@ class TestMarketingService extends MicroServiceBase {
 //		service.start();
 
 
-describe('MicroServiceBase', () => {
+describe('MicroServiceBase', function() {
+	this.timeout(10000);
+
 	describe('start', () => {
 		it('should call events in specific order', () => {
 			enum EventOrder { BeforeStart = 1, AfterStart, BeforeStop, AfterStop }

@@ -96,7 +96,7 @@ class MicroServiceBase {
     }
     registerDbAddOn() {
         this._depContainer.bind(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
-        this._depContainer.bind(Types_1.Types.DB_ADDON, db.KnexDatabaseAddOn).asSingleton();
+        this._depContainer.bind(Types_1.Types.DB_ADDON, db.DatabaseAddOn).asSingleton();
     }
     registerConfigProvider() {
         this._depContainer.bind(Types_1.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();

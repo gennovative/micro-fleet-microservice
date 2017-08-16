@@ -1,7 +1,9 @@
 {
-	"service.name": "Micro Service great grand father",
-	"service.configuration.address": "127.0.0.1;192.168.1.150;10.8.1.2",
-	"messageBroker.host": "192.168.1.4",
-	"messageBroker.reconnectTimeout": 3000,
-	"messageBroker.exchange": "first-infras"
+	"service_name": "Micro Service great grand father",
+	"service_settings_address": "['127.0.0.1', '127.0.0.2', '127.0.0.3']",
+	"messageBroker_host": "127.0.0.1",
+	"messageBroker_username": "firstidea",
+	"messageBroker_password": "gennova",
+	"messageBroker_reconnectTimeout": 3000,
+	"messageBroker_exchange": "first-infras"
 }

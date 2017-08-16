@@ -2,7 +2,9 @@
 
 declare module 'back-lib-foundation/constants/SettingKeys' {
 	export class SettingKeys {
-	    static readonly CONFIG_SERVICE_ADDRESSES: string;
+	    static readonly SETTINGS_SERVICE_ADDRESSES: string;
+	    static readonly DB_NUM_CONN: string;
+	    static readonly DB_ENGINE: string;
 	    static readonly DB_HOST: string;
 	    static readonly DB_USER: string;
 	    static readonly DB_PASSWORD: string;
@@ -15,7 +17,7 @@ declare module 'back-lib-foundation/constants/SettingKeys' {
 	    static readonly MSG_BROKER_RECONN_TIMEOUT: string;
 	    static readonly MSG_BROKER_USERNAME: string;
 	    static readonly MSG_BROKER_PASSWORD: string;
-	    static readonly SERVICE_NAME: string;
+	    static readonly SERVICE_SLUG: string;
 	}
 
 }
@@ -33,11 +35,11 @@ declare module 'back-lib-foundation/addons/ConfigurationProvider' {
 	import { IDirectRpcCaller } from 'back-lib-service-communication';
 	export interface IConfigurationProvider extends IServiceAddOn {
 	    enableRemote: boolean;
-	    get(key: string): string;
+	    get(key: string): number & boolean & string;
 	    fetch(): Promise<boolean>;
 	}
 	/**
-	 * Provides settings from package
+	 * Provides settings from appconfig.json, environmental variables and remote settings service.
 	 */
 	export class ConfigurationProvider implements IConfigurationProvider {
 	    	    	    	    	    	    constructor(_rpcCaller: IDirectRpcCaller);
@@ -48,28 +50,27 @@ declare module 'back-lib-foundation/addons/ConfigurationProvider' {
 	     * Attempts to get settings from cached Configuration Service, environmetal variable,
 	     * and `appconfig.json` file, respectedly.
 	     */
-	    get(key: string): string;
+	    get(key: string): number & boolean & string;
 	    /**
 	     * Attempts to fetch settings from remote Configuration Service.
 	     */
 	    fetch(): Promise<boolean>;
-	    	}
+	    	    	    	}
 
 }
 declare module 'back-lib-foundation/addons/DatabaseAddOn' {
 	import { IDatabaseConnector } from 'back-lib-persistence';
 	import { IConfigurationProvider } from 'back-lib-foundation/addons/ConfigurationProvider';
 	export interface IDatabaseAddOn extends IServiceAddOn {
-	    dispose(): Promise<void>;
 	}
 	/**
-	 * Provides settings from package
+	 * Initializes database connections.
 	 */
-	export class KnexDatabaseAddOn implements IDatabaseAddOn {
+	export class DatabaseAddOn implements IDatabaseAddOn {
 	    	    	    constructor(_configProvider: IConfigurationProvider, _dbConnector: IDatabaseConnector);
 	    init(): Promise<void>;
 	    dispose(): Promise<void>;
-	    	}
+	    	    	}
 
 }
 declare module 'back-lib-foundation/addons/MessageBrokerAddOn' {

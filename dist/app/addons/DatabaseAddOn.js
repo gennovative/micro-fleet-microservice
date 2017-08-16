@@ -20,24 +20,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const back_lib_persistence_1 = require("back-lib-persistence");
 const back_lib_common_util_1 = require("back-lib-common-util");
+const back_lib_persistence_1 = require("back-lib-persistence");
 const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
 /**
- * Provides settings from package
+ * Initializes database connections.
  */
-let KnexDatabaseAddOn = class KnexDatabaseAddOn {
+let DatabaseAddOn = class DatabaseAddOn {
     constructor(_configProvider, _dbConnector) {
         this._configProvider = _configProvider;
         this._dbConnector = _dbConnector;
+        back_lib_common_util_1.Guard.assertArgDefined('_configProvider', _configProvider);
+        back_lib_common_util_1.Guard.assertArgDefined('_dbConnector', _dbConnector);
     }
     init() {
         return new Promise(resolve => {
-            let cfgAdt = this._configProvider, settings = this.buildConnSettings();
-            // TODO 1: Should allow setting "client" from remote configuration (show a dropdown box in GUI).
-            // TODO 2: Should allow setting multiple connection from remote configuration.
-            this._dbConnector.addConnection(settings);
+            this.addConnections();
             resolve();
         });
     }
@@ -50,42 +49,57 @@ let KnexDatabaseAddOn = class KnexDatabaseAddOn {
             this._configProvider = null;
         });
     }
-    buildConnSettings() {
-        let cfgAdt = this._configProvider, cnnDetail = {
-            clientName: back_lib_persistence_1.DbClient.POSTGRESQL
+    addConnections() {
+        let nConn = this._configProvider.get(SettingKeys_1.SettingKeys.DB_NUM_CONN), connDetail;
+        // TODO 1: Should allow setting "client" from remote configuration (show a dropdown box in GUI).
+        // TODO 2: Should allow setting multiple connection from remote configuration.
+        for (let i = 0; i < nConn; ++i) {
+            connDetail = this.buildConnDetails(i);
+            if (!connDetail) {
+                continue;
+            }
+            this._dbConnector.addConnection(connDetail);
+        }
+        if (!this._dbConnector.connections.length) {
+            throw new back_lib_common_util_1.CriticalException('No database settings!');
+        }
+    }
+    buildConnDetails(connIdx) {
+        let provider = this._configProvider, cnnDetail = {
+            clientName: provider.get(SettingKeys_1.SettingKeys.DB_ENGINE + connIdx) // Must belong to `DbClient`
         }, value;
         // 1st priority: connect to a local file.
-        value = cfgAdt.get(SettingKeys_1.SettingKeys.DB_FILE);
+        value = provider.get(SettingKeys_1.SettingKeys.DB_FILE + connIdx);
         if (value) {
             cnnDetail.fileName = value;
             return cnnDetail;
         }
         // 2nd priority: connect with a connection string.
-        value = cfgAdt.get(SettingKeys_1.SettingKeys.DB_CONN_STRING);
+        value = provider.get(SettingKeys_1.SettingKeys.DB_CONN_STRING + connIdx);
         if (value) {
             cnnDetail.connectionString = value;
             return cnnDetail;
         }
         // Last priority: connect with host credentials.
-        value = cfgAdt.get(SettingKeys_1.SettingKeys.DB_HOST);
+        value = provider.get(SettingKeys_1.SettingKeys.DB_HOST + connIdx);
         if (value) {
             cnnDetail.host = {
-                address: cfgAdt.get(SettingKeys_1.SettingKeys.DB_HOST),
-                user: cfgAdt.get(SettingKeys_1.SettingKeys.DB_USER),
-                password: cfgAdt.get(SettingKeys_1.SettingKeys.DB_PASSWORD),
-                database: cfgAdt.get(SettingKeys_1.SettingKeys.DB_NAME),
+                address: provider.get(SettingKeys_1.SettingKeys.DB_HOST),
+                user: provider.get(SettingKeys_1.SettingKeys.DB_USER),
+                password: provider.get(SettingKeys_1.SettingKeys.DB_PASSWORD),
+                database: provider.get(SettingKeys_1.SettingKeys.DB_NAME),
             };
             return cnnDetail;
         }
-        throw 'No database settings!';
+        return null;
     }
 };
-KnexDatabaseAddOn = __decorate([
+DatabaseAddOn = __decorate([
     back_lib_common_util_1.injectable(),
     __param(0, back_lib_common_util_1.inject(Types_1.Types.CONFIG_PROVIDER)),
     __param(1, back_lib_common_util_1.inject(back_lib_persistence_1.Types.DB_CONNECTOR)),
     __metadata("design:paramtypes", [Object, Object])
-], KnexDatabaseAddOn);
-exports.KnexDatabaseAddOn = KnexDatabaseAddOn;
+], DatabaseAddOn);
+exports.DatabaseAddOn = DatabaseAddOn;
 
 //# sourceMappingURL=DatabaseAddOn.js.map

@@ -1,35 +1,30 @@
-
-import { IDatabaseConnector, IConnectionDetail, DbClient, Types as PerT } from 'back-lib-persistence';
-import { injectable, inject } from 'back-lib-common-util';
+import { injectable, inject, Guard, CriticalException } from 'back-lib-common-util';
+import { IDatabaseConnector, IConnectionDetail, Types as PerT } from 'back-lib-persistence';
 
 import { IConfigurationProvider } from './ConfigurationProvider';
 import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
 export interface IDatabaseAddOn extends IServiceAddOn {
-	dispose(): Promise<void>;
 }
 
 /**
- * Provides settings from package
+ * Initializes database connections.
  */
 @injectable()
-export class KnexDatabaseAddOn implements IDatabaseAddOn {
+export class DatabaseAddOn implements IDatabaseAddOn {
 	
 	constructor(
 		@inject(T.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
 		@inject(PerT.DB_CONNECTOR) private _dbConnector: IDatabaseConnector
 	) {
+		Guard.assertArgDefined('_configProvider', _configProvider);
+		Guard.assertArgDefined('_dbConnector', _dbConnector);
 	}
 
 	public init(): Promise<void> {
 		return new Promise<void>(resolve => {
-			let cfgAdt = this._configProvider,
-				settings: IConnectionDetail = this.buildConnSettings();
-			
-			// TODO 1: Should allow setting "client" from remote configuration (show a dropdown box in GUI).
-			// TODO 2: Should allow setting multiple connection from remote configuration.
-			this._dbConnector.addConnection(settings);
+			this.addConnections();
 			resolve();
 		});
 	}
@@ -43,38 +38,55 @@ export class KnexDatabaseAddOn implements IDatabaseAddOn {
 	}
 
 
-	private buildConnSettings(): IConnectionDetail {
-		let cfgAdt = this._configProvider,
+	private addConnections(): void {
+		let nConn = <number>this._configProvider.get(S.DB_NUM_CONN),
+			connDetail;
+
+		// TODO 1: Should allow setting "client" from remote configuration (show a dropdown box in GUI).
+		// TODO 2: Should allow setting multiple connection from remote configuration.
+		for (let i = 0; i < nConn; ++i) {
+			connDetail = this.buildConnDetails(i);
+			if (!connDetail) { continue; }
+			this._dbConnector.addConnection(connDetail);
+		}
+
+		if (!this._dbConnector.connections.length) {
+		throw new CriticalException('No database settings!');
+		}
+	}
+
+	private buildConnDetails(connIdx: number): IConnectionDetail {
+		let provider = this._configProvider,
 			cnnDetail: IConnectionDetail = {
-				clientName: DbClient.POSTGRESQL
+				clientName: provider.get(S.DB_ENGINE + connIdx) // Must belong to `DbClient`
 			},
 			value: string;
 
 		// 1st priority: connect to a local file.
-		value = cfgAdt.get(S.DB_FILE);
+		value = provider.get(S.DB_FILE + connIdx);
 		if (value) {
 			cnnDetail.fileName = value;
 			return cnnDetail;
 		}
 
 		// 2nd priority: connect with a connection string.
-		value = cfgAdt.get(S.DB_CONN_STRING);
+		value = provider.get(S.DB_CONN_STRING + connIdx);
 		if (value) {
 			cnnDetail.connectionString = value;
 			return cnnDetail;
 		}
 
 		// Last priority: connect with host credentials.
-		value = cfgAdt.get(S.DB_HOST);
+		value = provider.get(S.DB_HOST + connIdx);
 		if (value) {
 			cnnDetail.host = {
-				address: cfgAdt.get(S.DB_HOST),
-				user: cfgAdt.get(S.DB_USER),
-				password: cfgAdt.get(S.DB_PASSWORD),
-				database: cfgAdt.get(S.DB_NAME),
+				address: provider.get(S.DB_HOST),
+				user: provider.get(S.DB_USER),
+				password: provider.get(S.DB_PASSWORD),
+				database: provider.get(S.DB_NAME),
 			};
 			return cnnDetail;
 		}
-		throw 'No database settings!';
+		return null;
 	}
 }
