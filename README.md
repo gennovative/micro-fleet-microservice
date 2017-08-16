@@ -12,7 +12,8 @@ See more examples and usage guide in unit test.
 `npm install git+ssh://git@bitbucket.org:gennovahall/back-lib-persistence.git#1.0.0`
 
 ## VERSIONS
-### 0.4.0
+
+### 1.0.0
 - Changed `IAdapter` to `IServiceAddOn`.
 - Let `ConfigurationProvider` make requests with `IDirectRpcCaller` instead of raw `request` package.
 - Upgraded dev dependency packages.
