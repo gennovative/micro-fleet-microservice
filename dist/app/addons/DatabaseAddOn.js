@@ -20,9 +20,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const back_lib_common_constants_1 = require("back-lib-common-constants");
 const back_lib_common_util_1 = require("back-lib-common-util");
 const back_lib_persistence_1 = require("back-lib-persistence");
-const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
 /**
  * Initializes database connections.
@@ -34,12 +34,22 @@ let DatabaseAddOn = class DatabaseAddOn {
         back_lib_common_util_1.Guard.assertArgDefined('_configProvider', _configProvider);
         back_lib_common_util_1.Guard.assertArgDefined('_dbConnector', _dbConnector);
     }
+    /**
+     * @see IServiceAddOn.init
+     */
     init() {
-        return new Promise(resolve => {
-            this.addConnections();
-            resolve();
-        });
+        this.addConnections();
+        return Promise.resolve();
     }
+    /**
+     * @see IServiceAddOn.deadLetter
+     */
+    deadLetter() {
+        return Promise.resolve();
+    }
+    /**
+     * @see IServiceAddOn.dispose
+     */
     dispose() {
         return __awaiter(this, void 0, void 0, function* () {
             // Casting from Bluebird Promise to Node native Promise
@@ -50,7 +60,7 @@ let DatabaseAddOn = class DatabaseAddOn {
         });
     }
     addConnections() {
-        let nConn = this._configProvider.get(SettingKeys_1.SettingKeys.DB_NUM_CONN), connDetail;
+        let nConn = this._configProvider.get(back_lib_common_constants_1.DbSettingKeys.DB_NUM_CONN), connDetail;
         // TODO 1: Should allow setting "client" from remote configuration (show a dropdown box in GUI).
         // TODO 2: Should allow setting multiple connection from remote configuration.
         for (let i = 0; i < nConn; ++i) {
@@ -66,28 +76,28 @@ let DatabaseAddOn = class DatabaseAddOn {
     }
     buildConnDetails(connIdx) {
         let provider = this._configProvider, cnnDetail = {
-            clientName: provider.get(SettingKeys_1.SettingKeys.DB_ENGINE + connIdx) // Must belong to `DbClient`
+            clientName: provider.get(back_lib_common_constants_1.DbSettingKeys.DB_ENGINE + connIdx) // Must belong to `DbClient`
         }, value;
         // 1st priority: connect to a local file.
-        value = provider.get(SettingKeys_1.SettingKeys.DB_FILE + connIdx);
+        value = provider.get(back_lib_common_constants_1.DbSettingKeys.DB_FILE + connIdx);
         if (value) {
             cnnDetail.fileName = value;
             return cnnDetail;
         }
         // 2nd priority: connect with a connection string.
-        value = provider.get(SettingKeys_1.SettingKeys.DB_CONN_STRING + connIdx);
+        value = provider.get(back_lib_common_constants_1.DbSettingKeys.DB_CONN_STRING + connIdx);
         if (value) {
             cnnDetail.connectionString = value;
             return cnnDetail;
         }
         // Last priority: connect with host credentials.
-        value = provider.get(SettingKeys_1.SettingKeys.DB_HOST + connIdx);
+        value = provider.get(back_lib_common_constants_1.DbSettingKeys.DB_HOST + connIdx);
         if (value) {
             cnnDetail.host = {
-                address: provider.get(SettingKeys_1.SettingKeys.DB_HOST + connIdx),
-                user: provider.get(SettingKeys_1.SettingKeys.DB_USER + connIdx),
-                password: provider.get(SettingKeys_1.SettingKeys.DB_PASSWORD + connIdx),
-                database: provider.get(SettingKeys_1.SettingKeys.DB_NAME + connIdx),
+                address: provider.get(back_lib_common_constants_1.DbSettingKeys.DB_HOST + connIdx),
+                user: provider.get(back_lib_common_constants_1.DbSettingKeys.DB_USER + connIdx),
+                password: provider.get(back_lib_common_constants_1.DbSettingKeys.DB_PASSWORD + connIdx),
+                database: provider.get(back_lib_common_constants_1.DbSettingKeys.DB_NAME + connIdx),
             };
             return cnnDetail;
         }

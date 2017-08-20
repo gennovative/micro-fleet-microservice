@@ -8,12 +8,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const back_lib_common_constants_1 = require("back-lib-common-constants");
 const cm = require("back-lib-common-util");
-const per = require("back-lib-persistence");
 const com = require("back-lib-service-communication");
 const cfg = require("../addons/ConfigurationProvider");
-const db = require("../addons/DatabaseAddOn");
-const MessageBrokerAddOn_1 = require("../addons/MessageBrokerAddOn");
 const Types_1 = require("../constants/Types");
 class MicroServiceBase {
     constructor() {
@@ -58,6 +56,7 @@ class MicroServiceBase {
         (() => __awaiter(this, void 0, void 0, function* () {
             try {
                 this.onStopping();
+                yield this.sendDeadLetters();
                 this._depContainer.dispose();
                 yield this.disposeAddOns();
                 this._isStarted = false;
@@ -95,33 +94,36 @@ class MicroServiceBase {
         return dbAdt;
     }
     registerDbAddOn() {
-        this._depContainer.bind(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
-        this._depContainer.bind(Types_1.Types.DB_ADDON, db.DatabaseAddOn).asSingleton();
+        const { Types, KnexDatabaseConnector } = require('back-lib-persistence');
+        const { DatabaseAddOn } = require('../addons/DatabaseAddOn');
+        this._depContainer.bind(Types.DB_CONNECTOR, KnexDatabaseConnector).asSingleton();
+        this._depContainer.bind(Types_1.Types.DB_ADDON, DatabaseAddOn).asSingleton();
     }
     registerConfigProvider() {
         this._depContainer.bind(Types_1.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
     }
     registerDirectRpcCaller() {
-        this._depContainer.bind(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller);
+        this._depContainer.bind(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller).asSingleton();
     }
     registerDirectRpcHandler() {
-        this._depContainer.bind(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler);
+        this._depContainer.bind(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler).asSingleton();
     }
     registerMessageBrokerAddOn() {
+        const { MessageBrokerAddOn } = require('../addons/MessageBrokerAddOn');
         this._depContainer.bind(com.Types.MSG_BROKER_CONNECTOR, com.TopicMessageBrokerConnector).asSingleton();
-        this._depContainer.bind(Types_1.Types.BROKER_ADDON, MessageBrokerAddOn_1.MessageBrokerAddOn).asSingleton();
+        this._depContainer.bind(Types_1.Types.BROKER_ADDON, MessageBrokerAddOn).asSingleton();
     }
     registerMediateRpcCaller() {
         if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
             this.registerMessageBrokerAddOn();
         }
-        this._depContainer.bind(com.Types.MEDIATE_RPC_CALLER, com.MessageBrokerRpcCaller);
+        this._depContainer.bind(com.Types.MEDIATE_RPC_CALLER, com.MessageBrokerRpcCaller).asSingleton();
     }
     registerMediateRpcHandler() {
         if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
             this.registerMessageBrokerAddOn();
         }
-        this._depContainer.bind(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler);
+        this._depContainer.bind(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler).asSingleton();
     }
     registerDependencies() {
         let depCon = this._depContainer = new cm.DependencyContainer();
@@ -141,12 +143,17 @@ class MicroServiceBase {
      * Invoked after registering dependencies, but before all other initializations.
      */
     onStarting() {
+        if (this._depContainer.isBound(com.Types.MEDIATE_RPC_CALLER)) {
+            let caller = this._depContainer.resolve(com.Types.MEDIATE_RPC_CALLER);
+            caller.timeout = this._configProvider.get(back_lib_common_constants_1.RpcSettingKeys.RPC_CALLER_TIMEOUT);
+        }
     }
     /**
      * Invoked after all initializations. At this stage, the application is considered
      * started successfully.
      */
     onStarted() {
+        console.log('Microservice started successfully with %d addons', this._addons.length);
     }
     /**
      * Invoked when `stop` method is called, before any other actions take place.
@@ -177,14 +184,12 @@ class MicroServiceBase {
         });
     }
     disposeAddOns() {
-        return __awaiter(this, void 0, void 0, function* () {
-            let disposePromises = this._addons.map(adt => {
-                // let adtName = adt.constructor.toString().substring(0, 20);
-                // console.log('DISPOSING: ' + adtName);
-                return adt.dispose();
-            });
-            yield Promise.all(disposePromises);
+        let disposePromises = this._addons.map(adt => {
+            // let adtName = adt.constructor.toString().substring(0, 20);
+            // console.log('DISPOSING: ' + adtName);
+            return adt.dispose();
         });
+        return Promise.all(disposePromises);
     }
     exitProcess() {
         console.log('Application has been shutdown, the process exits now!');
@@ -222,6 +227,20 @@ class MicroServiceBase {
                 process.emit('SIGINT');
             });
         }
+    }
+    sendDeadLetters() {
+        return new Promise(resolve => {
+            let timer = setTimeout(resolve, this._configProvider.get(back_lib_common_constants_1.SvcSettingKeys.ADDONS_DEADLETTER_TIMEOUT) || 10000);
+            let promises = this._addons.map(adt => adt.deadLetter());
+            Promise.all(promises).then(() => {
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+                resolve();
+            });
+        })
+            .catch(err => this.onError(err));
     }
 }
 exports.MicroServiceBase = MicroServiceBase;

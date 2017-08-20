@@ -12,9 +12,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const message_broker_1 = require("back-lib-common-constants/dist/setting-keys/message-broker");
 const back_lib_common_util_1 = require("back-lib-common-util");
 const back_lib_service_communication_1 = require("back-lib-service-communication");
-const SettingKeys_1 = require("../constants/SettingKeys");
 const Types_1 = require("../constants/Types");
 let MessageBrokerAddOn = class MessageBrokerAddOn {
     constructor(_configProvider, _msgBrokerCnn) {
@@ -23,16 +23,30 @@ let MessageBrokerAddOn = class MessageBrokerAddOn {
         back_lib_common_util_1.Guard.assertArgDefined('_configProvider', _configProvider);
         back_lib_common_util_1.Guard.assertArgDefined('_msgBrokerCnn', _msgBrokerCnn);
     }
+    /**
+     * @see IServiceAddOn.init
+     */
     init() {
         let cfgAdt = this._configProvider, opts = {
-            hostAddress: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_HOST),
-            username: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_USERNAME),
-            password: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_PASSWORD),
-            exchange: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_EXCHANGE),
-            queue: cfgAdt.get(SettingKeys_1.SettingKeys.MSG_BROKER_QUEUE)
+            hostAddress: cfgAdt.get(message_broker_1.MbSettingKeys.MSG_BROKER_HOST),
+            username: cfgAdt.get(message_broker_1.MbSettingKeys.MSG_BROKER_USERNAME),
+            password: cfgAdt.get(message_broker_1.MbSettingKeys.MSG_BROKER_PASSWORD),
+            exchange: cfgAdt.get(message_broker_1.MbSettingKeys.MSG_BROKER_EXCHANGE),
+            queue: cfgAdt.get(message_broker_1.MbSettingKeys.MSG_BROKER_QUEUE),
+            reconnectDelay: cfgAdt.get(message_broker_1.MbSettingKeys.MSG_BROKER_RECONN_TIMEOUT),
+            messageExpiredIn: cfgAdt.get(message_broker_1.MbSettingKeys.MSG_BROKER_RECONN_TIMEOUT),
         };
         return this._msgBrokerCnn.connect(opts);
     }
+    /**
+     * @see IServiceAddOn.deadLetter
+     */
+    deadLetter() {
+        return Promise.resolve();
+    }
+    /**
+     * @see IServiceAddOn.dispose
+     */
     dispose() {
         return this._msgBrokerCnn.disconnect();
     }

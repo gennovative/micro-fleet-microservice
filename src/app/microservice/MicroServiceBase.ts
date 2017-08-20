@@ -1,3 +1,4 @@
+import { RpcSettingKeys as RpcS, SvcSettingKeys as SvcS } from 'back-lib-common-constants';
 import * as cm from 'back-lib-common-util';
 import * as per from 'back-lib-persistence';
 import * as com from 'back-lib-service-communication';
@@ -60,6 +61,7 @@ export abstract class MicroServiceBase {
 		(async () => {
 			try {
 				this.onStopping();
+				await this.sendDeadLetters();
 				this._depContainer.dispose();
 				await this.disposeAddOns();
 				this._isStarted = false;
@@ -73,6 +75,7 @@ export abstract class MicroServiceBase {
 			}
 		})();
 	}
+
 
 	/**
 	 * @return Total number of add-ons that have been added so far.
@@ -100,8 +103,10 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDbAddOn(): void {
-		this._depContainer.bind<per.IDatabaseConnector>(per.Types.DB_CONNECTOR, per.KnexDatabaseConnector).asSingleton();
-		this._depContainer.bind<db.IDatabaseAddOn>(T.DB_ADDON, db.DatabaseAddOn).asSingleton();
+		const { Types, KnexDatabaseConnector } = require('back-lib-persistence');
+		const { DatabaseAddOn } = require('../addons/DatabaseAddOn');
+		this._depContainer.bind<per.IDatabaseConnector>(Types.DB_CONNECTOR, KnexDatabaseConnector).asSingleton();
+		this._depContainer.bind<db.IDatabaseAddOn>(T.DB_ADDON, DatabaseAddOn).asSingleton();
 	}
 
 	protected registerConfigProvider(): void {
@@ -109,14 +114,15 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerDirectRpcCaller(): void {
-		this._depContainer.bind<com.IDirectRpcCaller>(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller);
+		this._depContainer.bind<com.IDirectRpcCaller>(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller).asSingleton();
 	}
 
 	protected registerDirectRpcHandler(): void {
-		this._depContainer.bind<com.IDirectRpcHandler>(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler);
+		this._depContainer.bind<com.IDirectRpcHandler>(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler).asSingleton();
 	}
 
 	protected registerMessageBrokerAddOn(): void {
+		const { MessageBrokerAddOn } = require('../addons/MessageBrokerAddOn');
 		this._depContainer.bind<com.IMessageBrokerConnector>(com.Types.MSG_BROKER_CONNECTOR, com.TopicMessageBrokerConnector).asSingleton();
 		this._depContainer.bind<MessageBrokerAddOn>(T.BROKER_ADDON, MessageBrokerAddOn).asSingleton();
 	}
@@ -125,14 +131,14 @@ export abstract class MicroServiceBase {
 		if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
 			this.registerMessageBrokerAddOn();
 		}
-		this._depContainer.bind<com.IMediateRpcCaller>(com.Types.MEDIATE_RPC_CALLER, com.MessageBrokerRpcCaller);
+		this._depContainer.bind<com.IMediateRpcCaller>(com.Types.MEDIATE_RPC_CALLER, com.MessageBrokerRpcCaller).asSingleton();
 	}
 
 	protected registerMediateRpcHandler(): void {
 		if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
 			this.registerMessageBrokerAddOn();
 		}
-		this._depContainer.bind<com.IMediateRpcHandler>(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler);
+		this._depContainer.bind<com.IMediateRpcHandler>(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler).asSingleton();
 	}
 
 	protected registerDependencies(): void {
@@ -155,6 +161,10 @@ export abstract class MicroServiceBase {
 	 * Invoked after registering dependencies, but before all other initializations.
 	 */
 	protected onStarting(): void {
+		if (this._depContainer.isBound(com.Types.MEDIATE_RPC_CALLER)) {
+			let caller = this._depContainer.resolve<com.IMediateRpcCaller>(com.Types.MEDIATE_RPC_CALLER);
+			caller.timeout = this._configProvider.get(RpcS.RPC_CALLER_TIMEOUT);
+		}
 	}
 
 	/**
@@ -162,6 +172,7 @@ export abstract class MicroServiceBase {
 	 * started successfully.
 	 */
 	protected onStarted(): void {
+		console.log('Microservice started successfully with %d addons', this._addons.length);
 	}
 
 	/**
@@ -176,6 +187,7 @@ export abstract class MicroServiceBase {
 	 */
 	protected onStopped(): void {
 	}
+
 
 	private async initAddOns(): Promise<void> {
 		let cfgPrvd = this._configProvider,
@@ -196,13 +208,13 @@ export abstract class MicroServiceBase {
 		await Promise.all(initPromises);
 	}
 
-	private async disposeAddOns(): Promise<void> {
+	private disposeAddOns(): Promise<void[]> {
 		let disposePromises = this._addons.map(adt => {
 			// let adtName = adt.constructor.toString().substring(0, 20);
 			// console.log('DISPOSING: ' + adtName);
 			return adt.dispose(); 
 		});
-		await Promise.all(disposePromises);
+		return Promise.all(disposePromises);
 	}
 	
 	private exitProcess() {
@@ -247,4 +259,25 @@ export abstract class MicroServiceBase {
 			});
 		}
 	}
+
+	private sendDeadLetters(): Promise<void> {
+		return new Promise<void>(resolve => {
+			let timer = setTimeout(
+					resolve,
+					this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT) || 10000
+				);
+
+			let promises = this._addons.map(adt => adt.deadLetter());
+
+			Promise.all(promises).then(() => {
+				if (timer) {
+					clearTimeout(timer);
+					timer = null;
+				}
+				resolve();
+			});
+		})
+		.catch(err => this.onError(err));
+	}
+
 }

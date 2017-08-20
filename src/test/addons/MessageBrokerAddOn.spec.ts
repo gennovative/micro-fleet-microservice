@@ -1,10 +1,11 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
 
+import { MbSettingKeys as S } from 'back-lib-common-constants';
 import { IMessageBrokerConnector, IConnectionOptions, IPublishOptions,
 	MessageHandleFunction } from 'back-lib-service-communication';
 
-import { MessageBrokerAddOn, IConfigurationProvider, SettingKeys as S } from '../../app';
+import { MessageBrokerAddOn, IConfigurationProvider } from '../../app';
 
 
 chai.use(spies);
@@ -21,6 +22,10 @@ class MockConfigAddOn implements IConfigurationProvider {
 		return <any>'';
 	}
 
+	public deadLetter(): Promise<void> {
+		return Promise.resolve();
+	}
+
 	public fetch(): Promise<boolean> {
 		return Promise.resolve(true);
 	}
@@ -32,9 +37,15 @@ class MockConfigAddOn implements IConfigurationProvider {
 	public dispose(): Promise<void> {
 		return Promise.resolve();
 	}
+
+	public onUpdate(listener: (delta: string[]) => void) {
+	}
 }
 
 class MockMbConnector implements IMessageBrokerConnector {
+	public messageExpiredIn: number;
+	public subscribedPatterns: string[];
+
 	private _connections = [];
 
 	public get queue(): string {
@@ -48,16 +59,36 @@ class MockMbConnector implements IMessageBrokerConnector {
 	public disconnect(): Promise<void> {
 		return Promise.resolve();
 	}
+	
+	public deleteQueue(): Promise<void> {
+		return Promise.resolve();
+	}
+	
+	public emptyQueue(): Promise<number> {
+		return Promise.resolve(0);
+	}
+
+	public listen(onMessage: MessageHandleFunction, noAck?: boolean): Promise<void> {
+		return Promise.resolve();
+	}
+
+	public stopListen(): Promise<void> {
+		return Promise.resolve();
+	}
 
 	public publish(topic: string, payload: string | Json | JsonArray, options?: IPublishOptions): Promise<void> {
 		return Promise.resolve();
 	}
 
-	public subscribe(matchingPattern: string, onMessage: MessageHandleFunction, noAck?: boolean): Promise<string> {
-		return Promise.resolve('');
+	public subscribe(matchingPattern: string): Promise<void> {
+		return Promise.resolve();
 	}
 
 	public unsubscribe(consumerTag: string): Promise<void> {
+		return Promise.resolve();
+	}
+
+	public unsubscribeAll(): Promise<void> {
 		return Promise.resolve();
 	}
 

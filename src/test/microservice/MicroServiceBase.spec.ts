@@ -1,10 +1,12 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
+import { MbSettingKeys as MbS, DbSettingKeys as DbS,
+	SvcSettingKeys as SvcS } from 'back-lib-common-constants';
 import { CriticalException, injectable } from 'back-lib-common-util';
 import { DbClient } from 'back-lib-persistence';
 
-import { MicroServiceBase, IConfigurationProvider, IDatabaseAddOn,
-	Types, SettingKeys as S } from '../../app';
+import { MicroServiceBase, IConfigurationProvider, 
+	IDatabaseAddOn, Types } from '../../app';
 import rabbitOpts from '../rabbit-options';
 import DB_DETAILS from '../database-details';
 
@@ -35,6 +37,10 @@ class CustomAddOn implements ICustomAddOn {
 		});
 	}
 
+	public deadLetter(): Promise<void> {
+		return Promise.resolve();
+	}
+
 	public dispose(): Promise<void> {
 		return new Promise<void>(resolve => {
 			// Do some async stuff here
@@ -52,7 +58,7 @@ const BEHAV_FALSE = 'behav_false',
 	CONN_FILE = `${process.cwd()}/database-addon-test.sqlite`;
 
 @injectable()
-class MockConfigService implements IConfigurationProvider {
+class MockConfigProvider implements IConfigurationProvider {
 
 	public behavior: string;
 	
@@ -64,23 +70,32 @@ class MockConfigService implements IConfigurationProvider {
 		return Promise.resolve();
 	}
 
+	public deadLetter(): Promise<void> {
+		return Promise.resolve();
+	}
+
 	public dispose(): Promise<void> {
 		return Promise.resolve();
 	}
 
+	public onUpdate(listener: (changedKeys: string[]) => void) {
+
+	}
+
 	public get(key: string): number & boolean & string {
 		switch (key) {
-			case S.DB_NUM_CONN: return <any>1;
-			case S.DB_ENGINE + '0': return <any>DB_DETAILS.clientName;
-			case S.DB_HOST + '0': return <any>DB_DETAILS.host.address;
-			case S.DB_USER + '0': return <any>DB_DETAILS.host.user;
-			case S.DB_PASSWORD + '0': return <any>DB_DETAILS.host.password;
-			case S.DB_NAME + '0': return <any>DB_DETAILS.host.database;
-			case S.MSG_BROKER_HOST: return <any>rabbitOpts.caller.hostAddress;
-			case S.MSG_BROKER_USERNAME: return <any>rabbitOpts.caller.username;
-			case S.MSG_BROKER_PASSWORD: return <any>rabbitOpts.caller.password;
-			case S.MSG_BROKER_EXCHANGE: return <any>rabbitOpts.caller.exchange;
-			case S.MSG_BROKER_QUEUE: return <any>rabbitOpts.caller.queue;
+			case DbS.DB_NUM_CONN: return <any>1;
+			case DbS.DB_ENGINE + '0': return <any>DB_DETAILS.clientName;
+			case DbS.DB_HOST + '0': return <any>DB_DETAILS.host.address;
+			case DbS.DB_USER + '0': return <any>DB_DETAILS.host.user;
+			case DbS.DB_PASSWORD + '0': return <any>DB_DETAILS.host.password;
+			case DbS.DB_NAME + '0': return <any>DB_DETAILS.host.database;
+			case MbS.MSG_BROKER_HOST: return <any>rabbitOpts.caller.hostAddress;
+			case MbS.MSG_BROKER_USERNAME: return <any>rabbitOpts.caller.username;
+			case MbS.MSG_BROKER_PASSWORD: return <any>rabbitOpts.caller.password;
+			case MbS.MSG_BROKER_EXCHANGE: return <any>rabbitOpts.caller.exchange;
+			case MbS.MSG_BROKER_QUEUE: return <any>rabbitOpts.caller.queue;
+			case SvcS.ADDONS_DEADLETTER_TIMEOUT: return <any>1000;
 			default: return null;
 		}
 	}
@@ -111,7 +126,7 @@ class TestMarketingService extends MicroServiceBase {
 
 		// `registerConfigProvider()` is already called by MicroServiceBase.
 		// However, in this case, we want to override with our mock instance.
-		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigService).asSingleton();
+		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigProvider).asSingleton();
 		
 		// Call this if your service works directly with database.
 		this.registerDbAddOn();
@@ -132,10 +147,6 @@ class TestMarketingService extends MicroServiceBase {
 
 		// If your service accepts incoming requests via message broker.
 		this.registerMediateRpcHandler();
-
-		// If your service wants to translate models of different layers.
-		//// Already called by MicroServiceBase
-		// this.registerModelMapper();
 	}
 
 	/**
@@ -220,7 +231,7 @@ describe('MicroServiceBase', function() {
 			service['exitProcess'] = () => {};
 
 			service['onStarting'] = function() {
-				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
+				let cfgAdt = <MockConfigProvider>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
 				cfgAdt.behavior = BEHAV_FALSE;
 			};
 
@@ -244,7 +255,7 @@ describe('MicroServiceBase', function() {
 			service['exitProcess'] = () => {};
 			
 			service['onStarting'] = function() {
-				let cfgAdt = <MockConfigService>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
+				let cfgAdt = <MockConfigProvider>this['_depContainer'].resolve(Types.CONFIG_PROVIDER);
 				cfgAdt.behavior = BEHAV_THROW;
 			};
 
@@ -262,7 +273,7 @@ describe('MicroServiceBase', function() {
 				return (error) => {
 					// Save and execute original `onError` method,
 					// to make it covered.
-					original(error);
+					original.call(service, error);
 
 					// Assert
 					expect(service['onError']).to.be.spy;
@@ -280,7 +291,7 @@ describe('MicroServiceBase', function() {
 				return () => {
 					// Save and execute original `onStarting` method,
 					// to make it covered.
-					original();
+					original.call(service);
 					throw ERROR_RANDOM;
 				};
 			})(service['onStarting']);
@@ -318,7 +329,7 @@ describe('MicroServiceBase', function() {
 
 			service['onStarted'] = (function(original) {
 				return () => {
-					original();
+					original.apply(service);
 					service.stop(false);
 				};
 			})(service['onStarted']);
@@ -328,7 +339,7 @@ describe('MicroServiceBase', function() {
 				return () => {
 					// Save and execute original `onStarting` method,
 					// to make it covered.
-					original();
+					original.apply(service);
 					throw ERROR_RANDOM;
 				};
 			})(service['onStopping']);
@@ -343,6 +354,7 @@ describe('MicroServiceBase', function() {
 			// Arrange
 			let service = new PlainService(),
 				callMe = chai.spy();
+
 			
 			service['onError'] = function() {
 				callMe();
@@ -351,8 +363,8 @@ describe('MicroServiceBase', function() {
 			service['exitProcess'] = () => {};
 
 			service['onStarting'] = () => {
-					throw ERROR_RANDOM;
-				};
+				throw ERROR_RANDOM;
+			};
 
 			service['onStarted'] = function() {
 				service.stop(false);
@@ -445,7 +457,7 @@ describe('MicroServiceBase', function() {
 			};
 
 			service['disposeAddOns'] = () => {
-				return new Promise<void>((resolve, reject) => {
+				return new Promise<void[]>((resolve, reject) => {
 					reject(ERROR_RANDOM);
 				});
 			};

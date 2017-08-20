@@ -20,79 +20,165 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const events_1 = require("events");
+const back_lib_common_constants_1 = require("back-lib-common-constants");
 const back_lib_common_contracts_1 = require("back-lib-common-contracts");
 const back_lib_common_util_1 = require("back-lib-common-util");
 const back_lib_service_communication_1 = require("back-lib-service-communication");
-const SettingKeys_1 = require("../constants/SettingKeys");
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
 let ConfigurationProvider = class ConfigurationProvider {
     constructor(_rpcCaller) {
         this._rpcCaller = _rpcCaller;
-        this._configFilePath = `${process.cwd()}/appconfig.json`;
         back_lib_common_util_1.Guard.assertArgDefined('_rpcCaller', _rpcCaller);
-        this._remoteSettings = {};
+        this._configFilePath = `${process.cwd()}/appconfig.json`;
+        this._remoteSettings = this._fileSettings = {};
         this._enableRemote = false;
+        this._eventEmitter = new events_1.EventEmitter();
         this._rpcCaller.name = 'ConfigurationProvider';
+        this._isInit = false;
     }
+    /**
+     * @see IConfigurationProvider.enableRemote
+     */
     get enableRemote() {
         return this._enableRemote;
     }
-    set enableRemote(value) {
-        this._enableRemote = value;
+    /**
+     * @see IConfigurationProvider.enableRemote
+     */
+    set enableRemote(val) {
+        this._enableRemote = val;
     }
-    init() {
-        return new Promise(resolve => {
-            try {
-                this._fileSettings = require(this._configFilePath);
-            }
-            catch (ex) {
-                this._fileSettings = {};
-            }
-            resolve();
-        });
+    get refetchInterval() {
+        return this._refetchInterval;
     }
-    dispose() {
-        return new Promise(resolve => {
-            this._configFilePath = null;
-            this._fileSettings = null;
-            this._remoteSettings = null;
-            this._enableRemote = null;
-            this._rpcCaller = null;
-            resolve();
-        });
+    set refetchInterval(val) {
+        this._refetchInterval = val;
+        if (this._refetchTimer) {
+            this.stopRefetch();
+            this.repeatFetch();
+        }
     }
     /**
-     * Attempts to get settings from cached Configuration Service, environmetal variable,
-     * and `appconfig.json` file, respectedly.
+     * @see IServiceAddOn.init
+     */
+    init() {
+        if (this._isInit) {
+            return Promise.resolve();
+        }
+        this._isInit = true;
+        try {
+            this._fileSettings = require(this._configFilePath);
+        }
+        catch (ex) {
+            console.warn(ex);
+            this._fileSettings = {};
+        }
+        if (this.enableRemote) {
+            let addresses = this.applySettings();
+            if (!addresses) {
+                return Promise.reject(new back_lib_common_util_1.CriticalException('No address for Settings Service!'));
+            }
+            this._addresses = addresses;
+        }
+        return Promise.resolve();
+    }
+    /**
+     * @see IServiceAddOn.deadLetter
+     */
+    deadLetter() {
+        return Promise.resolve();
+    }
+    /**
+     * @see IServiceAddOn.dispose
+     */
+    dispose() {
+        this.stopRefetch();
+        this._configFilePath = null;
+        this._fileSettings = null;
+        this._remoteSettings = null;
+        this._enableRemote = null;
+        this._rpcCaller = null;
+        this._eventEmitter = null;
+        this._isInit = null;
+        return Promise.resolve();
+    }
+    /**
+     * @see IConfigurationProvider.get
      */
     get(key) {
         let value = (this._remoteSettings[key] || process.env[key] || this._fileSettings[key]);
         return (value ? value : null);
     }
     /**
-     * Attempts to fetch settings from remote Configuration Service.
+     * @see IConfigurationProvider.fetch
      */
     fetch() {
         return __awaiter(this, void 0, void 0, function* () {
-            let addresses = JSON.parse(this.get(SettingKeys_1.SettingKeys.SETTINGS_SERVICE_ADDRESSES));
-            if (!addresses || !addresses.length) {
-                throw new back_lib_common_util_1.CriticalException('No address for Configuration Service!');
-            }
+            let addresses = this._addresses, oldSettings = this._remoteSettings;
             for (let addr of addresses) {
                 if (yield this.attemptFetch(addr)) {
+                    // Move this address onto top of list
+                    let pos = addresses.indexOf(addr);
+                    if (pos != 0) {
+                        addresses.splice(pos, 1);
+                        addresses.unshift(addr);
+                    }
+                    this.broadCastChanges(oldSettings, this._remoteSettings);
+                    if (this._refetchTimer === undefined) {
+                        this.updateSelf();
+                        this.repeatFetch();
+                    }
                     // Stop trying if success
                     return true;
                 }
             }
-            throw new back_lib_common_util_1.CriticalException('Cannot connect to any address of Configuration Service!');
+            // Don't throw error on refetching
+            if (this._refetchTimer === undefined) {
+                throw new back_lib_common_util_1.CriticalException('Cannot connect to any address of Configuration Service!');
+            }
         });
+    }
+    onUpdate(listener) {
+        this._eventEmitter.on('updated', listener);
+    }
+    applySettings() {
+        this.refetchInterval = this.get(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_REFETCH_INTERVAL) || (5 * 60000); // Default 5 mins
+        try {
+            let addresses = JSON.parse(this.get(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_SERVICE_ADDRESSES));
+            return (addresses && addresses.length) ? addresses : null;
+        }
+        catch (err) {
+            console.warn(err);
+            return null;
+        }
+    }
+    updateSelf() {
+        this._eventEmitter.prependListener('updated', (changedKeys) => {
+            if (changedKeys.includes(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_SERVICE_ADDRESSES)) {
+                let addresses = this.applySettings();
+                if (addresses) {
+                    this._addresses = addresses;
+                }
+                else {
+                    console.warn('New SettingService addresses are useless!');
+                }
+            }
+        });
+    }
+    repeatFetch() {
+        this._refetchTimer = setInterval(() => this.fetch(), this.refetchInterval);
+    }
+    stopRefetch() {
+        clearInterval(this._refetchTimer);
+        this._refetchTimer = null;
     }
     attemptFetch(address) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                let serviceName = this.get(SettingKeys_1.SettingKeys.SERVICE_SLUG), ipAddress = ''; // If this service runs inside a Docker container, 
+                let serviceName = this.get(back_lib_common_constants_1.SvcSettingKeys.SERVICE_SLUG), ipAddress = ''; // If this service runs inside a Docker container, 
                 // this should be the host's IP address.
                 this._rpcCaller.baseAddress = address;
                 let req = new back_lib_common_contracts_1.GetSettingRequest();
@@ -109,6 +195,25 @@ let ConfigurationProvider = class ConfigurationProvider {
             }
             return false;
         });
+    }
+    broadCastChanges(oldSettings, newSettings) {
+        let oldKeys = Object.getOwnPropertyNames(oldSettings), newKeys = Object.getOwnPropertyNames(newSettings), changedKeys = [], val;
+        // Update existing values or add new keys
+        for (let key of newKeys) {
+            val = newSettings[key];
+            if (val !== oldSettings[key]) {
+                changedKeys.push(key);
+            }
+        }
+        // Reset abandoned keys.
+        for (let key of oldKeys) {
+            if (!newKeys.includes(key)) {
+                changedKeys.push(key);
+            }
+        }
+        if (changedKeys.length) {
+            this._eventEmitter.emit('updated', changedKeys);
+        }
     }
     parseSettings(raw) {
         let map = {}, settings = back_lib_common_contracts_1.SettingItem.translator.whole(raw);

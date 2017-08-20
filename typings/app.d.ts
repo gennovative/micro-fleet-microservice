@@ -1,27 +1,6 @@
 /// <reference path="./global.d.ts" />
 
-declare module 'back-lib-foundation/constants/SettingKeys' {
-	export class SettingKeys {
-	    static readonly SETTINGS_SERVICE_ADDRESSES: string;
-	    static readonly DB_NUM_CONN: string;
-	    static readonly DB_ENGINE: string;
-	    static readonly DB_HOST: string;
-	    static readonly DB_USER: string;
-	    static readonly DB_PASSWORD: string;
-	    static readonly DB_NAME: string;
-	    static readonly DB_FILE: string;
-	    static readonly DB_CONN_STRING: string;
-	    static readonly MSG_BROKER_HOST: string;
-	    static readonly MSG_BROKER_EXCHANGE: string;
-	    static readonly MSG_BROKER_QUEUE: string;
-	    static readonly MSG_BROKER_RECONN_TIMEOUT: string;
-	    static readonly MSG_BROKER_USERNAME: string;
-	    static readonly MSG_BROKER_PASSWORD: string;
-	    static readonly SERVICE_SLUG: string;
-	}
-
-}
-declare module 'back-lib-foundation/constants/Types' {
+declare module 'back-lib-foundation/dist/app/constants/Types' {
 	export class Types {
 	    static readonly MODEL_MAPPER: symbol;
 	    static readonly BROKER_ADDON: symbol;
@@ -31,21 +10,13 @@ declare module 'back-lib-foundation/constants/Types' {
 	}
 
 }
-declare module 'back-lib-foundation/addons/ConfigurationProvider' {
+declare module 'back-lib-foundation/dist/app/addons/ConfigurationProvider' {
 	import { IDirectRpcCaller } from 'back-lib-service-communication';
 	export interface IConfigurationProvider extends IServiceAddOn {
+	    /**
+	     * Turns on or off remote settings fetching.
+	     */
 	    enableRemote: boolean;
-	    get(key: string): number & boolean & string;
-	    fetch(): Promise<boolean>;
-	}
-	/**
-	 * Provides settings from appconfig.json, environmental variables and remote settings service.
-	 */
-	export class ConfigurationProvider implements IConfigurationProvider {
-	    	    	    	    	    	    constructor(_rpcCaller: IDirectRpcCaller);
-	    enableRemote: boolean;
-	    init(): Promise<void>;
-	    dispose(): Promise<void>;
 	    /**
 	     * Attempts to get settings from cached Configuration Service, environmetal variable,
 	     * and `appconfig.json` file, respectedly.
@@ -55,12 +26,51 @@ declare module 'back-lib-foundation/addons/ConfigurationProvider' {
 	     * Attempts to fetch settings from remote Configuration Service.
 	     */
 	    fetch(): Promise<boolean>;
-	    	    	    	}
+	    /**
+	     * Invokes everytime new settings are updated.
+	     * The callback receives an array of changed setting keys.
+	     */
+	    onUpdate(listener: (changedKeys: string[]) => void): void;
+	}
+	/**
+	 * Provides settings from appconfig.json, environmental variables and remote settings service.
+	 */
+	export class ConfigurationProvider implements IConfigurationProvider {
+	    	    	    	    	    	    	    	    	    	    	    constructor(_rpcCaller: IDirectRpcCaller);
+	    /**
+	     * @see IConfigurationProvider.enableRemote
+	     */
+	    /**
+	     * @see IConfigurationProvider.enableRemote
+	     */
+	    enableRemote: boolean;
+	    	    /**
+	     * @see IServiceAddOn.init
+	     */
+	    init(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.deadLetter
+	     */
+	    deadLetter(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.dispose
+	     */
+	    dispose(): Promise<void>;
+	    /**
+	     * @see IConfigurationProvider.get
+	     */
+	    get(key: string): number & boolean & string;
+	    /**
+	     * @see IConfigurationProvider.fetch
+	     */
+	    fetch(): Promise<boolean>;
+	    onUpdate(listener: (changedKeys: string[]) => void): void;
+	    	    	    	    	    	    	    	    	}
 
 }
-declare module 'back-lib-foundation/addons/DatabaseAddOn' {
+declare module 'back-lib-foundation/dist/app/addons/DatabaseAddOn' {
 	import { IDatabaseConnector } from 'back-lib-persistence';
-	import { IConfigurationProvider } from 'back-lib-foundation/addons/ConfigurationProvider';
+	import { IConfigurationProvider } from 'back-lib-foundation/dist/app/addons/ConfigurationProvider';
 	export interface IDatabaseAddOn extends IServiceAddOn {
 	}
 	/**
@@ -68,26 +78,99 @@ declare module 'back-lib-foundation/addons/DatabaseAddOn' {
 	 */
 	export class DatabaseAddOn implements IDatabaseAddOn {
 	    	    	    constructor(_configProvider: IConfigurationProvider, _dbConnector: IDatabaseConnector);
+	    /**
+	     * @see IServiceAddOn.init
+	     */
 	    init(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.deadLetter
+	     */
+	    deadLetter(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.dispose
+	     */
 	    dispose(): Promise<void>;
 	    	    	}
 
 }
-declare module 'back-lib-foundation/addons/MessageBrokerAddOn' {
+declare module 'back-lib-foundation/dist/app/addons/DirectRpcHandlerAddOnBase' {
+	import { IDirectRpcHandler } from 'back-lib-service-communication';
+	import { IConfigurationProvider } from 'back-lib-foundation/dist/app/addons/ConfigurationProvider';
+	/**
+	 * Base class for DirectRpcAddOn.
+	 */
+	export abstract class DirectRpcHandlerAddOnBase implements IServiceAddOn {
+	    protected _configProvider: IConfigurationProvider;
+	    protected _rpcHandler: IDirectRpcHandler;
+	    constructor(_configProvider: IConfigurationProvider, _rpcHandler: IDirectRpcHandler);
+	    /**
+	     * @see IServiceAddOn.init
+	     */
+	    init(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.deadLetter
+	     */
+	    deadLetter(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.dispose
+	     */
+	    dispose(): Promise<void>;
+	    protected handleRequests(): void;
+	}
+
+}
+declare module 'back-lib-foundation/dist/app/addons/MediateRpcHandlerAddOnBase' {
+	import { IMediateRpcHandler } from 'back-lib-service-communication';
+	import { IConfigurationProvider } from 'back-lib-foundation/dist/app/addons/ConfigurationProvider';
+	/**
+	 * Base class for MediateRpcAddOn.
+	 */
+	export abstract class MediateRpcHandlerAddOnBase implements IServiceAddOn {
+	    protected _configProvider: IConfigurationProvider;
+	    protected _rpcHandler: IMediateRpcHandler;
+	    protected abstract controllerIdentifier: string | symbol;
+	    constructor(_configProvider: IConfigurationProvider, _rpcHandler: IMediateRpcHandler);
+	    /**
+	     * @see IServiceAddOn.init
+	     */
+	    init(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.deadLetter
+	     */
+	    deadLetter(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.dispose
+	     */
+	    dispose(): Promise<void>;
+	    protected handleRequests(): void;
+	}
+
+}
+declare module 'back-lib-foundation/dist/app/addons/MessageBrokerAddOn' {
 	import { IMessageBrokerConnector } from 'back-lib-service-communication';
-	import { IConfigurationProvider } from 'back-lib-foundation/addons/ConfigurationProvider';
+	import { IConfigurationProvider } from 'back-lib-foundation/dist/app/addons/ConfigurationProvider';
 	export class MessageBrokerAddOn implements IServiceAddOn {
 	    	    	    constructor(_configProvider: IConfigurationProvider, _msgBrokerCnn: IMessageBrokerConnector);
+	    /**
+	     * @see IServiceAddOn.init
+	     */
 	    init(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.deadLetter
+	     */
+	    deadLetter(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.dispose
+	     */
 	    dispose(): Promise<void>;
 	}
 
 }
-declare module 'back-lib-foundation/microservice/MicroServiceBase' {
+declare module 'back-lib-foundation/dist/app/microservice/MicroServiceBase' {
 	import * as cm from 'back-lib-common-util';
-	import * as cfg from 'back-lib-foundation/addons/ConfigurationProvider';
-	import * as db from 'back-lib-foundation/addons/DatabaseAddOn';
-	import { MessageBrokerAddOn } from 'back-lib-foundation/addons/MessageBrokerAddOn';
+	import * as cfg from 'back-lib-foundation/dist/app/addons/ConfigurationProvider';
+	import * as db from 'back-lib-foundation/dist/app/addons/DatabaseAddOn';
+	import { MessageBrokerAddOn } from 'back-lib-foundation/dist/app/addons/MessageBrokerAddOn';
 	export abstract class MicroServiceBase {
 	    protected _configProvider: cfg.IConfigurationProvider;
 	    protected _depContainer: cm.IDependencyContainer;
@@ -145,15 +228,16 @@ declare module 'back-lib-foundation/microservice/MicroServiceBase' {
 	     * or when the OS is trying to stop the service process.
 	     *
 	     */
-	    	}
+	    	    	}
 
 }
 declare module 'back-lib-foundation' {
-	export * from 'back-lib-foundation/addons/ConfigurationProvider';
-	export * from 'back-lib-foundation/addons/DatabaseAddOn';
-	export * from 'back-lib-foundation/addons/MessageBrokerAddOn';
-	export * from 'back-lib-foundation/constants/SettingKeys';
-	export * from 'back-lib-foundation/constants/Types';
-	export * from 'back-lib-foundation/microservice/MicroServiceBase';
+	export * from 'back-lib-foundation/dist/app/addons/ConfigurationProvider';
+	export * from 'back-lib-foundation/dist/app/addons/DatabaseAddOn';
+	export * from 'back-lib-foundation/dist/app/addons/DirectRpcHandlerAddOnBase';
+	export * from 'back-lib-foundation/dist/app/addons/MediateRpcHandlerAddOnBase';
+	export * from 'back-lib-foundation/dist/app/addons/MessageBrokerAddOn';
+	export * from 'back-lib-foundation/dist/app/constants/Types';
+	export * from 'back-lib-foundation/dist/app/microservice/MicroServiceBase';
 
 }

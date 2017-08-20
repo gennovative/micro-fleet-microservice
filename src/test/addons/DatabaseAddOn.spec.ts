@@ -2,12 +2,13 @@ import * as chai from 'chai';
 import * as spies from 'chai-spies';
 import * as _ from 'lodash';
 import { Model } from 'objection';
+import { DbSettingKeys as S } from 'back-lib-common-constants';
 import { AtomicSession } from 'back-lib-common-contracts';
 import { CriticalException } from 'back-lib-common-util';
 import { IDatabaseConnector, IConnectionDetail, QueryCallback, 
 	DbClient, EntityBase } from 'back-lib-persistence';
 
-import { DatabaseAddOn, IConfigurationProvider, SettingKeys as S } from '../../app';
+import { DatabaseAddOn, IConfigurationProvider } from '../../app';
 import DB_DETAILS from '../database-details';
 
 
@@ -60,6 +61,10 @@ class MockConfigAddOn implements IConfigurationProvider {
 		return null;
 	}
 
+	public deadLetter(): Promise<void> {
+		return Promise.resolve();
+	}
+
 	public fetch(): Promise<boolean> {
 		return Promise.resolve(true);
 	}
@@ -70,6 +75,9 @@ class MockConfigAddOn implements IConfigurationProvider {
 
 	public dispose(): Promise<void> {
 		return Promise.resolve();
+	}
+
+	public onUpdate(listener: (delta: string[]) => void) {
 	}
 }
 

@@ -1,9 +1,10 @@
+import { DbSettingKeys as S } from 'back-lib-common-constants';
 import { injectable, inject, Guard, CriticalException } from 'back-lib-common-util';
 import { IDatabaseConnector, IConnectionDetail, Types as PerT } from 'back-lib-persistence';
 
 import { IConfigurationProvider } from './ConfigurationProvider';
-import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
+
 
 export interface IDatabaseAddOn extends IServiceAddOn {
 }
@@ -22,13 +23,24 @@ export class DatabaseAddOn implements IDatabaseAddOn {
 		Guard.assertArgDefined('_dbConnector', _dbConnector);
 	}
 
+	/**
+	 * @see IServiceAddOn.init
+	 */
 	public init(): Promise<void> {
-		return new Promise<void>(resolve => {
-			this.addConnections();
-			resolve();
-		});
+		this.addConnections();
+		return Promise.resolve();
 	}
 
+	/**
+	 * @see IServiceAddOn.deadLetter
+	 */
+	public deadLetter(): Promise<void> {
+		return Promise.resolve();
+	}
+
+	/**
+	 * @see IServiceAddOn.dispose
+	 */
 	public async dispose(): Promise<void> {
 		// Casting from Bluebird Promise to Node native Promise
 		// This cast is for compiler, hence no effect to runtime performance.

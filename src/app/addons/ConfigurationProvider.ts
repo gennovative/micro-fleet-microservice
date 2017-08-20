@@ -1,69 +1,143 @@
+import { EventEmitter } from 'events';
+
+import { SvcSettingKeys as S } from 'back-lib-common-constants';
 import { GetSettingRequest, SettingItem, SettingItemDataType } from 'back-lib-common-contracts';
 import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
 import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
 
-import { SettingKeys as S } from '../constants/SettingKeys';
 import { Types as T } from '../constants/Types';
 
 export interface IConfigurationProvider extends IServiceAddOn {
+	/**
+	 * Turns on or off remote settings fetching.
+	 */
 	enableRemote: boolean;
+	
+	/**
+	 * Attempts to get settings from cached Configuration Service, environmetal variable,
+	 * and `appconfig.json` file, respectedly.
+	 */
 	get(key: string): number & boolean & string;
+	
+	/**
+	 * Attempts to fetch settings from remote Configuration Service.
+	 */
 	fetch(): Promise<boolean>;
+
+	/**
+	 * Invokes everytime new settings are updated.
+	 * The callback receives an array of changed setting keys.
+	 */
+	onUpdate(listener: (changedKeys: string[]) => void): void;
 }
 
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
 @injectable()
-export class ConfigurationProvider implements IConfigurationProvider {
-	private _configFilePath = `${process.cwd()}/appconfig.json`;
+export class ConfigurationProvider
+		implements IConfigurationProvider {
+	private _addresses: string[];
+	private _configFilePath;
+	private _enableRemote: boolean;
+	private _eventEmitter: EventEmitter;
 	private _fileSettings;
 	private _remoteSettings;
-	private _enableRemote: boolean;
+	private _refetchTimer: NodeJS.Timer;
+	private _refetchInterval: number;
+	private _isInit: boolean;
 
 	constructor(
 		@inject(ComT.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
 	) {
 		Guard.assertArgDefined('_rpcCaller', _rpcCaller);
 
-		this._remoteSettings = {};
+		this._configFilePath = `${process.cwd()}/appconfig.json`;
+		this._remoteSettings = this._fileSettings = {};
 		this._enableRemote = false;
+		this._eventEmitter = new EventEmitter();
 		this._rpcCaller.name = 'ConfigurationProvider';
+		this._isInit = false;
 	}
 
+	/**
+	 * @see IConfigurationProvider.enableRemote
+	 */
 	public get enableRemote(): boolean {
 		return this._enableRemote;
 	}
 
-	public set enableRemote(value: boolean) {
-		this._enableRemote = value;
+	/**
+	 * @see IConfigurationProvider.enableRemote
+	 */
+	public set enableRemote(val: boolean) {
+		this._enableRemote = val;
 	}
 
-	public init(): Promise<void> {
-		return new Promise<void>(resolve => {
-			try {
-				this._fileSettings = require(this._configFilePath);
-			} catch (ex) {
-				this._fileSettings = {};
-			}
-			resolve();
-		});
+
+	private get refetchInterval(): number {
+		return this._refetchInterval;
 	}
 
-	public dispose(): Promise<void> {
-		return new Promise<void>(resolve => {
-			this._configFilePath = null;
-			this._fileSettings = null;
-			this._remoteSettings = null;
-			this._enableRemote = null;
-			this._rpcCaller = null;
-			resolve();
-		});
+	private set refetchInterval(val: number) {
+		this._refetchInterval = val;
+		if (this._refetchTimer) {
+			this.stopRefetch();
+			this.repeatFetch();
+		}
 	}
 
 	/**
-	 * Attempts to get settings from cached Configuration Service, environmetal variable,
-	 * and `appconfig.json` file, respectedly.
+	 * @see IServiceAddOn.init
+	 */
+	public init(): Promise<void> {
+		if (this._isInit) {
+			return Promise.resolve();
+		}
+		this._isInit = true;
+
+		try {
+			this._fileSettings = require(this._configFilePath);
+		} catch (ex) {
+			console.warn(ex);
+			this._fileSettings = {};
+		}
+
+		if (this.enableRemote) {
+			let addresses = this.applySettings();
+			if (!addresses) {
+				return Promise.reject(new CriticalException('No address for Settings Service!'));
+			}
+			this._addresses = addresses;
+		}
+
+		return Promise.resolve();
+	}
+	
+	/**
+	 * @see IServiceAddOn.deadLetter
+	 */
+	public deadLetter(): Promise<void> {
+		return Promise.resolve();
+	}
+
+	/**
+	 * @see IServiceAddOn.dispose
+	 */
+	public dispose(): Promise<void> {
+		this.stopRefetch();
+		this._configFilePath = null;
+		this._fileSettings = null;
+		this._remoteSettings = null;
+		this._enableRemote = null;
+		this._rpcCaller = null;
+		this._eventEmitter = null;
+		this._isInit = null;
+		return Promise.resolve();
+	}
+
+	/**
+	 * @see IConfigurationProvider.get
 	 */
 	public get(key: string): number & boolean & string {
 		let value = (this._remoteSettings[key] || process.env[key] || this._fileSettings[key]);
@@ -71,26 +145,76 @@ export class ConfigurationProvider implements IConfigurationProvider {
 	}
 
 	/**
-	 * Attempts to fetch settings from remote Configuration Service.
+	 * @see IConfigurationProvider.fetch
 	 */
 	public async fetch(): Promise<boolean> { // TODO: Should be privately called.
-		let addresses: string[] = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES));
-
-		if (!addresses || !addresses.length) { throw new CriticalException('No address for Configuration Service!'); }
+		let addresses: string[] = this._addresses,
+			oldSettings = this._remoteSettings;
 
 		for (let addr of addresses) {
 			if (await this.attemptFetch(addr)) {
+				// Move this address onto top of list
+				let pos = addresses.indexOf(addr);
+				if (pos != 0) {
+					addresses.splice(pos, 1);
+					addresses.unshift(addr);
+				}
+
+				this.broadCastChanges(oldSettings, this._remoteSettings);
+				if (this._refetchTimer === undefined) {
+					this.updateSelf();
+					this.repeatFetch();
+				}
 				// Stop trying if success
 				return true;
 			}
 		}
 
-		throw new CriticalException('Cannot connect to any address of Configuration Service!');
+		// Don't throw error on refetching
+		if (this._refetchTimer === undefined) {
+			throw new CriticalException('Cannot connect to any address of Configuration Service!');
+		}
+	}
+
+	public onUpdate(listener: (changedKeys: string[]) => void): void {
+		this._eventEmitter.on('updated', listener);
+	}
+
+	private applySettings(): string[] {
+		this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL) || (5 * 60000); // Default 5 mins
+		try {
+			let addresses: string[] = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES));
+			return (addresses && addresses.length) ? addresses : null;
+		} catch (err) {
+			console.warn(err);
+			return null;
+		}
+	}
+
+	private updateSelf(): void {
+		this._eventEmitter.prependListener('updated', (changedKeys: string[]) => {
+			if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
+				let addresses = this.applySettings();
+				if (addresses) {
+					this._addresses = addresses;
+				} else {
+					console.warn('New SettingService addresses are useless!');
+				}
+			}
+		});
+	}
+
+	private repeatFetch(): void {
+		this._refetchTimer = setInterval(() => this.fetch(), this.refetchInterval);
+	}
+
+	private stopRefetch(): void {
+		clearInterval(this._refetchTimer);
+		this._refetchTimer = null;
 	}
 
 
 	private async attemptFetch(address: string): Promise<boolean> {
-
 		try {
 			let serviceName = this.get(S.SERVICE_SLUG),
 				ipAddress = ''; // If this service runs inside a Docker container, 
@@ -110,6 +234,32 @@ export class ConfigurationProvider implements IConfigurationProvider {
 			console.warn(err);
 		}
 		return false;
+	}
+
+	private broadCastChanges(oldSettings, newSettings): void {
+		let oldKeys = Object.getOwnPropertyNames(oldSettings),
+			newKeys = Object.getOwnPropertyNames(newSettings),
+			changedKeys: string[] = [],
+			val;
+
+		// Update existing values or add new keys
+		for (let key of newKeys) {
+			val = newSettings[key];
+			if (val !== oldSettings[key]) {
+				changedKeys.push(key);
+			}
+		}
+
+		// Reset abandoned keys.
+		for (let key of oldKeys) {
+			if (!newKeys.includes(key)) {
+				changedKeys.push(key);
+			}
+		}
+
+		if (changedKeys.length) {
+			this._eventEmitter.emit('updated', changedKeys);
+		}
 	}
 
 	private parseSettings(raw) {
