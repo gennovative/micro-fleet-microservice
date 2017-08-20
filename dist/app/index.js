@@ -2,18 +2,17 @@
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-require("reflect-metadata");
-__export(require("./adapters/ConfigurationAdapter"));
-__export(require("./adapters/DatabaseAdapter"));
-__export(require("./adapters/MessageBrokerAdapter"));
-__export(require("./hubs/ExpressHub"));
-__export(require("./microservice/EntityBase"));
-__export(require("./microservice/Exceptions"));
-__export(require("./microservice/MicroServiceBase"));
-__export(require("./microservice/RepositoryBase"));
-__export(require("./utils/DependencyContainer"));
-__export(require("./utils/Guard"));
-__export(require("./constants/SettingKeys"));
+Object.defineProperty(exports, "__esModule", { value: true });
+/* istanbul ignore next */
+if (!Reflect || typeof Reflect['hasOwnMetadata'] !== 'function') {
+    require('reflect-metadata');
+}
+__export(require("./addons/ConfigurationProvider"));
+__export(require("./addons/DatabaseAddOn"));
+__export(require("./addons/DirectRpcHandlerAddOnBase"));
+__export(require("./addons/MediateRpcHandlerAddOnBase"));
+__export(require("./addons/MessageBrokerAddOn"));
 __export(require("./constants/Types"));
+__export(require("./microservice/MicroServiceBase"));
 
 //# sourceMappingURL=index.js.map

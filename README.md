@@ -1,6 +1,31 @@
-# Gennova backend core library
+# Gennova backend foundation library
 
-# Versions
+Every microservice in Gennova infrastructure, including web, REST, and data service, must inherit class **MicroServiceBase** in this package.
+
+See more examples and usage guide in unit test.
+
+---
+##INSTALLATION
+
+- If database utility is used
+
+`npm install git+ssh://git@bitbucket.org:gennovahall/back-lib-persistence.git#1.0.0`
+
+## VERSIONS
+
+### 1.0.0
+- Changed `IAdapter` to `IServiceAddOn`.
+- Let `ConfigurationProvider` make requests with `IDirectRpcCaller` instead of raw `request` package.
+- Upgraded dev dependency packages.
+
+### 0.3.0
+
+- Split **RepositoryBase**, **EntityBase** to package [Back Lib Persistence](https://bitbucket.org/gennovahall/back-lib-persistence).
+
+- Split **Guard**, **DependencyContainer**, **Exceptions** to package [Back Lib Common Util](https://bitbucket.org/gennovahall/back-lib-common-util).
+
+- Removed **ExpressHub**
+
 ### 0.2.0
 - **ConfigurationAdapter**: loads settings from remote Configuration Service, environment variables and appconfig.json file, respectedly. (100% covered)
 - **Guard**: `assertDefined` makes sure provided argument is not null or undefined. (100% covered)

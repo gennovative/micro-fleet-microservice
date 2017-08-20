@@ -1,14 +1,12 @@
-import 'reflect-metadata';
+/* istanbul ignore next */
+if (!Reflect || typeof Reflect['hasOwnMetadata'] !== 'function') {
+	require('reflect-metadata');
+}
 
-export * from './adapters/ConfigurationAdapter';
-export * from './adapters/DatabaseAdapter';
-export * from './adapters/MessageBrokerAdapter';
-export * from './hubs/ExpressHub';
-export * from './microservice/EntityBase';
-export * from './microservice/Exceptions';
-export * from './microservice/MicroServiceBase';
-export * from './microservice/RepositoryBase';
-export * from './utils/DependencyContainer';
-export * from './utils/Guard';
-export * from './constants/SettingKeys';
+export * from './addons/ConfigurationProvider';
+export * from './addons/DatabaseAddOn';
+export * from './addons/DirectRpcHandlerAddOnBase';
+export * from './addons/MediateRpcHandlerAddOnBase';
+export * from './addons/MessageBrokerAddOn';
 export * from './constants/Types';
+export * from './microservice/MicroServiceBase';
