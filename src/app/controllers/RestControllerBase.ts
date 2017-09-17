@@ -5,7 +5,7 @@ import TrailsController = require('trails-controller');
 
 import { injectable, inject, Guard } from 'back-lib-common-util';
 import { SettingItem, SettingItemDataType, ISoftDelRepository,
-	ModelAutoMapper, JoiModelValidator } from 'back-lib-common-contracts';
+	ModelAutoMapper, JoiModelValidator, PagedArray } from 'back-lib-common-contracts';
 import { IdProvider, Types } from 'back-lib-id-generator';
 
 
@@ -133,6 +133,17 @@ export abstract class RestControllerBase<TModel extends IModelDTO> extends Trail
 		try {
 			let nRows: number = await this._repo.recover(pk, payload.options);
 			this.reply(nRows, res);
+		} catch (err) {
+			this.internalError(err, res);
+		}
+	}
+
+	public async page(req: express.Request, res: express.Response) {
+		console.log('Paging model');
+		let payload = req.body();
+		try {
+			let models: PagedArray<TModel> = await this._repo.page(payload.pageIndex, payload.pageSize, payload.options);
+			this.reply(models, res);
 		} catch (err) {
 			this.internalError(err, res);
 		}

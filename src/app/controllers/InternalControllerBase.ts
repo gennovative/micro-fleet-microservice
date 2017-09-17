@@ -67,6 +67,12 @@ export abstract class InternalControllerBase<TModel extends IModelDTO> {
 		resolve(nRows);
 	}
 
+	public async page(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest) {
+		console.log('Paging model');
+		let models = await this._repo.page(payload.pageIndex, payload.pageSize, payload.options);
+		resolve(models);
+	}
+
 	public async patch(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest) {
 		console.log('Patching model');
 		let model: Partial<TModel> = this.translator.partial(payload.model),

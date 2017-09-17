@@ -148,6 +148,19 @@ let RestControllerBase = class RestControllerBase extends TrailsController {
             }
         });
     }
+    page(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log('Paging model');
+            let payload = req.body();
+            try {
+                let models = yield this._repo.page(payload.pageIndex, payload.pageSize, payload.options);
+                this.reply(models, res);
+            }
+            catch (err) {
+                this.internalError(err, res);
+            }
+        });
+    }
     patch(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log('Patching model');
