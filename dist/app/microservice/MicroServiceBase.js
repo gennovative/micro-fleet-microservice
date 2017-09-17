@@ -9,8 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const back_lib_common_constants_1 = require("back-lib-common-constants");
+const back_lib_common_contracts_1 = require("back-lib-common-contracts");
 const cm = require("back-lib-common-util");
 const com = require("back-lib-service-communication");
+const TrailsServerAddOn_1 = require("../addons/TrailsServerAddOn");
 const cfg = require("../addons/ConfigurationProvider");
 const Types_1 = require("../constants/Types");
 class MicroServiceBase {
@@ -34,7 +36,8 @@ class MicroServiceBase {
         catch (ex) {
             this.onError(ex);
             console.error('An error occured on starting, the application has to stop now.');
-            this.stop();
+            // this.stop();
+            this.exitProcess();
             return;
         }
         this.initAddOns()
@@ -53,6 +56,7 @@ class MicroServiceBase {
      * Gracefully stops this application and exit
      */
     stop(exitProcess = true) {
+        setTimeout(() => process.exit(), 2 * this._configProvider.get(back_lib_common_constants_1.SvcSettingKeys.ADDONS_DEADLETTER_TIMEOUT) || 10000);
         (() => __awaiter(this, void 0, void 0, function* () {
             try {
                 this.onStopping();
@@ -79,28 +83,43 @@ class MicroServiceBase {
         return this._addons.push(addon);
     }
     attachDbAddOn() {
-        let dbAdt = this._depContainer.resolve(Types_1.Types.DB_ADDON);
+        const { Types } = require('back-lib-persistence');
+        let dbAdt = this._depContainer.resolve(Types.DB_ADDON);
         this.attachAddOn(dbAdt);
         return dbAdt;
     }
     attachConfigProvider() {
-        let cfgAdt = this._configProvider = this._depContainer.resolve(Types_1.Types.CONFIG_PROVIDER);
-        this.attachAddOn(cfgAdt);
-        return cfgAdt;
+        let cfgProd = this._configProvider = this._depContainer.resolve(back_lib_common_contracts_1.Types.CONFIG_PROVIDER);
+        this.attachAddOn(cfgProd);
+        return cfgProd;
+    }
+    attachIdProvider() {
+        const { IdProvider, Types } = require('back-lib-id-generator');
+        let idProd = this._depContainer.resolve(Types.ID_PROVIDER);
+        this.attachAddOn(idProd);
+        return idProd;
     }
     attachMessageBrokerAddOn() {
-        let dbAdt = this._depContainer.resolve(Types_1.Types.BROKER_ADDON);
+        let dbAdt = this._depContainer.resolve(com.Types.BROKER_ADDON);
         this.attachAddOn(dbAdt);
         return dbAdt;
     }
+    attachTrailsAddOn() {
+        let trails = this._depContainer.resolve(Types_1.Types.TRAILS_ADDON);
+        trails.server.on('error', this.onError);
+        this.attachAddOn(trails);
+    }
     registerDbAddOn() {
-        const { Types, KnexDatabaseConnector } = require('back-lib-persistence');
-        const { DatabaseAddOn } = require('../addons/DatabaseAddOn');
+        const { Types, KnexDatabaseConnector, DatabaseAddOn } = require('back-lib-persistence');
         this._depContainer.bind(Types.DB_CONNECTOR, KnexDatabaseConnector).asSingleton();
-        this._depContainer.bind(Types_1.Types.DB_ADDON, DatabaseAddOn).asSingleton();
+        this._depContainer.bind(Types.DB_ADDON, DatabaseAddOn).asSingleton();
     }
     registerConfigProvider() {
-        this._depContainer.bind(Types_1.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
+        this._depContainer.bind(back_lib_common_contracts_1.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
+    }
+    registerIdProvider() {
+        const { IdProvider, Types } = require('back-lib-id-generator');
+        this._depContainer.bind(Types.ID_PROVIDER, IdProvider).asSingleton();
     }
     registerDirectRpcCaller() {
         this._depContainer.bind(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller).asSingleton();
@@ -109,9 +128,8 @@ class MicroServiceBase {
         this._depContainer.bind(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler).asSingleton();
     }
     registerMessageBrokerAddOn() {
-        const { MessageBrokerAddOn } = require('../addons/MessageBrokerAddOn');
         this._depContainer.bind(com.Types.MSG_BROKER_CONNECTOR, com.TopicMessageBrokerConnector).asSingleton();
-        this._depContainer.bind(Types_1.Types.BROKER_ADDON, MessageBrokerAddOn).asSingleton();
+        this._depContainer.bind(com.Types.BROKER_ADDON, com.MessageBrokerAddOn).asSingleton();
     }
     registerMediateRpcCaller() {
         if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
@@ -124,6 +142,9 @@ class MicroServiceBase {
             this.registerMessageBrokerAddOn();
         }
         this._depContainer.bind(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler).asSingleton();
+    }
+    registerTrailsAddOn() {
+        this._depContainer.bind(Types_1.Types.TRAILS_ADDON, TrailsServerAddOn_1.TrailsServerAddOn).asSingleton();
     }
     registerDependencies() {
         let depCon = this._depContainer = new cm.DependencyContainer();
@@ -230,7 +251,7 @@ class MicroServiceBase {
     }
     sendDeadLetters() {
         return new Promise(resolve => {
-            let timer = setTimeout(resolve, this._configProvider.get(back_lib_common_constants_1.SvcSettingKeys.ADDONS_DEADLETTER_TIMEOUT) || 10000);
+            let timer = setTimeout(resolve, this._configProvider.get(back_lib_common_constants_1.SvcSettingKeys.ADDONS_DEADLETTER_TIMEOUT) || 5000);
             let promises = this._addons.map(adt => adt.deadLetter());
             Promise.all(promises).then(() => {
                 if (timer) {

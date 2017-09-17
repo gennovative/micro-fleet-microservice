@@ -11,15 +11,17 @@
     "npm": "~4.6.1"
   },
   "dependencies": {
-	"back-lib-common-constants": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-constants.git#1.0.0",
-    "back-lib-common-contracts": "git+ssh://git@bitbucket.org/firstinteractive/back-lib-common-contracts.git#1.0.0",
-    "back-lib-common-util": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-util.git#1.0.0",
-    "back-lib-service-communication": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-service-communication.git#0.1.0",
+    "back-lib-common-constants": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-constants.git#1.1.0",
+    "back-lib-common-contracts": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-contracts.git#1.1.0",
+    "back-lib-common-util": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-util.git#1.1.0",
+    "back-lib-service-communication": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-service-communication.git#0.2.0",
     "lodash": "^4.17.4"
   },
   "peerDependencies": {
-    "back-lib-persistence": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-persistence.git#1.0.0",
-    "@types/knex": "0.0.41"
+    "back-lib-persistence": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-persistence.git#2.0.0",
+    "back-lib-id-generator": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-id-generator.git#0.1.0",
+    "@types/knex": "0.0.41",
+    "trails": "^2.0.0"
   },
   "devDependencies": {
     "@types/chai": "^4.0.1",
@@ -37,17 +39,17 @@
     "gulp-header": "^1.8.8",
     "gulp-istanbul": "^1.1.2",
     "gulp-mocha": "^3.0.1",
-    "gulp-sourcemaps": "^2.6.0",
     "gulp-replace": "^0.6.1",
+    "gulp-sourcemaps": "^2.6.0",
     "gulp-tslint": "^8.1.1",
     "gulp-typescript": "^3.2.1",
     "gulp-watch": "^4.3.11",
     "gulp-watch-sequence": "^1.0.0",
-    "merge-stream": "^1.0.1",
-    "through2": "^2.0.3",
     "istanbul": "^0.4.5",
+    "merge-stream": "^1.0.1",
     "mocha": "^3.4.2",
     "remap-istanbul": "^0.9.5",
+    "through2": "^2.0.3",
     "tslint": "^5.5.0",
     "typescript": "^2.4.2"
   }

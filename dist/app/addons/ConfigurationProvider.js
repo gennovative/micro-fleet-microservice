@@ -108,8 +108,14 @@ let ConfigurationProvider = class ConfigurationProvider {
     /**
      * @see IConfigurationProvider.get
      */
-    get(key) {
-        let value = (this._remoteSettings[key] || process.env[key] || this._fileSettings[key]);
+    get(key, dataType) {
+        let value = this._remoteSettings[key];
+        if (value === undefined && dataType) {
+            value = this.parseValue(process.env[key] || this._fileSettings[key], dataType);
+        }
+        else if (value === undefined) {
+            value = process.env[key] || this._fileSettings[key];
+        }
         return (value ? value : null);
     }
     /**
@@ -178,15 +184,16 @@ let ConfigurationProvider = class ConfigurationProvider {
     attemptFetch(address) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                let serviceName = this.get(back_lib_common_constants_1.SvcSettingKeys.SERVICE_SLUG), ipAddress = ''; // If this service runs inside a Docker container, 
+                let serviceName = this.get(back_lib_common_constants_1.SvcSettingKeys.SERVICE_SLUG), ipAddress = '0.0.0.0'; // If this service runs inside a Docker container, 
                 // this should be the host's IP address.
                 this._rpcCaller.baseAddress = address;
-                let req = new back_lib_common_contracts_1.GetSettingRequest();
-                req.slug = serviceName;
-                req.ipAddress = ipAddress;
+                let req = back_lib_common_contracts_1.GetSettingRequest.translator.whole({
+                    slug: serviceName,
+                    ipAddress
+                });
                 let res = yield this._rpcCaller.call('SettingService', 'getSetting', req);
                 if (res.isSuccess) {
-                    this._remoteSettings = this.parseSettings(res.data);
+                    this._remoteSettings = this.parseSettings(res.payload);
                     return true;
                 }
             }
@@ -197,6 +204,9 @@ let ConfigurationProvider = class ConfigurationProvider {
         });
     }
     broadCastChanges(oldSettings, newSettings) {
+        if (!newSettings) {
+            return;
+        }
         let oldKeys = Object.getOwnPropertyNames(oldSettings), newKeys = Object.getOwnPropertyNames(newSettings), changedKeys = [], val;
         // Update existing values or add new keys
         for (let key of newKeys) {
@@ -216,6 +226,9 @@ let ConfigurationProvider = class ConfigurationProvider {
         }
     }
     parseSettings(raw) {
+        if (!raw) {
+            return {};
+        }
         let map = {}, settings = back_lib_common_contracts_1.SettingItem.translator.whole(raw);
         for (let st of settings) {
             map[st.name] = this.parseValue(st.value, st.dataType);
@@ -223,14 +236,15 @@ let ConfigurationProvider = class ConfigurationProvider {
         return map;
     }
     parseValue(val, type) {
-        if (type == back_lib_common_contracts_1.SettingItemDataType.Number) {
-            return parseFloat(val);
+        if (val === undefined) {
+            return null;
         }
-        else if (type == back_lib_common_contracts_1.SettingItemDataType.Boolean) {
-            // val = 'true' | 'false'; (lowercase)
+        if (type == back_lib_common_contracts_1.SettingItemDataType.String) {
+            return val;
+        }
+        else {
             return JSON.parse(val);
         }
-        return val; // string data type
     }
 };
 ConfigurationProvider = __decorate([

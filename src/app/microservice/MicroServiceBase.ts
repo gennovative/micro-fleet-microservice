@@ -1,16 +1,17 @@
 import { RpcSettingKeys as RpcS, SvcSettingKeys as SvcS } from 'back-lib-common-constants';
+import { IConfigurationProvider, Types as ConT } from 'back-lib-common-contracts';
 import * as cm from 'back-lib-common-util';
 import * as per from 'back-lib-persistence';
 import * as com from 'back-lib-service-communication';
+import { IdProvider } from 'back-lib-id-generator';
 
+import { TrailsServerAddOn } from '../addons/TrailsServerAddOn';
 import * as cfg from '../addons/ConfigurationProvider';
-import * as db from '../addons/DatabaseAddOn';
-import { MessageBrokerAddOn } from '../addons/MessageBrokerAddOn';
-import { Types as T } from '../constants/Types';
+import { Types } from '../constants/Types';
 
 
 export abstract class MicroServiceBase {
-	protected _configProvider: cfg.IConfigurationProvider;
+	protected _configProvider: IConfigurationProvider;
 	protected _depContainer: cm.IDependencyContainer;
 	protected _addons: IServiceAddOn[];
 	protected _isStarted: boolean;
@@ -37,7 +38,8 @@ export abstract class MicroServiceBase {
 		} catch (ex) {
 			this.onError(ex);
 			console.error('An error occured on starting, the application has to stop now.');
-			this.stop();
+			// this.stop();
+			this.exitProcess();
 			return;
 		}
 
@@ -58,6 +60,11 @@ export abstract class MicroServiceBase {
 	 * Gracefully stops this application and exit 
 	 */
 	public stop(exitProcess: boolean = true): void {
+		setTimeout(
+			() => process.exit(),
+			2 * this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT) || 10000
+		);
+
 		(async () => {
 			try {
 				this.onStopping();
@@ -84,33 +91,51 @@ export abstract class MicroServiceBase {
 		return this._addons.push(addon);
 	}
 
-	protected attachDbAddOn(): db.IDatabaseAddOn {
-		let dbAdt = this._depContainer.resolve<db.IDatabaseAddOn>(T.DB_ADDON);
+	protected attachDbAddOn(): per.DatabaseAddOn {
+		const { Types } = require('back-lib-persistence');
+		let dbAdt = this._depContainer.resolve<per.DatabaseAddOn>(Types.DB_ADDON);
 		this.attachAddOn(dbAdt);
 		return dbAdt;
 	}
 
-	protected attachConfigProvider(): cfg.IConfigurationProvider {
-		let cfgAdt = this._configProvider = this._depContainer.resolve<cfg.IConfigurationProvider>(T.CONFIG_PROVIDER);
-		this.attachAddOn(cfgAdt);
-		return cfgAdt;
+	protected attachConfigProvider(): IConfigurationProvider {
+		let cfgProd = this._configProvider = this._depContainer.resolve<IConfigurationProvider>(ConT.CONFIG_PROVIDER);
+		this.attachAddOn(cfgProd);
+		return cfgProd;
 	}
 
-	protected attachMessageBrokerAddOn(): MessageBrokerAddOn {
-		let dbAdt = this._depContainer.resolve<MessageBrokerAddOn>(T.BROKER_ADDON);
+	protected attachIdProvider(): IdProvider {
+		const { IdProvider, Types } = require('back-lib-id-generator');
+		let idProd = this._depContainer.resolve<IdProvider>(Types.ID_PROVIDER);
+		this.attachAddOn(idProd);
+		return idProd;
+	}
+
+	protected attachMessageBrokerAddOn(): com.MessageBrokerAddOn {
+		let dbAdt = this._depContainer.resolve<com.MessageBrokerAddOn>(com.Types.BROKER_ADDON);
 		this.attachAddOn(dbAdt);
 		return dbAdt;
 	}
 
+	protected attachTrailsAddOn(): void {
+		let trails = this._depContainer.resolve<TrailsServerAddOn>(Types.TRAILS_ADDON);
+		trails.server.on('error', this.onError);
+		this.attachAddOn(trails);
+	}
+	
 	protected registerDbAddOn(): void {
-		const { Types, KnexDatabaseConnector } = require('back-lib-persistence');
-		const { DatabaseAddOn } = require('../addons/DatabaseAddOn');
+		const { Types, KnexDatabaseConnector, DatabaseAddOn } = require('back-lib-persistence');
 		this._depContainer.bind<per.IDatabaseConnector>(Types.DB_CONNECTOR, KnexDatabaseConnector).asSingleton();
-		this._depContainer.bind<db.IDatabaseAddOn>(T.DB_ADDON, DatabaseAddOn).asSingleton();
+		this._depContainer.bind<per.DatabaseAddOn>(Types.DB_ADDON, DatabaseAddOn).asSingleton();
 	}
 
 	protected registerConfigProvider(): void {
-		this._depContainer.bind<cfg.IConfigurationProvider>(T.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
+		this._depContainer.bind<IConfigurationProvider>(ConT.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
+	}
+
+	protected registerIdProvider(): void {
+		const { IdProvider, Types } = require('back-lib-id-generator');
+		this._depContainer.bind<IdProvider>(Types.ID_PROVIDER, IdProvider).asSingleton();
 	}
 
 	protected registerDirectRpcCaller(): void {
@@ -122,9 +147,8 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerMessageBrokerAddOn(): void {
-		const { MessageBrokerAddOn } = require('../addons/MessageBrokerAddOn');
 		this._depContainer.bind<com.IMessageBrokerConnector>(com.Types.MSG_BROKER_CONNECTOR, com.TopicMessageBrokerConnector).asSingleton();
-		this._depContainer.bind<MessageBrokerAddOn>(T.BROKER_ADDON, MessageBrokerAddOn).asSingleton();
+		this._depContainer.bind<com.MessageBrokerAddOn>(com.Types.BROKER_ADDON, com.MessageBrokerAddOn).asSingleton();
 	}
 
 	protected registerMediateRpcCaller(): void {
@@ -139,6 +163,10 @@ export abstract class MicroServiceBase {
 			this.registerMessageBrokerAddOn();
 		}
 		this._depContainer.bind<com.IMediateRpcHandler>(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler).asSingleton();
+	}
+
+	protected registerTrailsAddOn(): void {
+		this._depContainer.bind<TrailsServerAddOn>(Types.TRAILS_ADDON, TrailsServerAddOn).asSingleton();
 	}
 
 	protected registerDependencies(): void {
@@ -264,7 +292,7 @@ export abstract class MicroServiceBase {
 		return new Promise<void>(resolve => {
 			let timer = setTimeout(
 					resolve,
-					this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT) || 10000
+					this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT) || 5000
 				);
 
 			let promises = this._addons.map(adt => adt.deadLetter());
