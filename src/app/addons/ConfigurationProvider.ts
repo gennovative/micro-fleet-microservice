@@ -1,35 +1,11 @@
 import { EventEmitter } from 'events';
 
 import { SvcSettingKeys as S } from 'back-lib-common-constants';
-import { GetSettingRequest, SettingItem, SettingItemDataType } from 'back-lib-common-contracts';
+import { GetSettingRequest, SettingItem, SettingItemDataType,
+	IConfigurationProvider } from 'back-lib-common-contracts';
 import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
 import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
 
-import { Types as T } from '../constants/Types';
-
-export interface IConfigurationProvider extends IServiceAddOn {
-	/**
-	 * Turns on or off remote settings fetching.
-	 */
-	enableRemote: boolean;
-	
-	/**
-	 * Attempts to get settings from cached Configuration Service, environmetal variable,
-	 * and `appconfig.json` file, respectedly.
-	 */
-	get(key: string): number & boolean & string;
-	
-	/**
-	 * Attempts to fetch settings from remote Configuration Service.
-	 */
-	fetch(): Promise<boolean>;
-
-	/**
-	 * Invokes everytime new settings are updated.
-	 * The callback receives an array of changed setting keys.
-	 */
-	onUpdate(listener: (changedKeys: string[]) => void): void;
-}
 
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
@@ -139,8 +115,13 @@ export class ConfigurationProvider
 	/**
 	 * @see IConfigurationProvider.get
 	 */
-	public get(key: string): number & boolean & string {
-		let value = (this._remoteSettings[key] || process.env[key] || this._fileSettings[key]);
+	public get(key: string, dataType?: SettingItemDataType): number & boolean & string {
+		let value = this._remoteSettings[key];
+		if (value === undefined && dataType) {
+			value = this.parseValue(process.env[key] || this._fileSettings[key], dataType);
+		} else if (value === undefined) {
+			value = process.env[key] || this._fileSettings[key];
+		}
 		return (value ? value : null);
 	}
 
@@ -217,17 +198,18 @@ export class ConfigurationProvider
 	private async attemptFetch(address: string): Promise<boolean> {
 		try {
 			let serviceName = this.get(S.SERVICE_SLUG),
-				ipAddress = ''; // If this service runs inside a Docker container, 
+				ipAddress = '0.0.0.0'; // If this service runs inside a Docker container, 
 								// this should be the host's IP address.
 
 			this._rpcCaller.baseAddress = address;
-			let req = new GetSettingRequest();
-			req.slug = serviceName;
-			req.ipAddress = ipAddress;
+			let req = GetSettingRequest.translator.whole({
+				slug: serviceName,
+				ipAddress
+			});
 
 			let res: IRpcResponse = await this._rpcCaller.call('SettingService', 'getSetting', req);
 			if (res.isSuccess) {
-				this._remoteSettings = this.parseSettings(res.data);
+				this._remoteSettings = this.parseSettings(res.payload);
 				return true;
 			}
 		} catch (err) {
@@ -237,6 +219,7 @@ export class ConfigurationProvider
 	}
 
 	private broadCastChanges(oldSettings, newSettings): void {
+		if (!newSettings) { return; }
 		let oldKeys = Object.getOwnPropertyNames(oldSettings),
 			newKeys = Object.getOwnPropertyNames(newSettings),
 			changedKeys: string[] = [],
@@ -263,6 +246,8 @@ export class ConfigurationProvider
 	}
 
 	private parseSettings(raw) {
+		if (!raw) { return {}; }
+
 		let map = {},
 			settings: SettingItem[] = SettingItem.translator.whole(raw);
 		for (let st of settings) {
@@ -272,12 +257,12 @@ export class ConfigurationProvider
 	}
 
 	private parseValue(val, type) {
-		if (type == SettingItemDataType.Number) {
-			return parseFloat(val);
-		} else if (type == SettingItemDataType.Boolean) {
-			// val = 'true' | 'false'; (lowercase)
+		if (val === undefined) { return null; }
+
+		if (type == SettingItemDataType.String) {
+			return val;
+		} else {
 			return JSON.parse(val);
 		}
-		return val; // string data type
 	}
 }

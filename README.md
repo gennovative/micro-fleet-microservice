@@ -15,11 +15,12 @@ See more examples and usage guide in unit test.
 
 ### 1.0.0
 - Changed `IAdapter` to `IServiceAddOn`.
+- **TrailsServerAddOn**: Service addon for igniting Trails server.
+- **InternalControllerBase**, **RestControllerBase**: Base controller classes that handles CRUD.
 - Let `ConfigurationProvider` make requests with `IDirectRpcCaller` instead of raw `request` package.
-- Upgraded dev dependency packages.
+- Extracted service addons to relevant packages.
 
 ### 0.3.0
-
 - Split **RepositoryBase**, **EntityBase** to package [Back Lib Persistence](https://bitbucket.org/gennovahall/back-lib-persistence).
 
 - Split **Guard**, **DependencyContainer**, **Exceptions** to package [Back Lib Common Util](https://bitbucket.org/gennovahall/back-lib-common-util).

@@ -1,4 +1,4 @@
-import { DbClient } from 'back-lib-persistence';
+import { DbClient } from 'back-lib-common-constants';
 
 export default {
 	clientName: DbClient.POSTGRESQL,

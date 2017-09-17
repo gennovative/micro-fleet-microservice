@@ -2,7 +2,7 @@ import * as chai from 'chai';
 import * as spies from 'chai-spies';
 import * as _ from 'lodash';
 import { RpcSettingKeys as RpcS, SvcSettingKeys as SvcS, MbSettingKeys as MbS } from 'back-lib-common-constants';
-import { SettingItem, SettingItemDataType } from 'back-lib-common-contracts';
+import { SettingItem, SettingItemDataType, IConfigurationProvider } from 'back-lib-common-contracts';
 import { CriticalException } from 'back-lib-common-util';
 import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
 
@@ -57,10 +57,11 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
 	public timeout;
 	
 	public call(moduleName: string, action: string, params: any): Promise<IRpcResponse> {
+		let s: any;
 		return new Promise((resolve, reject) => {
 			let res: IRpcResponse = {
 				isSuccess: true,
-				data: null,
+				payload: null,
 				from: 'MockConfigSvc',
 				to: 'ThisSvc'
 			};
@@ -72,11 +73,12 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
 				res.isSuccess = false;
 				resolve(res);
 			} else if (this.baseAddress == CONFIG_SVC_ADDRESSES[2]) {
-				res.data = SUCCESS_CONFIG;
+				res.payload = SUCCESS_CONFIG;
 				repeatCount++;
 
 				if (repeatCount == 2) {
-					SUCCESS_CONFIG[1].value += '_twice';
+					s = SUCCESS_CONFIG[1];
+					s['value'] += '_twice';
 				} else if (repeatCount == 3) {
 					SUCCESS_CONFIG.splice(2, 1);
 				} else if (repeatCount == 4) {
@@ -95,19 +97,21 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
 
 				resolve(res);
 			} else if (this.baseAddress == '127.0.0.4') {
-				res.data = SUCCESS_CONFIG;
+				res.payload = SUCCESS_CONFIG;
 				repeatCount++;
+				s = SUCCESS_CONFIG[SUCCESS_CONFIG.length - 1];
 				if (repeatCount == 6) {
-					SUCCESS_CONFIG[SUCCESS_CONFIG.length - 1].value = JSON.stringify([]);
+					s.value = JSON.stringify([]);
 				} else if (repeatCount == 7) {
-					SUCCESS_CONFIG[SUCCESS_CONFIG.length - 1].value = '{malform-json';
+					s.value = '{malform-json';
 				} else if (repeatCount == 8) {
 					// Unchanged
 				} else if (repeatCount == 9) {
 					res.isSuccess = false;
 				} else {
-					SUCCESS_CONFIG[1].value += '_tenth';
-					res.data = SUCCESS_CONFIG;
+					s = SUCCESS_CONFIG[1];
+					s.value += '_tenth';
+					res.payload = SUCCESS_CONFIG;
 				}
 				resolve(res);
 			}
@@ -128,7 +132,7 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
 
 describe('ConfigurationProvider', () => {
 	
-	let configPrvd: app.IConfigurationProvider;
+	let configPrvd: IConfigurationProvider;
 
 	beforeEach(() => {
 		configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
@@ -158,7 +162,7 @@ describe('ConfigurationProvider', () => {
 			expect(configPrvd['_fileSettings']).to.be.empty;
 		});
 
-		it('should throw error if there is no address for Configuration Service', async () => {
+		it('should throw error if there is no address for Settings Service', async () => {
 			// Arrange
 			let isSuccess = false;
 
@@ -174,7 +178,7 @@ describe('ConfigurationProvider', () => {
 				isSuccess = true;
 			} catch (err) {
 				expect(err).to.be.instanceOf(CriticalException);
-				expect(err.message).to.equal('No address for Configuration Service!');
+				expect(err.message).to.equal('No address for Settings Service!');
 			}
 			expect(isSuccess).to.be.false;
 		});
@@ -212,10 +216,10 @@ describe('ConfigurationProvider', () => {
 
 			// Act
 			await configPrvd.init();
-			value = configPrvd.get(SvcS.SETTINGS_SERVICE_ADDRESSES);
+			value = configPrvd.get(SvcS.ADDONS_DEADLETTER_TIMEOUT);
 
 			// Assert
-			expect(value).to.equals(appConfigs[SvcS.SETTINGS_SERVICE_ADDRESSES]);
+			expect(value).to.equals(appConfigs[SvcS.ADDONS_DEADLETTER_TIMEOUT]);
 		});
 
 		it('should read settings from environment variable', async () => {
@@ -272,7 +276,7 @@ describe('ConfigurationProvider', () => {
 			let value;
 
 			// Act then assert
-				configPrvd.enableRemote = true;
+			configPrvd.enableRemote = true;
 			await configPrvd.init();
 			await configPrvd.fetch();
 			value = configPrvd.get(MbS.MSG_BROKER_HOST);

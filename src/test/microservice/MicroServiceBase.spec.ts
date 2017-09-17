@@ -1,12 +1,12 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
-import { MbSettingKeys as MbS, DbSettingKeys as DbS,
+import { DbClient, MbSettingKeys as MbS, DbSettingKeys as DbS,
 	SvcSettingKeys as SvcS } from 'back-lib-common-constants';
+import { IConfigurationProvider, Types } from 'back-lib-common-contracts';
 import { CriticalException, injectable } from 'back-lib-common-util';
-import { DbClient } from 'back-lib-persistence';
+import { DatabaseAddOn } from 'back-lib-persistence';
 
-import { MicroServiceBase, IConfigurationProvider, 
-	IDatabaseAddOn, Types } from '../../app';
+import { MicroServiceBase } from '../../app';
 import rabbitOpts from '../rabbit-options';
 import DB_DETAILS from '../database-details';
 
@@ -362,12 +362,8 @@ describe('MicroServiceBase', function() {
 			
 			service['exitProcess'] = () => {};
 
-			service['onStarting'] = () => {
-				throw ERROR_RANDOM;
-			};
-
 			service['onStarted'] = function() {
-				service.stop(false);
+				throw ERROR_RANDOM;
 			};
 
 			service['onStopped'] = function() {
