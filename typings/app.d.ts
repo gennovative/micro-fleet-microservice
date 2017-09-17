@@ -83,6 +83,7 @@ declare module 'back-lib-foundation/dist/app/controllers/InternalControllerBase'
 	    exists(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest): Promise<void>;
 	    findByPk(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest): Promise<void>;
 	    recover(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest): Promise<void>;
+	    page(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest): Promise<void>;
 	    patch(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest): Promise<void>;
 	    update(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest): Promise<void>;
 	}
@@ -112,6 +113,7 @@ declare module 'back-lib-foundation/dist/app/controllers/RestControllerBase' {
 	    exists(req: express.Request, res: express.Response): Promise<void>;
 	    findByPk(req: express.Request, res: express.Response): Promise<void>;
 	    recover(req: express.Request, res: express.Response): Promise<void>;
+	    page(req: express.Request, res: express.Response): Promise<void>;
 	    patch(req: express.Request, res: express.Response): Promise<void>;
 	    update(req: express.Request, res: express.Response): Promise<void>;
 	    protected validationError(err: any, res: express.Response): void;

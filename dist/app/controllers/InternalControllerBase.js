@@ -79,6 +79,13 @@ let InternalControllerBase = class InternalControllerBase {
             resolve(nRows);
         });
     }
+    page(payload, resolve, reject, request) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log('Paging model');
+            let models = yield this._repo.page(payload.pageIndex, payload.pageSize, payload.options);
+            resolve(models);
+        });
+    }
     patch(payload, resolve, reject, request) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log('Patching model');
