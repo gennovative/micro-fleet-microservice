@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import { SvcSettingKeys as S } from 'back-lib-common-constants';
+import { SvcSettingKeys as S, ModuleNames as M, ActionNames as A } from 'back-lib-common-constants';
 import { GetSettingRequest, SettingItem, SettingItemDataType,
 	IConfigurationProvider } from 'back-lib-common-contracts';
 import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
@@ -207,7 +207,7 @@ export class ConfigurationProvider
 				ipAddress
 			});
 
-			let res: IRpcResponse = await this._rpcCaller.call('SettingService', 'getSetting', req);
+			let res: IRpcResponse = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req);
 			if (res.isSuccess) {
 				this._remoteSettings = this.parseSettings(res.payload);
 				return true;

@@ -12,7 +12,6 @@ const back_lib_common_constants_1 = require("back-lib-common-constants");
 const back_lib_common_contracts_1 = require("back-lib-common-contracts");
 const cm = require("back-lib-common-util");
 const com = require("back-lib-service-communication");
-const TrailsServerAddOn_1 = require("../addons/TrailsServerAddOn");
 const cfg = require("../addons/ConfigurationProvider");
 const Types_1 = require("../constants/Types");
 class MicroServiceBase {
@@ -105,6 +104,7 @@ class MicroServiceBase {
         return dbAdt;
     }
     attachTrailsAddOn() {
+        const { TrailsServerAddOn } = require('back-lib-common-web');
         let trails = this._depContainer.resolve(Types_1.Types.TRAILS_ADDON);
         trails.server.on('error', this.onError);
         this.attachAddOn(trails);
@@ -144,7 +144,8 @@ class MicroServiceBase {
         this._depContainer.bind(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler).asSingleton();
     }
     registerTrailsAddOn() {
-        this._depContainer.bind(Types_1.Types.TRAILS_ADDON, TrailsServerAddOn_1.TrailsServerAddOn).asSingleton();
+        const { TrailsServerAddOn } = require('back-lib-common-web');
+        this._depContainer.bind(Types_1.Types.TRAILS_ADDON, TrailsServerAddOn).asSingleton();
     }
     registerDependencies() {
         let depCon = this._depContainer = new cm.DependencyContainer();
