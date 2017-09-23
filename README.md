@@ -13,6 +13,10 @@ See more examples and usage guide in unit test.
 
 ## VERSIONS
 
+### 1.1.0
+- Moved `IServiceAddOn` to `common-contracts` package.
+- Moved **TrailsServerAddOn**, **RestControllerBase** to `common-web` package.
+
 ### 1.0.0
 - Changed `IAdapter` to `IServiceAddOn`.
 - **TrailsServerAddOn**: Service addon for igniting Trails server.

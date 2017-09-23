@@ -191,7 +191,7 @@ let ConfigurationProvider = class ConfigurationProvider {
                     slug: serviceName,
                     ipAddress
                 });
-                let res = yield this._rpcCaller.call('SettingService', 'getSetting', req);
+                let res = yield this._rpcCaller.call(back_lib_common_constants_1.ModuleNames.PROGRAM_CONFIGURATION, back_lib_common_constants_1.ActionNames.GET_SETTINGS, req);
                 if (res.isSuccess) {
                     this._remoteSettings = this.parseSettings(res.payload);
                     return true;

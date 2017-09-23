@@ -8,10 +8,8 @@ if (!Reflect || typeof Reflect['hasOwnMetadata'] !== 'function') {
     require('reflect-metadata');
 }
 __export(require("./addons/ConfigurationProvider"));
-__export(require("./addons/TrailsServerAddOn"));
 __export(require("./constants/Types"));
 __export(require("./controllers/InternalControllerBase"));
-__export(require("./controllers/RestControllerBase"));
 __export(require("./microservice/MicroServiceBase"));
 
 //# sourceMappingURL=index.js.map

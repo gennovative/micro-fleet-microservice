@@ -1,11 +1,11 @@
 import { RpcSettingKeys as RpcS, SvcSettingKeys as SvcS } from 'back-lib-common-constants';
 import { IConfigurationProvider, Types as ConT } from 'back-lib-common-contracts';
 import * as cm from 'back-lib-common-util';
+import { TrailsServerAddOn } from 'back-lib-common-web';
 import * as per from 'back-lib-persistence';
 import * as com from 'back-lib-service-communication';
 import { IdProvider } from 'back-lib-id-generator';
 
-import { TrailsServerAddOn } from '../addons/TrailsServerAddOn';
 import * as cfg from '../addons/ConfigurationProvider';
 import { Types } from '../constants/Types';
 
@@ -118,6 +118,7 @@ export abstract class MicroServiceBase {
 	}
 
 	protected attachTrailsAddOn(): void {
+		const { TrailsServerAddOn } = require('back-lib-common-web');
 		let trails = this._depContainer.resolve<TrailsServerAddOn>(Types.TRAILS_ADDON);
 		trails.server.on('error', this.onError);
 		this.attachAddOn(trails);
@@ -166,6 +167,7 @@ export abstract class MicroServiceBase {
 	}
 
 	protected registerTrailsAddOn(): void {
+		const { TrailsServerAddOn } = require('back-lib-common-web');
 		this._depContainer.bind<TrailsServerAddOn>(Types.TRAILS_ADDON, TrailsServerAddOn).asSingleton();
 	}
 

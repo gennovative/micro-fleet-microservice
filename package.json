@@ -1,7 +1,7 @@
 {
   "name": "back-lib-foundation",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Provides base class for all microservices.",
   "main": "./dist/app/index.js",
   "types": "./typings/app.d.ts",
@@ -11,17 +11,16 @@
     "npm": "~4.6.1"
   },
   "dependencies": {
-    "back-lib-common-constants": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-constants.git#1.1.0",
+    "back-lib-common-constants": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-constants.git#1.2.0",
     "back-lib-common-contracts": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-contracts.git#1.1.0",
-    "back-lib-common-util": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-util.git#1.1.0",
-    "back-lib-service-communication": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-service-communication.git#0.2.0",
+    "back-lib-common-util": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-util.git#1.1.1",
+    "back-lib-service-communication": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-service-communication.git#0.2.1",
     "lodash": "^4.17.4"
   },
   "peerDependencies": {
     "back-lib-persistence": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-persistence.git#2.0.0",
-    "back-lib-id-generator": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-id-generator.git#0.1.0",
-    "@types/knex": "0.0.41",
-    "trails": "^2.0.0"
+    "back-lib-common-web": "git+ssh://git@bitbucket.org/firstinteractive/back-lib-common-web.git#0.1.0",
+    "@types/knex": "0.0.41"
   },
   "devDependencies": {
     "@types/chai": "^4.0.1",
@@ -51,6 +50,6 @@
     "remap-istanbul": "^0.9.5",
     "through2": "^2.0.3",
     "tslint": "^5.5.0",
-    "typescript": "^2.4.2"
+    "typescript": "^2.5.2"
   }
 }
