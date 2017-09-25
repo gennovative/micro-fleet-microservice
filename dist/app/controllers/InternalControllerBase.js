@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -18,10 +21,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const back_lib_common_util_1 = require("back-lib-common-util");
+const back_lib_id_generator_1 = require("back-lib-id-generator");
 let InternalControllerBase = class InternalControllerBase {
-    constructor(_ClassDTO, _repo) {
+    constructor(_ClassDTO, _repo, _idProvider) {
         this._ClassDTO = _ClassDTO;
         this._repo = _repo;
+        this._idProvider = _idProvider;
     }
     get validator() {
         return this._ClassDTO['validator'];
@@ -39,6 +44,7 @@ let InternalControllerBase = class InternalControllerBase {
     create(payload, resolve, reject, request) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log('Creating model');
+            payload.model.id = payload.model.id || this._idProvider.nextBigInt().toString();
             let dto = this.translator.whole(payload.model);
             dto = yield this._repo.create(dto, payload.options);
             resolve(dto);
@@ -103,7 +109,10 @@ let InternalControllerBase = class InternalControllerBase {
 };
 InternalControllerBase = __decorate([
     back_lib_common_util_1.injectable(),
-    __metadata("design:paramtypes", [Object, Object])
+    __param(0, back_lib_common_util_1.unmanaged()),
+    __param(1, back_lib_common_util_1.unmanaged()),
+    __param(2, back_lib_common_util_1.unmanaged()),
+    __metadata("design:paramtypes", [Object, Object, back_lib_id_generator_1.IdProvider])
 ], InternalControllerBase);
 exports.InternalControllerBase = InternalControllerBase;
 
