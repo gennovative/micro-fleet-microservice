@@ -19,6 +19,7 @@
   },
   "peerDependencies": {
     "back-lib-persistence": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-persistence.git#2.0.0",
+    "back-lib-id-generator": "git+ssh://git@bitbucket.org/firstinteractive/back-lib-id-generator.git#0.1.0",
     "back-lib-common-web": "git+ssh://git@bitbucket.org/firstinteractive/back-lib-common-web.git#0.1.0",
     "@types/knex": "0.0.41"
   },

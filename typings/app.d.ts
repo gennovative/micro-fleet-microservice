@@ -48,11 +48,13 @@ declare module 'back-lib-foundation/dist/app/constants/Types' {
 }
 declare module 'back-lib-foundation/dist/app/controllers/InternalControllerBase' {
 	import { ISoftDelRepository, JoiModelValidator, ModelAutoMapper } from 'back-lib-common-contracts';
+	import { IdProvider } from 'back-lib-id-generator';
 	import { IRpcRequest } from 'back-lib-service-communication';
 	export abstract class InternalControllerBase<TModel extends IModelDTO> {
 	    protected _ClassDTO: Newable;
 	    protected _repo: ISoftDelRepository<TModel, any, any>;
-	    constructor(_ClassDTO?: Newable, _repo?: ISoftDelRepository<TModel, any, any>);
+	    protected _idProvider: IdProvider;
+	    constructor(_ClassDTO?: Newable, _repo?: ISoftDelRepository<TModel, any, any>, _idProvider?: IdProvider);
 	    protected readonly validator: JoiModelValidator<TModel>;
 	    protected readonly translator: ModelAutoMapper<TModel>;
 	    countAll(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest): Promise<void>;

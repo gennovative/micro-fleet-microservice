@@ -1,13 +1,15 @@
 import { ISoftDelRepository, JoiModelValidator, ModelAutoMapper } from 'back-lib-common-contracts';
-import { injectable } from 'back-lib-common-util';
+import { injectable, unmanaged } from 'back-lib-common-util';
+import { IdProvider } from 'back-lib-id-generator';
 import { IRpcRequest } from 'back-lib-service-communication';
 
 
 @injectable()
 export abstract class InternalControllerBase<TModel extends IModelDTO> {
 	constructor(
-		protected _ClassDTO?: Newable,
-		protected _repo?: ISoftDelRepository<TModel, any, any>
+		@unmanaged() protected _ClassDTO?: Newable,
+		@unmanaged() protected _repo?: ISoftDelRepository<TModel, any, any>,
+		@unmanaged() protected _idProvider?: IdProvider
 	) {
 	}
 
@@ -28,6 +30,7 @@ export abstract class InternalControllerBase<TModel extends IModelDTO> {
 
 	public async create(payload: any, resolve: PromiseResolveFn, reject: PromiseRejectFn, request: IRpcRequest) {
 		console.log('Creating model');
+		payload.model.id = payload.model.id || this._idProvider.nextBigInt().toString();
 		let dto = this.translator.whole(payload.model);
 		dto = await this._repo.create(dto, payload.options);
 		resolve(dto);
