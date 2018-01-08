@@ -106,7 +106,7 @@ class MicroServiceBase {
     attachTrailsAddOn() {
         const { TrailsServerAddOn } = require('back-lib-common-web');
         let trails = this._depContainer.resolve(Types_1.Types.TRAILS_ADDON);
-        trails.server.on('error', this.onError);
+        trails.onError(this.onError.bind(this));
         this.attachAddOn(trails);
     }
     registerDbAddOn() {
@@ -157,6 +157,10 @@ class MicroServiceBase {
      * Invoked whenever any error occurs in the application.
      */
     onError(error) {
+        /* istanbul ignore next */
+        if (error.stack) {
+            return console.error(error.stack);
+        }
         /* istanbul ignore next */
         let msg = (error.toString ? error.toString() : error + '');
         console.error(msg); // Should log to file.
@@ -266,5 +270,3 @@ class MicroServiceBase {
     }
 }
 exports.MicroServiceBase = MicroServiceBase;
-
-//# sourceMappingURL=MicroServiceBase.js.map

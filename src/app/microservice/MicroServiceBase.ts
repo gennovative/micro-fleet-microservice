@@ -120,7 +120,7 @@ export abstract class MicroServiceBase {
 	protected attachTrailsAddOn(): void {
 		const { TrailsServerAddOn } = require('back-lib-common-web');
 		let trails = this._depContainer.resolve<TrailsServerAddOn>(Types.TRAILS_ADDON);
-		trails.server.on('error', this.onError);
+		trails.onError(this.onError.bind(this));
 		this.attachAddOn(trails);
 	}
 	
@@ -182,6 +182,10 @@ export abstract class MicroServiceBase {
 	 * Invoked whenever any error occurs in the application.
 	 */
 	protected onError(error: any): void {
+		/* istanbul ignore next */
+		if (error.stack) {
+			return console.error(error.stack);
+		}
 		/* istanbul ignore next */
 		let msg = (error.toString ? error.toString() : error + '');
 		console.error(msg); // Should log to file.

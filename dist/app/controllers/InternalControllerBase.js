@@ -115,5 +115,3 @@ InternalControllerBase = __decorate([
     __metadata("design:paramtypes", [Object, Object, back_lib_id_generator_1.IdProvider])
 ], InternalControllerBase);
 exports.InternalControllerBase = InternalControllerBase;
-
-//# sourceMappingURL=InternalControllerBase.js.map

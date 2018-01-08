@@ -253,5 +253,3 @@ ConfigurationProvider = __decorate([
     __metadata("design:paramtypes", [Object])
 ], ConfigurationProvider);
 exports.ConfigurationProvider = ConfigurationProvider;
-
-//# sourceMappingURL=ConfigurationProvider.js.map
