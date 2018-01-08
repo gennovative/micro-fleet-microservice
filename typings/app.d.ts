@@ -41,8 +41,6 @@ declare module 'back-lib-foundation/dist/app/addons/ConfigurationProvider' {
 }
 declare module 'back-lib-foundation/dist/app/constants/Types' {
 	export class Types {
-	    static readonly TRAILS_ADDON: symbol;
-	    static readonly TRAILS_APP: symbol;
 	}
 
 }
@@ -73,6 +71,7 @@ declare module 'back-lib-foundation/dist/app/controllers/InternalControllerBase'
 declare module 'back-lib-foundation/dist/app/microservice/MicroServiceBase' {
 	import { IConfigurationProvider } from 'back-lib-common-contracts';
 	import * as cm from 'back-lib-common-util';
+	import { TrailsServerAddOn } from 'back-lib-common-web';
 	import * as per from 'back-lib-persistence';
 	import * as com from 'back-lib-service-communication';
 	import { IdProvider } from 'back-lib-id-generator';
@@ -99,7 +98,7 @@ declare module 'back-lib-foundation/dist/app/microservice/MicroServiceBase' {
 	    protected attachConfigProvider(): IConfigurationProvider;
 	    protected attachIdProvider(): IdProvider;
 	    protected attachMessageBrokerAddOn(): com.MessageBrokerAddOn;
-	    protected attachTrailsAddOn(): void;
+	    protected attachTrailsAddOn(): TrailsServerAddOn;
 	    protected registerDbAddOn(): void;
 	    protected registerConfigProvider(): void;
 	    protected registerIdProvider(): void;
