@@ -11,9 +11,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const back_lib_common_constants_1 = require("back-lib-common-constants");
 const back_lib_common_contracts_1 = require("back-lib-common-contracts");
 const cm = require("back-lib-common-util");
+const back_lib_common_web_1 = require("back-lib-common-web");
 const com = require("back-lib-service-communication");
 const cfg = require("../addons/ConfigurationProvider");
-const Types_1 = require("../constants/Types");
 class MicroServiceBase {
     constructor() {
         this._addons = [];
@@ -104,10 +104,10 @@ class MicroServiceBase {
         return dbAdt;
     }
     attachTrailsAddOn() {
-        const { TrailsServerAddOn } = require('back-lib-common-web');
-        let trails = this._depContainer.resolve(Types_1.Types.TRAILS_ADDON);
+        let trails = this._depContainer.resolve(back_lib_common_web_1.Types.TRAILS_ADDON);
         trails.server.on('error', this.onError);
         this.attachAddOn(trails);
+        return trails;
     }
     registerDbAddOn() {
         const { Types, KnexDatabaseConnector, DatabaseAddOn } = require('back-lib-persistence');
@@ -145,7 +145,7 @@ class MicroServiceBase {
     }
     registerTrailsAddOn() {
         const { TrailsServerAddOn } = require('back-lib-common-web');
-        this._depContainer.bind(Types_1.Types.TRAILS_ADDON, TrailsServerAddOn).asSingleton();
+        this._depContainer.bind(back_lib_common_web_1.Types.TRAILS_ADDON, TrailsServerAddOn).asSingleton();
     }
     registerDependencies() {
         let depCon = this._depContainer = new cm.DependencyContainer();
