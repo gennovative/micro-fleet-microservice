@@ -1,5 +1,7 @@
+**/.nyc_output
+**/.vscode
 **/node_modules
 **/*.log
-coverage
-dist/test
-package-lock.json
+**/coverage
+**/dist/test
+**/dist/**/*.map

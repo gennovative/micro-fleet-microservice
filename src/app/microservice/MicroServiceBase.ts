@@ -1,14 +1,11 @@
-import { RpcSettingKeys as RpcS, SvcSettingKeys as SvcS } from 'back-lib-common-constants';
-import { IConfigurationProvider, Types as ConT } from 'back-lib-common-contracts';
+import { IConfigurationProvider, Types as ConT, serviceContext, constants } from '@micro-fleet/common';
 import * as cm from 'back-lib-common-util';
-import { TrailsServerAddOn, Types as WT } from 'back-lib-common-web';
-import * as per from 'back-lib-persistence';
-import * as com from 'back-lib-service-communication';
 import { IdProvider } from 'back-lib-id-generator';
 
 import * as cfg from '../addons/ConfigurationProvider';
 import { Types } from '../constants/Types';
 
+const { RpcSettingKeys: RpcS, SvcSettingKeys: SvcS } = constants;
 
 export abstract class MicroServiceBase {
 	protected _configProvider: IConfigurationProvider;
@@ -91,13 +88,6 @@ export abstract class MicroServiceBase {
 		return this._addons.push(addon);
 	}
 
-	protected attachDbAddOn(): per.DatabaseAddOn {
-		const { Types } = require('back-lib-persistence');
-		let dbAdt = this._depContainer.resolve<per.DatabaseAddOn>(Types.DB_ADDON);
-		this.attachAddOn(dbAdt);
-		return dbAdt;
-	}
-
 	protected attachConfigProvider(): IConfigurationProvider {
 		let cfgProd = this._configProvider = this._depContainer.resolve<IConfigurationProvider>(ConT.CONFIG_PROVIDER);
 		this.attachAddOn(cfgProd);
@@ -115,19 +105,6 @@ export abstract class MicroServiceBase {
 		let dbAdt = this._depContainer.resolve<com.MessageBrokerAddOn>(com.Types.BROKER_ADDON);
 		this.attachAddOn(dbAdt);
 		return dbAdt;
-	}
-
-	protected attachTrailsAddOn(): TrailsServerAddOn {
-		let trails = this._depContainer.resolve<TrailsServerAddOn>(WT.TRAILS_ADDON);
-		trails.onError(this.onError.bind(this));
-		this.attachAddOn(trails);
-		return trails;
-	}
-	
-	protected registerDbAddOn(): void {
-		const { Types, KnexDatabaseConnector, DatabaseAddOn } = require('back-lib-persistence');
-		this._depContainer.bind<per.IDatabaseConnector>(Types.DB_CONNECTOR, KnexDatabaseConnector).asSingleton();
-		this._depContainer.bind<per.DatabaseAddOn>(Types.DB_ADDON, DatabaseAddOn).asSingleton();
 	}
 
 	protected registerConfigProvider(): void {
@@ -166,18 +143,14 @@ export abstract class MicroServiceBase {
 		this._depContainer.bind<com.IMediateRpcHandler>(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler).asSingleton();
 	}
 
-	protected registerTrailsAddOn(): void {
-		const { TrailsServerAddOn } = require('back-lib-common-web');
-		this._depContainer.bind<TrailsServerAddOn>(WT.TRAILS_ADDON, TrailsServerAddOn).asSingleton();
-	}
-
 	protected registerDependencies(): void {
 		let depCon: cm.IDependencyContainer = this._depContainer = new cm.DependencyContainer();
+		serviceContext.setDependencyContainer(depCon);
 		depCon.bindConstant<cm.IDependencyContainer>(cm.Types.DEPENDENCY_CONTAINER, depCon);
 		this.registerConfigProvider();
 		this.registerDirectRpcCaller();
 	}
-	
+
 	/**
 	 * Invoked whenever any error occurs in the application.
 	 */
