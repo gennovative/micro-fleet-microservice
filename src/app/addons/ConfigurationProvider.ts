@@ -1,38 +1,41 @@
 import { EventEmitter } from 'events';
 
-import { SvcSettingKeys as S, ModuleNames as M, ActionNames as A } from 'back-lib-common-constants';
-import { GetSettingRequest, SettingItem, SettingItemDataType,
-	IConfigurationProvider } from 'back-lib-common-contracts';
-import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
-import { IDirectRpcCaller, IRpcResponse, Types as ComT } from 'back-lib-service-communication';
+import * as cm from '@micro-fleet/common';
+import { IDirectRpcCaller, IRpcResponse, Types as ComT } from '@micro-fleet/service-communication';
+
+const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants;
+
+// import { SvcSettingKeys as S, ModuleNames as M, ActionNames as A } from 'back-lib-common-constants';
+// import { GetSettingRequest, SettingItem, SettingItemDataType,
+// 	IConfigurationProvider } from 'back-lib-common-contracts';
+// import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
 
 
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
-@injectable()
+@cm.injectable()
 export class ConfigurationProvider
-		implements IConfigurationProvider {
+		implements cm.IConfigurationProvider {
+	public readonly name: string = 'ConfigurationProvider';
+
 	private _addresses: string[];
-	private _configFilePath;
+	private _configFilePath: string;
 	private _enableRemote: boolean;
 	private _eventEmitter: EventEmitter;
-	private _fileSettings;
-	private _remoteSettings;
+	private _fileSettings: any;
+	private _remoteSettings: any;
 	private _refetchTimer: NodeJS.Timer;
 	private _refetchInterval: number;
 	private _isInit: boolean;
 
 	constructor(
-		@inject(ComT.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
+		@cm.inject(ComT.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
 	) {
-		Guard.assertArgDefined('_rpcCaller', _rpcCaller);
-
 		this._configFilePath = `${process.cwd()}/appconfig.json`;
 		this._remoteSettings = this._fileSettings = {};
 		this._enableRemote = false;
 		this._eventEmitter = new EventEmitter();
-		this._rpcCaller.name = 'ConfigurationProvider';
 		this._isInit = false;
 	}
 
@@ -80,11 +83,12 @@ export class ConfigurationProvider
 		}
 
 		if (this.enableRemote) {
-			let addresses = this.applySettings();
-			if (!addresses) {
-				return Promise.reject(new CriticalException('No address for Settings Service!'));
+			this._rpcCaller.name = this.name;
+			const addresses = this.applySettings();
+			if (!addresses.hasValue) {
+				return Promise.reject(new cm.CriticalException('No address for Settings Service!'));
 			}
-			this._addresses = addresses;
+			this._addresses = addresses.value;
 		}
 
 		return Promise.resolve();
@@ -115,60 +119,66 @@ export class ConfigurationProvider
 	/**
 	 * @see IConfigurationProvider.get
 	 */
-	public get(key: string, dataType?: SettingItemDataType): number & boolean & string {
+	public get(key: string, dataType?: cm.SettingItemDataType): cm.Maybe<number | boolean | string> {
 		let value = this._remoteSettings[key];
 		if (value === undefined && dataType) {
 			value = this.parseValue(process.env[key] || this._fileSettings[key], dataType);
 		} else if (value === undefined) {
 			value = process.env[key] || this._fileSettings[key];
 		}
-		return (value ? value : null);
+		return (value ? new cm.Maybe(value) : new cm.Maybe());
 	}
 
 	/**
 	 * @see IConfigurationProvider.fetch
 	 */
 	public async fetch(): Promise<boolean> { // TODO: Should be privately called.
-		let addresses: string[] = this._addresses,
+		const addresses: string[] = Array.from(this._addresses),
 			oldSettings = this._remoteSettings;
 
-		for (let addr of addresses) {
-			if (await this.attemptFetch(addr)) {
-				// Move this address onto top of list
-				let pos = addresses.indexOf(addr);
-				if (pos != 0) {
-					addresses.splice(pos, 1);
-					addresses.unshift(addr);
-				}
+		// Manual loop with "JS label"
+		tryFetch: {
+			let addr = addresses.shift();
+			if (addr) {
+				if (await this.attemptFetch(addr)) {
+					// Move this address onto top of list
+					let pos = addresses.indexOf(addr);
+					if (pos != 0) {
+						addresses.splice(pos, 1);
+						addresses.unshift(addr);
+					}
 
-				this.broadCastChanges(oldSettings, this._remoteSettings);
-				if (this._refetchTimer === undefined) {
-					this.updateSelf();
-					this.repeatFetch();
+					this.broadCastChanges(oldSettings, this._remoteSettings);
+					if (this._refetchTimer === undefined) {
+						this.updateSelf();
+						this.repeatFetch();
+					}
+					// Stop trying if success
+					return true;
 				}
-				// Stop trying if success
-				return true;
+				break tryFetch;
 			}
 		}
 
 		// Don't throw error on refetching
 		if (this._refetchTimer === undefined) {
-			throw new CriticalException('Cannot connect to any address of Configuration Service!');
+			throw new cm.CriticalException('Cannot connect to any address of Configuration Service!');
 		}
+		return false;
 	}
 
 	public onUpdate(listener: (changedKeys: string[]) => void): void {
 		this._eventEmitter.on('updated', listener);
 	}
 
-	private applySettings(): string[] {
-		this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL) || (5 * 60000); // Default 5 mins
+	private applySettings(): cm.Maybe<string[]> {
+		this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).TryGetValue(5 * 60000) as number; // Default 5 mins
 		try {
-			let addresses: string[] = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES));
-			return (addresses && addresses.length) ? addresses : null;
+			const addresses: string[] = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES).value as any);
+			return (addresses && addresses.length) ? new cm.Maybe(addresses) : new cm.Maybe;
 		} catch (err) {
 			console.warn(err);
-			return null;
+			return new cm.Maybe;
 		}
 	}
 
@@ -176,8 +186,8 @@ export class ConfigurationProvider
 		this._eventEmitter.prependListener('updated', (changedKeys: string[]) => {
 			if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
 				let addresses = this.applySettings();
-				if (addresses) {
-					this._addresses = addresses;
+				if (addresses.hasValue) {
+					this._addresses = addresses.value;
 				} else {
 					console.warn('New SettingService addresses are useless!');
 				}
@@ -202,12 +212,12 @@ export class ConfigurationProvider
 								// this should be the host's IP address.
 
 			this._rpcCaller.baseAddress = address;
-			let req = GetSettingRequest.translator.whole({
+			const req = cm.GetSettingRequest.translator.whole({
 				slug: serviceName,
 				ipAddress
 			});
 
-			let res: IRpcResponse = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req);
+			const res: IRpcResponse = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req);
 			if (res.isSuccess) {
 				this._remoteSettings = this.parseSettings(res.payload);
 				return true;
@@ -218,7 +228,7 @@ export class ConfigurationProvider
 		return false;
 	}
 
-	private broadCastChanges(oldSettings, newSettings): void {
+	private broadCastChanges(oldSettings: any, newSettings: any): void {
 		if (!newSettings) { return; }
 		let oldKeys = Object.getOwnPropertyNames(oldSettings),
 			newKeys = Object.getOwnPropertyNames(newSettings),
@@ -245,21 +255,21 @@ export class ConfigurationProvider
 		}
 	}
 
-	private parseSettings(raw) {
+	private parseSettings(raw: any) {
 		if (!raw) { return {}; }
 
-		let map = {},
-			settings: SettingItem[] = SettingItem.translator.whole(raw);
+		const map = {},
+			settings = cm.SettingItem.translator.whole(raw) as cm.SettingItem[];
 		for (let st of settings) {
 			map[st.name] = this.parseValue(st.value, st.dataType);
 		}
 		return map;
 	}
 
-	private parseValue(val, type) {
+	private parseValue(val: any, type: any) {
 		if (val === undefined) { return null; }
 
-		if (type == SettingItemDataType.String) {
+		if (type == cm.SettingItemDataType.String) {
 			return val;
 		} else {
 			return JSON.parse(val);

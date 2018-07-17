@@ -11,32 +11,26 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
-const back_lib_common_constants_1 = require("back-lib-common-constants");
-const back_lib_common_contracts_1 = require("back-lib-common-contracts");
-const back_lib_common_util_1 = require("back-lib-common-util");
-const back_lib_service_communication_1 = require("back-lib-service-communication");
+const cm = require("@micro-fleet/common");
+const service_communication_1 = require("@micro-fleet/service-communication");
+const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants;
+// import { SvcSettingKeys as S, ModuleNames as M, ActionNames as A } from 'back-lib-common-constants';
+// import { GetSettingRequest, SettingItem, SettingItemDataType,
+// 	IConfigurationProvider } from 'back-lib-common-contracts';
+// import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
 let ConfigurationProvider = class ConfigurationProvider {
     constructor(_rpcCaller) {
         this._rpcCaller = _rpcCaller;
-        back_lib_common_util_1.Guard.assertArgDefined('_rpcCaller', _rpcCaller);
+        this.name = 'ConfigurationProvider';
         this._configFilePath = `${process.cwd()}/appconfig.json`;
         this._remoteSettings = this._fileSettings = {};
         this._enableRemote = false;
         this._eventEmitter = new events_1.EventEmitter();
-        this._rpcCaller.name = 'ConfigurationProvider';
         this._isInit = false;
     }
     /**
@@ -77,11 +71,12 @@ let ConfigurationProvider = class ConfigurationProvider {
             this._fileSettings = {};
         }
         if (this.enableRemote) {
-            let addresses = this.applySettings();
-            if (!addresses) {
-                return Promise.reject(new back_lib_common_util_1.CriticalException('No address for Settings Service!'));
+            this._rpcCaller.name = this.name;
+            const addresses = this.applySettings();
+            if (!addresses.hasValue) {
+                return Promise.reject(new cm.CriticalException('No address for Settings Service!'));
             }
-            this._addresses = addresses;
+            this._addresses = addresses.value;
         }
         return Promise.resolve();
     }
@@ -116,57 +111,55 @@ let ConfigurationProvider = class ConfigurationProvider {
         else if (value === undefined) {
             value = process.env[key] || this._fileSettings[key];
         }
-        return (value ? value : null);
+        return (value ? new cm.Maybe(value) : new cm.Maybe());
     }
     /**
      * @see IConfigurationProvider.fetch
      */
-    fetch() {
-        return __awaiter(this, void 0, void 0, function* () {
-            let addresses = this._addresses, oldSettings = this._remoteSettings;
-            for (let addr of addresses) {
-                if (yield this.attemptFetch(addr)) {
-                    // Move this address onto top of list
-                    let pos = addresses.indexOf(addr);
-                    if (pos != 0) {
-                        addresses.splice(pos, 1);
-                        addresses.unshift(addr);
-                    }
-                    this.broadCastChanges(oldSettings, this._remoteSettings);
-                    if (this._refetchTimer === undefined) {
-                        this.updateSelf();
-                        this.repeatFetch();
-                    }
-                    // Stop trying if success
-                    return true;
+    async fetch() {
+        let addresses = this._addresses, oldSettings = this._remoteSettings;
+        for (let addr of addresses) {
+            if (await this.attemptFetch(addr)) {
+                // Move this address onto top of list
+                let pos = addresses.indexOf(addr);
+                if (pos != 0) {
+                    addresses.splice(pos, 1);
+                    addresses.unshift(addr);
                 }
+                this.broadCastChanges(oldSettings, this._remoteSettings);
+                if (this._refetchTimer === undefined) {
+                    this.updateSelf();
+                    this.repeatFetch();
+                }
+                // Stop trying if success
+                return true;
             }
-            // Don't throw error on refetching
-            if (this._refetchTimer === undefined) {
-                throw new back_lib_common_util_1.CriticalException('Cannot connect to any address of Configuration Service!');
-            }
-        });
+        }
+        // Don't throw error on refetching
+        if (this._refetchTimer === undefined) {
+            throw new cm.CriticalException('Cannot connect to any address of Configuration Service!');
+        }
     }
     onUpdate(listener) {
         this._eventEmitter.on('updated', listener);
     }
     applySettings() {
-        this.refetchInterval = this.get(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_REFETCH_INTERVAL) || (5 * 60000); // Default 5 mins
+        this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).TryGetValue(5 * 60000); // Default 5 mins
         try {
-            let addresses = JSON.parse(this.get(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_SERVICE_ADDRESSES));
-            return (addresses && addresses.length) ? addresses : null;
+            const addresses = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES).value);
+            return (addresses && addresses.length) ? new cm.Maybe(addresses) : new cm.Maybe;
         }
         catch (err) {
             console.warn(err);
-            return null;
+            return new cm.Maybe;
         }
     }
     updateSelf() {
         this._eventEmitter.prependListener('updated', (changedKeys) => {
-            if (changedKeys.includes(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(back_lib_common_constants_1.SvcSettingKeys.SETTINGS_SERVICE_ADDRESSES)) {
+            if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
                 let addresses = this.applySettings();
-                if (addresses) {
-                    this._addresses = addresses;
+                if (addresses.hasValue) {
+                    this._addresses = addresses.value;
                 }
                 else {
                     console.warn('New SettingService addresses are useless!');
@@ -181,27 +174,25 @@ let ConfigurationProvider = class ConfigurationProvider {
         clearInterval(this._refetchTimer);
         this._refetchTimer = null;
     }
-    attemptFetch(address) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                let serviceName = this.get(back_lib_common_constants_1.SvcSettingKeys.SERVICE_SLUG), ipAddress = '0.0.0.0'; // If this service runs inside a Docker container, 
-                // this should be the host's IP address.
-                this._rpcCaller.baseAddress = address;
-                let req = back_lib_common_contracts_1.GetSettingRequest.translator.whole({
-                    slug: serviceName,
-                    ipAddress
-                });
-                let res = yield this._rpcCaller.call(back_lib_common_constants_1.ModuleNames.PROGRAM_CONFIGURATION, back_lib_common_constants_1.ActionNames.GET_SETTINGS, req);
-                if (res.isSuccess) {
-                    this._remoteSettings = this.parseSettings(res.payload);
-                    return true;
-                }
+    async attemptFetch(address) {
+        try {
+            let serviceName = this.get(S.SERVICE_SLUG), ipAddress = '0.0.0.0'; // If this service runs inside a Docker container, 
+            // this should be the host's IP address.
+            this._rpcCaller.baseAddress = address;
+            const req = cm.GetSettingRequest.translator.whole({
+                slug: serviceName,
+                ipAddress
+            });
+            const res = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req);
+            if (res.isSuccess) {
+                this._remoteSettings = this.parseSettings(res.payload);
+                return true;
             }
-            catch (err) {
-                console.warn(err);
-            }
-            return false;
-        });
+        }
+        catch (err) {
+            console.warn(err);
+        }
+        return false;
     }
     broadCastChanges(oldSettings, newSettings) {
         if (!newSettings) {
@@ -229,7 +220,7 @@ let ConfigurationProvider = class ConfigurationProvider {
         if (!raw) {
             return {};
         }
-        let map = {}, settings = back_lib_common_contracts_1.SettingItem.translator.whole(raw);
+        const map = {}, settings = cm.SettingItem.translator.whole(raw);
         for (let st of settings) {
             map[st.name] = this.parseValue(st.value, st.dataType);
         }
@@ -239,7 +230,7 @@ let ConfigurationProvider = class ConfigurationProvider {
         if (val === undefined) {
             return null;
         }
-        if (type == back_lib_common_contracts_1.SettingItemDataType.String) {
+        if (type == cm.SettingItemDataType.String) {
             return val;
         }
         else {
@@ -248,8 +239,9 @@ let ConfigurationProvider = class ConfigurationProvider {
     }
 };
 ConfigurationProvider = __decorate([
-    back_lib_common_util_1.injectable(),
-    __param(0, back_lib_common_util_1.inject(back_lib_service_communication_1.Types.DIRECT_RPC_CALLER)),
+    cm.injectable(),
+    __param(0, cm.inject(service_communication_1.Types.DIRECT_RPC_CALLER)),
     __metadata("design:paramtypes", [Object])
 ], ConfigurationProvider);
 exports.ConfigurationProvider = ConfigurationProvider;
+//# sourceMappingURL=ConfigurationProvider.js.map

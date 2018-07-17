@@ -1,14 +1,11 @@
-import { IConfigurationProvider, Types as ConT, serviceContext, constants } from '@micro-fleet/common';
-import * as cm from 'back-lib-common-util';
-import { IdProvider } from 'back-lib-id-generator';
+import * as cm from '@micro-fleet/common';
 
 import * as cfg from '../addons/ConfigurationProvider';
-import { Types } from '../constants/Types';
 
-const { RpcSettingKeys: RpcS, SvcSettingKeys: SvcS } = constants;
+const { SvcSettingKeys: SvcS } = cm.constants;
 
 export abstract class MicroServiceBase {
-	protected _configProvider: IConfigurationProvider;
+	protected _configProvider: cm.IConfigurationProvider;
 	protected _depContainer: cm.IDependencyContainer;
 	protected _addons: IServiceAddOn[];
 	protected _isStarted: boolean;
@@ -59,7 +56,7 @@ export abstract class MicroServiceBase {
 	public stop(exitProcess: boolean = true): void {
 		setTimeout(
 			() => process.exit(),
-			2 * this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT) || 10000
+			this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).TryGetValue(10000) as number
 		);
 
 		(async () => {
@@ -88,67 +85,21 @@ export abstract class MicroServiceBase {
 		return this._addons.push(addon);
 	}
 
-	protected attachConfigProvider(): IConfigurationProvider {
-		let cfgProd = this._configProvider = this._depContainer.resolve<IConfigurationProvider>(ConT.CONFIG_PROVIDER);
+	protected attachConfigProvider(): cm.IConfigurationProvider {
+		const cfgProd = this._configProvider = this._depContainer.resolve<cm.IConfigurationProvider>(cm.Types.CONFIG_PROVIDER);
 		this.attachAddOn(cfgProd);
 		return cfgProd;
 	}
 
-	protected attachIdProvider(): IdProvider {
-		const { IdProvider, Types } = require('back-lib-id-generator');
-		let idProd = this._depContainer.resolve<IdProvider>(Types.ID_PROVIDER);
-		this.attachAddOn(idProd);
-		return idProd;
-	}
-
-	protected attachMessageBrokerAddOn(): com.MessageBrokerAddOn {
-		let dbAdt = this._depContainer.resolve<com.MessageBrokerAddOn>(com.Types.BROKER_ADDON);
-		this.attachAddOn(dbAdt);
-		return dbAdt;
-	}
-
 	protected registerConfigProvider(): void {
-		this._depContainer.bind<IConfigurationProvider>(ConT.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
-	}
-
-	protected registerIdProvider(): void {
-		const { IdProvider, Types } = require('back-lib-id-generator');
-		this._depContainer.bind<IdProvider>(Types.ID_PROVIDER, IdProvider).asSingleton();
-	}
-
-	protected registerDirectRpcCaller(): void {
-		this._depContainer.bind<com.IDirectRpcCaller>(com.Types.DIRECT_RPC_CALLER, com.HttpRpcCaller).asSingleton();
-	}
-
-	protected registerDirectRpcHandler(): void {
-		this._depContainer.bind<com.IDirectRpcHandler>(com.Types.DIRECT_RPC_HANDLER, com.ExpressRpcHandler).asSingleton();
-	}
-
-	protected registerMessageBrokerAddOn(): void {
-		this._depContainer.bind<com.IMessageBrokerConnector>(com.Types.MSG_BROKER_CONNECTOR, com.TopicMessageBrokerConnector).asSingleton();
-		this._depContainer.bind<com.MessageBrokerAddOn>(com.Types.BROKER_ADDON, com.MessageBrokerAddOn).asSingleton();
-	}
-
-	protected registerMediateRpcCaller(): void {
-		if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
-			this.registerMessageBrokerAddOn();
-		}
-		this._depContainer.bind<com.IMediateRpcCaller>(com.Types.MEDIATE_RPC_CALLER, com.MessageBrokerRpcCaller).asSingleton();
-	}
-
-	protected registerMediateRpcHandler(): void {
-		if (!this._depContainer.isBound(com.Types.MSG_BROKER_CONNECTOR)) {
-			this.registerMessageBrokerAddOn();
-		}
-		this._depContainer.bind<com.IMediateRpcHandler>(com.Types.MEDIATE_RPC_HANDLER, com.MessageBrokerRpcHandler).asSingleton();
+		this._depContainer.bind<cm.IConfigurationProvider>(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
 	}
 
 	protected registerDependencies(): void {
-		let depCon: cm.IDependencyContainer = this._depContainer = new cm.DependencyContainer();
-		serviceContext.setDependencyContainer(depCon);
+		const depCon: cm.IDependencyContainer = this._depContainer = new cm.DependencyContainer();
+		cm.serviceContext.setDependencyContainer(depCon);
 		depCon.bindConstant<cm.IDependencyContainer>(cm.Types.DEPENDENCY_CONTAINER, depCon);
 		this.registerConfigProvider();
-		this.registerDirectRpcCaller();
 	}
 
 	/**
@@ -160,7 +111,7 @@ export abstract class MicroServiceBase {
 			return console.error(error.stack);
 		}
 		/* istanbul ignore next */
-		let msg = (error.toString ? error.toString() : error + '');
+		const msg = (error.toString ? error.toString() : error + '');
 		console.error(msg); // Should log to file.
 	}
 
@@ -168,10 +119,6 @@ export abstract class MicroServiceBase {
 	 * Invoked after registering dependencies, but before all other initializations.
 	 */
 	protected onStarting(): void {
-		if (this._depContainer.isBound(com.Types.MEDIATE_RPC_CALLER)) {
-			let caller = this._depContainer.resolve<com.IMediateRpcCaller>(com.Types.MEDIATE_RPC_CALLER);
-			caller.timeout = this._configProvider.get(RpcS.RPC_CALLER_TIMEOUT);
-		}
 	}
 
 	/**
@@ -197,15 +144,15 @@ export abstract class MicroServiceBase {
 
 
 	private async initAddOns(): Promise<void> {
-		let cfgPrvd = this._configProvider,
-			initPromises;
-
+		const cfgPrvd = this._configProvider;
+		
 		// Configuration provider must be initialized first, because all other add-ons
 		// depend on it.
 		await cfgPrvd.init();
-
+		
 		// If remote config is disabled or
 		// if remote config is enanbed and fetching successfully.
+		let initPromises;
 		if (!cfgPrvd.enableRemote || await cfgPrvd.fetch()) {
 			initPromises = this._addons.map(adt => adt.init());
 		} else {
@@ -216,7 +163,7 @@ export abstract class MicroServiceBase {
 	}
 
 	private disposeAddOns(): Promise<void[]> {
-		let disposePromises = this._addons.map(adt => {
+		const disposePromises = this._addons.map(adt => {
 			// let adtName = adt.constructor.toString().substring(0, 20);
 			// console.log('DISPOSING: ' + adtName);
 			return adt.dispose(); 
@@ -235,7 +182,7 @@ export abstract class MicroServiceBase {
 	 * 
 	 */
 	private handleGracefulShutdown() {
-		let handler = () => {
+		const handler = () => {
 			console.log('Gracefully shutdown...');
 			this.stop();
 		};
@@ -253,7 +200,7 @@ export abstract class MicroServiceBase {
 		/* istanbul ignore else */
 		if (process.platform === 'win32') {
 			const readLine = require('readline');
-			let rl = readLine.createInterface({
+			const rl = readLine.createInterface({
 				input: process.stdin,
 				output: process.stdout
 			});
@@ -271,10 +218,10 @@ export abstract class MicroServiceBase {
 		return new Promise<void>(resolve => {
 			let timer = setTimeout(
 					resolve,
-					this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT) || 5000
+					this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).TryGetValue(5000) as number
 				);
 
-			let promises = this._addons.map(adt => adt.deadLetter());
+			const promises = this._addons.map(adt => adt.deadLetter());
 
 			Promise.all(promises).then(() => {
 				if (timer) {

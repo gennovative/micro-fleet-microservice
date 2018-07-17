@@ -11,3 +11,4 @@ __export(require("./addons/ConfigurationProvider"));
 __export(require("./constants/Types"));
 __export(require("./controllers/InternalControllerBase"));
 __export(require("./microservice/MicroServiceBase"));
+//# sourceMappingURL=index.js.map
