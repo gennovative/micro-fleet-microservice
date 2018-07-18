@@ -5,11 +5,6 @@ import { IDirectRpcCaller, IRpcResponse, Types as ComT } from '@micro-fleet/serv
 
 const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants;
 
-// import { SvcSettingKeys as S, ModuleNames as M, ActionNames as A } from 'back-lib-common-constants';
-// import { GetSettingRequest, SettingItem, SettingItemDataType,
-// 	IConfigurationProvider } from 'back-lib-common-contracts';
-// import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
-
 
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
@@ -30,7 +25,9 @@ export class ConfigurationProvider
 	private _isInit: boolean;
 
 	constructor(
-		@cm.inject(ComT.DIRECT_RPC_CALLER) private _rpcCaller: IDirectRpcCaller
+		@cm.inject(ComT.DIRECT_RPC_CALLER) 
+		@cm.optional()
+		private _rpcCaller: IDirectRpcCaller
 	) {
 		this._configFilePath = `${process.cwd()}/appconfig.json`;
 		this._remoteSettings = this._fileSettings = {};
@@ -38,6 +35,8 @@ export class ConfigurationProvider
 		this._eventEmitter = new EventEmitter();
 		this._isInit = false;
 	}
+
+	//#region Getters & Setters
 
 	/**
 	 * @see IConfigurationProvider.enableRemote
@@ -66,6 +65,9 @@ export class ConfigurationProvider
 		}
 	}
 
+	//#endregion Getters & Setters
+
+
 	/**
 	 * @see IServiceAddOn.init
 	 */
@@ -78,7 +80,8 @@ export class ConfigurationProvider
 		try {
 			this._fileSettings = require(this._configFilePath);
 		} catch (ex) {
-			console.warn(ex);
+			// TODO: Should use logger
+			// console.warn(ex);
 			this._fileSettings = {};
 		}
 
@@ -177,7 +180,6 @@ export class ConfigurationProvider
 			const addresses: string[] = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES).value as any);
 			return (addresses && addresses.length) ? new cm.Maybe(addresses) : new cm.Maybe;
 		} catch (err) {
-			console.warn(err);
 			return new cm.Maybe;
 		}
 	}
@@ -213,7 +215,7 @@ export class ConfigurationProvider
 
 			this._rpcCaller.baseAddress = address;
 			const req = cm.GetSettingRequest.translator.whole({
-				slug: serviceName,
+				slug: serviceName.value,
 				ipAddress
 			});
 

@@ -9,6 +9,6 @@ if (!Reflect || typeof Reflect['hasOwnMetadata'] !== 'function') {
 }
 __export(require("./addons/ConfigurationProvider"));
 __export(require("./constants/Types"));
-__export(require("./controllers/InternalControllerBase"));
+// export * from './controllers/InternalControllerBase';
 __export(require("./microservice/MicroServiceBase"));
 //# sourceMappingURL=index.js.map

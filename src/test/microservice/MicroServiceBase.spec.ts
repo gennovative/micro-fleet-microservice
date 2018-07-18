@@ -1,14 +1,12 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
-import { DbClient, MbSettingKeys as MbS, DbSettingKeys as DbS,
-	SvcSettingKeys as SvcS } from 'back-lib-common-constants';
-import { IConfigurationProvider, Types } from 'back-lib-common-contracts';
-import { CriticalException, injectable } from 'back-lib-common-util';
-import { DatabaseAddOn } from 'back-lib-persistence';
+import { CriticalException, injectable, IConfigurationProvider, 
+	Types, Maybe, constants } from '@micro-fleet/common';
+const { DbClient, SvcSettingKeys: SvcS } = constants;
 
 import { MicroServiceBase } from '../../app';
-import rabbitOpts from '../rabbit-options';
-import DB_DETAILS from '../database-details';
+// import rabbitOpts from '../rabbit-options';
+// import DB_DETAILS from '../database-details';
 
 
 chai.use(spies);
@@ -30,6 +28,9 @@ interface ICustomAddOn extends IServiceAddOn { }
 
 @injectable()
 class CustomAddOn implements ICustomAddOn {	
+
+	public readonly name: string = 'CustomAddOn';
+
 	public init(): Promise<void> {
 		return new Promise<void>(resolve => {
 			// Do some async stuff here
@@ -54,11 +55,12 @@ class CustomAddOn implements ICustomAddOn {
 const BEHAV_FALSE = 'behav_false',
 	BEHAV_THROW = 'behav_throw',
 	ERROR_RANDOM = new CriticalException('A random error!'),
-	ERROR_FAIL = new CriticalException('Fail to fetch configuration!'),
-	CONN_FILE = `${process.cwd()}/database-addon-test.sqlite`;
+	ERROR_FAIL = new CriticalException('Fail to fetch configuration!');
 
 @injectable()
 class MockConfigProvider implements IConfigurationProvider {
+
+	public readonly name: string = 'MockConfigProvider';
 
 	public behavior: string;
 	
@@ -82,21 +84,10 @@ class MockConfigProvider implements IConfigurationProvider {
 
 	}
 
-	public get(key: string): number & boolean & string {
+	public get(key: string): Maybe<number | boolean | string> {
 		switch (key) {
-			case DbS.DB_NUM_CONN: return <any>1;
-			case DbS.DB_ENGINE + '0': return <any>DB_DETAILS.clientName;
-			case DbS.DB_HOST + '0': return <any>DB_DETAILS.host.address;
-			case DbS.DB_USER + '0': return <any>DB_DETAILS.host.user;
-			case DbS.DB_PASSWORD + '0': return <any>DB_DETAILS.host.password;
-			case DbS.DB_NAME + '0': return <any>DB_DETAILS.host.database;
-			case MbS.MSG_BROKER_HOST: return <any>rabbitOpts.caller.hostAddress;
-			case MbS.MSG_BROKER_USERNAME: return <any>rabbitOpts.caller.username;
-			case MbS.MSG_BROKER_PASSWORD: return <any>rabbitOpts.caller.password;
-			case MbS.MSG_BROKER_EXCHANGE: return <any>rabbitOpts.caller.exchange;
-			case MbS.MSG_BROKER_QUEUE: return <any>rabbitOpts.caller.queue;
-			case SvcS.ADDONS_DEADLETTER_TIMEOUT: return <any>1000;
-			default: return null;
+			case SvcS.ADDONS_DEADLETTER_TIMEOUT: return new Maybe(1000);
+			default: return new Maybe;
 		}
 	}
 
@@ -129,10 +120,10 @@ class TestMarketingService extends MicroServiceBase {
 		this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigProvider).asSingleton();
 		
 		// Call this if your service works directly with database.
-		this.registerDbAddOn();
+		// this.registerDbAddOn();
 
 		// If your service accepts direct incoming requests.
-		this.registerDirectRpcHandler();
+		// this.registerDirectRpcHandler();
 
 		// If your service sends direct incoming requests.
 		//// Already called by MicroServiceBase
@@ -143,10 +134,10 @@ class TestMarketingService extends MicroServiceBase {
 		// this.registerMessageBrokerAddOn();
 
 		// If your service sends requests via message broker.
-		this.registerMediateRpcCaller();
+		// this.registerMediateRpcCaller();
 
 		// If your service accepts incoming requests via message broker.
-		this.registerMediateRpcHandler();
+		// this.registerMediateRpcHandler();
 	}
 
 	/**
@@ -154,10 +145,10 @@ class TestMarketingService extends MicroServiceBase {
 	 */
 	protected onStarting(): void {
 		// Call this if your service works directly with database.
-		this.attachDbAddOn();
+		// this.attachDbAddOn();
 
 		// Call this if your service communicates via message broker.
-		this.attachMessageBrokerAddOn();
+		// this.attachMessageBrokerAddOn();
 		
 		// Use this if you have a home-made add-on.
 		// All added add-ons' init method will be called 
@@ -179,7 +170,8 @@ class TestMarketingService extends MicroServiceBase {
 
 
 describe('MicroServiceBase', function() {
-	this.timeout(10000);
+	// this.timeout(10000);
+	this.timeout(60000); // For debugging
 
 	describe('start', () => {
 		it('should call events in specific order', () => {
@@ -270,7 +262,7 @@ describe('MicroServiceBase', function() {
 			let service = new PlainService();
 			
 			service['onError'] = (function(original) {
-				return (error) => {
+				return (error: any) => {
 					// Save and execute original `onError` method,
 					// to make it covered.
 					original.call(service, error);
@@ -381,7 +373,7 @@ describe('MicroServiceBase', function() {
 		it('should dispose all add-ons', (done) => {
 			// Arrange
 			let service = new TestMarketingService(),
-				adpArr = [];
+				adpArr: any[] = [];
 
 			service['onStarting'] = (function(original) {
 				return () => {
@@ -441,7 +433,7 @@ describe('MicroServiceBase', function() {
 				done();
 			});
 			
-			service['onError'] = chai.spy((error) => {
+			service['onError'] = chai.spy(() => {
 				// Assert
 				expect(service['onError']).to.be.spy;
 				expect(service['onError']).to.be.called.once;

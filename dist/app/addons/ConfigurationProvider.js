@@ -16,10 +16,6 @@ const events_1 = require("events");
 const cm = require("@micro-fleet/common");
 const service_communication_1 = require("@micro-fleet/service-communication");
 const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants;
-// import { SvcSettingKeys as S, ModuleNames as M, ActionNames as A } from 'back-lib-common-constants';
-// import { GetSettingRequest, SettingItem, SettingItemDataType,
-// 	IConfigurationProvider } from 'back-lib-common-contracts';
-// import { inject, injectable, Guard, CriticalException } from 'back-lib-common-util';
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
@@ -33,6 +29,7 @@ let ConfigurationProvider = class ConfigurationProvider {
         this._eventEmitter = new events_1.EventEmitter();
         this._isInit = false;
     }
+    //#region Getters & Setters
     /**
      * @see IConfigurationProvider.enableRemote
      */
@@ -55,6 +52,7 @@ let ConfigurationProvider = class ConfigurationProvider {
             this.repeatFetch();
         }
     }
+    //#endregion Getters & Setters
     /**
      * @see IServiceAddOn.init
      */
@@ -67,7 +65,8 @@ let ConfigurationProvider = class ConfigurationProvider {
             this._fileSettings = require(this._configFilePath);
         }
         catch (ex) {
-            console.warn(ex);
+            // TODO: Should use logger
+            // console.warn(ex);
             this._fileSettings = {};
         }
         if (this.enableRemote) {
@@ -117,28 +116,34 @@ let ConfigurationProvider = class ConfigurationProvider {
      * @see IConfigurationProvider.fetch
      */
     async fetch() {
-        let addresses = this._addresses, oldSettings = this._remoteSettings;
-        for (let addr of addresses) {
-            if (await this.attemptFetch(addr)) {
-                // Move this address onto top of list
-                let pos = addresses.indexOf(addr);
-                if (pos != 0) {
-                    addresses.splice(pos, 1);
-                    addresses.unshift(addr);
+        const addresses = Array.from(this._addresses), oldSettings = this._remoteSettings;
+        // Manual loop with "JS label"
+        tryFetch: {
+            let addr = addresses.shift();
+            if (addr) {
+                if (await this.attemptFetch(addr)) {
+                    // Move this address onto top of list
+                    let pos = addresses.indexOf(addr);
+                    if (pos != 0) {
+                        addresses.splice(pos, 1);
+                        addresses.unshift(addr);
+                    }
+                    this.broadCastChanges(oldSettings, this._remoteSettings);
+                    if (this._refetchTimer === undefined) {
+                        this.updateSelf();
+                        this.repeatFetch();
+                    }
+                    // Stop trying if success
+                    return true;
                 }
-                this.broadCastChanges(oldSettings, this._remoteSettings);
-                if (this._refetchTimer === undefined) {
-                    this.updateSelf();
-                    this.repeatFetch();
-                }
-                // Stop trying if success
-                return true;
+                break tryFetch;
             }
         }
         // Don't throw error on refetching
         if (this._refetchTimer === undefined) {
             throw new cm.CriticalException('Cannot connect to any address of Configuration Service!');
         }
+        return false;
     }
     onUpdate(listener) {
         this._eventEmitter.on('updated', listener);
@@ -150,7 +155,6 @@ let ConfigurationProvider = class ConfigurationProvider {
             return (addresses && addresses.length) ? new cm.Maybe(addresses) : new cm.Maybe;
         }
         catch (err) {
-            console.warn(err);
             return new cm.Maybe;
         }
     }
@@ -180,7 +184,7 @@ let ConfigurationProvider = class ConfigurationProvider {
             // this should be the host's IP address.
             this._rpcCaller.baseAddress = address;
             const req = cm.GetSettingRequest.translator.whole({
-                slug: serviceName,
+                slug: serviceName.value,
                 ipAddress
             });
             const res = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req);
@@ -241,6 +245,7 @@ let ConfigurationProvider = class ConfigurationProvider {
 ConfigurationProvider = __decorate([
     cm.injectable(),
     __param(0, cm.inject(service_communication_1.Types.DIRECT_RPC_CALLER)),
+    __param(0, cm.optional()),
     __metadata("design:paramtypes", [Object])
 ], ConfigurationProvider);
 exports.ConfigurationProvider = ConfigurationProvider;

@@ -13,15 +13,15 @@
 			],
 			"cwd": "${workspaceRoot}",
 			"outFiles": [],
-			"sourceMaps": true
+			"sourceMaps": false
 		},
 		{
 			"type": "node",
 			"request": "launch",
 			"name": "Mocha test",
-			"program": "${workspaceRoot}\\node_modules\\mocha\\bin\\_mocha",
+			"program": "${workspaceRoot}/../../node_modules/mocha/bin/_mocha",
 			"args": [
-				".\\dist\\test\\**\\*.js"
+				"./dist/test/**/*.js"
 			],
 			// Automatically stop program after launch.
 			"stopOnEntry": false,
@@ -29,7 +29,7 @@
 			"runtimeExecutable": null,
 			"cwd": "${workspaceRoot}",
 			"outFiles": [],
-			"sourceMaps": true
+			"sourceMaps": false
 		},
 		{
 			"type": "node",
