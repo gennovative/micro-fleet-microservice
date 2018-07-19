@@ -1,7 +1,7 @@
 {
 	"name": "@micro-fleet/microservice",
-	"version": "1.0.0",
-	"description": "Provides backbone",
+	"version": "1.2.0",
+	"description": "Provides backbone and manage lifecycle for microservice.",
 	"scripts": {
 		"build": "npm run compile && npm run test",
 		"clean": "rimraf dist coverage .nyc_output",
@@ -12,6 +12,13 @@
 		"test": "nyc --reporter=json --reporter=html --include dist/app/**/*.js mocha --recursive dist/test",
 		"tslint": "tslint -c tslint.json 'src/**/*.ts'",
 		"watch": "npm run clean && npm run tslint && tsc --watch --pretty"
+	},
+	"peerDependencies": {
+		"@micro-fleet/service-communication": "~0.2",
+		"@micro-fleet/common": "~1.2"
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"keywords": [
 		"micro-fleet"

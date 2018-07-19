@@ -1,6 +1,9 @@
 
 ## VERSIONS
 
+### 1.2.0
+- Removed all references to external add-ons and packages.
+
 ### 1.1.0
 - Moved `IServiceAddOn` to `common-contracts` package.
 - Moved **TrailsServerAddOn**, **RestControllerBase** to `common-web` package.
