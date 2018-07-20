@@ -1,10 +1,11 @@
 import { EventEmitter } from 'events';
 
 import * as cm from '@micro-fleet/common';
-import { IDirectRpcCaller, IRpcResponse, Types as ComT } from '@micro-fleet/service-communication';
 
 const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants;
 
+type IDirectRpcCaller = import('@micro-fleet/service-communication').IDirectRpcCaller;
+type IRpcResponse = import('@micro-fleet/service-communication').IRpcResponse;
 
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
@@ -24,11 +25,11 @@ export class ConfigurationProvider
 	private _refetchInterval: number;
 	private _isInit: boolean;
 
-	constructor(
-		@cm.inject(ComT.DIRECT_RPC_CALLER) 
-		@cm.optional()
-		private _rpcCaller: IDirectRpcCaller
-	) {
+	// @cm.lazyInject(require('@micro-fleet/service-communication').DIRECT_RPC_CALLER)
+	@cm.lazyInject('service-communication.IDirectRpcCaller')
+	private _rpcCaller: IDirectRpcCaller;
+
+	constructor() {
 		this._configFilePath = `${process.cwd()}/appconfig.json`;
 		this._remoteSettings = this._fileSettings = {};
 		this._enableRemote = false;
@@ -45,9 +46,6 @@ export class ConfigurationProvider
 		return this._enableRemote;
 	}
 
-	/**
-	 * @see IConfigurationProvider.enableRemote
-	 */
 	public set enableRemote(val: boolean) {
 		this._enableRemote = val;
 	}

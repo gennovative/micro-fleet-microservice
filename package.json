@@ -1,6 +1,6 @@
 {
 	"name": "@micro-fleet/microservice",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "Provides backbone and manage lifecycle for microservice.",
 	"scripts": {
 		"build": "npm run compile && npm run test",
@@ -14,7 +14,6 @@
 		"watch": "npm run clean && npm run tslint && tsc --watch --pretty"
 	},
 	"peerDependencies": {
-		"@micro-fleet/service-communication": "~0.2",
 		"@micro-fleet/common": "~1.2"
 	},
 	"publishConfig": {
@@ -32,5 +31,7 @@
 	},
 	"license": "MIT",
 	"private": false,
+	"main": "./dist/app/index.js",
+	"types": "./typings/app.d.ts",
 	"repository": "git@github.com:gennovative/micro-fleet-microservice.git"
 }

@@ -8,20 +8,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var __param = (this && this.__param) || function (paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
 const cm = require("@micro-fleet/common");
-const service_communication_1 = require("@micro-fleet/service-communication");
 const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants;
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
 let ConfigurationProvider = class ConfigurationProvider {
-    constructor(_rpcCaller) {
-        this._rpcCaller = _rpcCaller;
+    constructor() {
         this.name = 'ConfigurationProvider';
         this._configFilePath = `${process.cwd()}/appconfig.json`;
         this._remoteSettings = this._fileSettings = {};
@@ -36,9 +31,6 @@ let ConfigurationProvider = class ConfigurationProvider {
     get enableRemote() {
         return this._enableRemote;
     }
-    /**
-     * @see IConfigurationProvider.enableRemote
-     */
     set enableRemote(val) {
         this._enableRemote = val;
     }
@@ -242,11 +234,13 @@ let ConfigurationProvider = class ConfigurationProvider {
         }
     }
 };
+__decorate([
+    cm.lazyInject('service-communication.IDirectRpcCaller'),
+    __metadata("design:type", Object)
+], ConfigurationProvider.prototype, "_rpcCaller", void 0);
 ConfigurationProvider = __decorate([
     cm.injectable(),
-    __param(0, cm.inject(service_communication_1.Types.DIRECT_RPC_CALLER)),
-    __param(0, cm.optional()),
-    __metadata("design:paramtypes", [Object])
+    __metadata("design:paramtypes", [])
 ], ConfigurationProvider);
 exports.ConfigurationProvider = ConfigurationProvider;
 //# sourceMappingURL=ConfigurationProvider.js.map

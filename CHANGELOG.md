@@ -1,8 +1,11 @@
 
 ## VERSIONS
 
+### 1.2.1
+- Temporarily removed dependency on package `@micro-fleet/service-communication`.
+
 ### 1.2.0
-- Removed all references to external add-ons and packages.
+- Removed all references to external add-ons.
 
 ### 1.1.0
 - Moved `IServiceAddOn` to `common-contracts` package.

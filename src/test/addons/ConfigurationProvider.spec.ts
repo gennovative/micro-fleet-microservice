@@ -138,7 +138,8 @@ describe('ConfigurationProvider', function () {
 	let configPrvd: IConfigurationProvider;
 
 	beforeEach(() => {
-		configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller());
+		configPrvd = new app.ConfigurationProvider();
+		configPrvd['_rpcCaller'] = new MockDirectRpcCaller();
 	});
 
 	afterEach(async () => {
@@ -390,8 +391,9 @@ describe('ConfigurationProvider', function () {
 	describe('dispose', () => {
 		it('should release all resources', async () => {
 			// Arrange
-			let configPrvd = new app.ConfigurationProvider(new MockDirectRpcCaller()),
+			const configPrvd = new app.ConfigurationProvider(),
 				callMe = chai.spy();
+			configPrvd['_rpcCaller'] = new MockDirectRpcCaller();
 
 			// Act
 			await configPrvd.dispose();

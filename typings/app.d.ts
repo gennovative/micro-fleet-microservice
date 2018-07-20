@@ -1,19 +1,15 @@
 /// <reference path="./global.d.ts" />
 declare module '@micro-fleet/microservice/dist/app/addons/ConfigurationProvider' {
 	import * as cm from '@micro-fleet/common';
-	import { IDirectRpcCaller } from '@micro-fleet/service-communication';
 	/**
 	 * Provides settings from appconfig.json, environmental variables and remote settings service.
 	 */
 	export class ConfigurationProvider implements cm.IConfigurationProvider {
-	    	    readonly name: string;
-	    	    	    	    	    	    	    	    	    	    constructor(_rpcCaller: IDirectRpcCaller);
+	    readonly name: string;
+	    	    	    	    	    	    	    	    	    	    	    constructor();
 	    /**
 	     * @see IConfigurationProvider.enableRemote
 	     */
-	    /**
-	    * @see IConfigurationProvider.enableRemote
-	    */
 	    enableRemote: boolean;
 	    	    /**
 	     * @see IServiceAddOn.init
