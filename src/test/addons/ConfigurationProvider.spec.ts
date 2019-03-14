@@ -399,7 +399,7 @@ describe('ConfigurationProvider', function () {
 			await configPrvd.dispose();
 
 			// Assert
-			_.forOwn(configPrvd, (value, key) => {
+			_.forOwn(configPrvd, (value: any, key: string) => {
 				if (key == 'name') { return; }
 				callMe();
 				expect(configPrvd[key], key).to.be.null;
