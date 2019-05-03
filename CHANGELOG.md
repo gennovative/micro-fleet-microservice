@@ -1,7 +1,7 @@
 
 ## VERSIONS
 
-### 1.2.3
+### 1.2.4
 - Remove script "postinstall" from `package.json`.
 
 ### 1.2.2
