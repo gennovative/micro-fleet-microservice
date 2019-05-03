@@ -100,6 +100,7 @@ class MicroServiceBase {
      * Invoked after registering dependencies, but before all other initializations.
      */
     onStarting() {
+        // Empty
     }
     /**
      * Invoked after all initializations. At this stage, the application is considered
@@ -112,12 +113,14 @@ class MicroServiceBase {
      * Invoked when `stop` method is called, before any other actions take place.
      */
     onStopping() {
+        // Empty
     }
     /**
      * Invoked after all finalizations have finished. At this stage, the application is
      * considered stopped successfully. The process will be killed after this.
      */
     onStopped() {
+        // Empty
     }
     async initAddOns() {
         const cfgPrvd = this._configProvider;
@@ -170,7 +173,7 @@ class MicroServiceBase {
             const readLine = require('readline');
             const rl = readLine.createInterface({
                 input: process.stdin,
-                output: process.stdout
+                output: process.stdout,
             });
             // When pressing Ctrl-C
             // Read more: https://nodejs.org/api/readline.html#readline_event_sigint

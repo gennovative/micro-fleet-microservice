@@ -111,11 +111,11 @@ let ConfigurationProvider = class ConfigurationProvider {
         const addresses = Array.from(this._addresses), oldSettings = this._remoteSettings;
         // Manual loop with "JS label"
         tryFetch: {
-            let addr = addresses.shift();
+            const addr = addresses.shift();
             if (addr) {
                 if (await this.attemptFetch(addr)) {
                     // Move this address onto top of list
-                    let pos = addresses.indexOf(addr);
+                    const pos = addresses.indexOf(addr);
                     if (pos != 0) {
                         addresses.splice(pos, 1);
                         addresses.unshift(addr);
@@ -153,7 +153,7 @@ let ConfigurationProvider = class ConfigurationProvider {
     updateSelf() {
         this._eventEmitter.prependListener('updated', (changedKeys) => {
             if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
-                let addresses = this.applySettings();
+                const addresses = this.applySettings();
                 if (addresses.hasValue) {
                     this._addresses = addresses.value;
                 }
@@ -172,12 +172,12 @@ let ConfigurationProvider = class ConfigurationProvider {
     }
     async attemptFetch(address) {
         try {
-            let serviceName = this.get(S.SERVICE_SLUG), ipAddress = '0.0.0.0'; // If this service runs inside a Docker container, 
+            const serviceName = this.get(S.SERVICE_SLUG), ipAddress = '0.0.0.0'; // If this service runs inside a Docker container,
             // this should be the host's IP address.
             this._rpcCaller.baseAddress = address;
             const req = cm.GetSettingRequest.translator.whole({
                 slug: serviceName.value,
-                ipAddress
+                ipAddress,
             });
             const res = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req);
             if (res.isSuccess) {
@@ -194,16 +194,19 @@ let ConfigurationProvider = class ConfigurationProvider {
         if (!newSettings) {
             return;
         }
-        let oldKeys = Object.getOwnPropertyNames(oldSettings), newKeys = Object.getOwnPropertyNames(newSettings), changedKeys = [], val;
+        const oldKeys = Object.getOwnPropertyNames(oldSettings);
+        const newKeys = Object.getOwnPropertyNames(newSettings);
+        const changedKeys = [];
+        let val;
         // Update existing values or add new keys
-        for (let key of newKeys) {
+        for (const key of newKeys) {
             val = newSettings[key];
             if (val !== oldSettings[key]) {
                 changedKeys.push(key);
             }
         }
         // Reset abandoned keys.
-        for (let key of oldKeys) {
+        for (const key of oldKeys) {
             if (!newKeys.includes(key)) {
                 changedKeys.push(key);
             }
@@ -217,7 +220,7 @@ let ConfigurationProvider = class ConfigurationProvider {
             return {};
         }
         const map = {}, settings = cm.SettingItem.translator.whole(raw);
-        for (let st of settings) {
+        for (const st of settings) {
             map[st.name] = this.parseValue(st.value, st.dataType);
         }
         return map;

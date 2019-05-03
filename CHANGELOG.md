@@ -1,6 +1,13 @@
 
 ## VERSIONS
 
+### 1.2.3
+- Remove script "postinstall" from `package.json`.
+
+### 1.2.2
+- Upgraded dependencies.
+- Improved lint rules.
+
 ### 1.2.1
 - Temporarily removed dependency on package `@micro-fleet/service-communication`.
 

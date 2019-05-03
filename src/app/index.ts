@@ -1,9 +1,9 @@
 /* istanbul ignore next */
 if (!Reflect || typeof Reflect['hasOwnMetadata'] !== 'function') {
-	require('reflect-metadata');
+    require('reflect-metadata')
 }
 
-export * from './addons/ConfigurationProvider';
-export * from './constants/Types';
+export * from './addons/ConfigurationProvider'
+export * from './constants/Types'
 // export * from './controllers/InternalControllerBase';
-export * from './microservice/MicroServiceBase';
+export * from './microservice/MicroServiceBase'
