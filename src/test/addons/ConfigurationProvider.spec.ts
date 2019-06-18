@@ -1,3 +1,4 @@
+import * as path from 'path'
 import * as chai from 'chai'
 import * as spies from 'chai-spies'
 import * as _ from 'lodash'
@@ -5,7 +6,7 @@ import { CriticalException, SettingItem, SettingItemDataType,
     IConfigurationProvider, constants } from '@micro-fleet/common'
 const { RpcSettingKeys: RpcS, SvcSettingKeys: SvcS, MbSettingKeys: MbS } = constants
 
-import { IDirectRpcCaller, IRpcResponse } from '@micro-fleet/service-communication'
+import { IDirectRpcCaller, RpcResponse } from '@micro-fleet/service-communication'
 
 import * as app from '../../app'
 
@@ -57,10 +58,10 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
     public baseAddress: string
     public timeout: number
 
-    public call(moduleName: string, action: string, params: any): Promise<IRpcResponse> {
+    public call(moduleName: string, action: string, params: any): Promise<RpcResponse> {
         let s: any
         return new Promise((resolve, reject) => {
-            const res: IRpcResponse = {
+            const res: RpcResponse = {
                 isSuccess: true,
                 payload: null,
                 from: 'MockConfigSvc',
@@ -214,9 +215,11 @@ describe('ConfigurationProvider', function () {
     }) // END describe 'set enableRemote'
 
     describe('get', () => {
-        it('should read appconfig.json and return value', async () => {
+        it('should read appconfig file and return value', async () => {
             // Arrange
-            const appConfigs = require('../../../appconfig.json')
+            const appConfigs = require(
+                path.resolve(process.cwd(), './dist/app/configs/appconfig')
+            )
             let value
 
             // Act
@@ -224,7 +227,7 @@ describe('ConfigurationProvider', function () {
             value = globalConfigPrvd.get(SvcS.ADDONS_DEADLETTER_TIMEOUT)
 
             // Assert
-            expect(value.hasValue).to.be.true
+            expect(value.isJust).to.be.true
             expect(value.value).to.equals(appConfigs[SvcS.ADDONS_DEADLETTER_TIMEOUT])
         })
 
@@ -238,7 +241,7 @@ describe('ConfigurationProvider', function () {
             const value = globalConfigPrvd.get(SvcS.SETTINGS_SERVICE_ADDRESSES)
 
             // Assert
-            expect(value.hasValue).to.be.true
+            expect(value.isJust).to.be.true
             expect(value.value).to.equals(process.env[SvcS.SETTINGS_SERVICE_ADDRESSES])
         })
 
@@ -256,7 +259,7 @@ describe('ConfigurationProvider', function () {
             value = globalConfigPrvd.get(MbS.MSG_BROKER_HOST)
 
             // Assert
-            expect(value.hasValue).to.be.true
+            expect(value.isJust).to.be.true
             expect(value.value).to.equals(settings[MbS.MSG_BROKER_HOST])
         })
 
@@ -270,7 +273,7 @@ describe('ConfigurationProvider', function () {
             value = globalConfigPrvd.get(NO_EXIST_KEY)
 
             // Assert
-            expect(value.hasValue).to.be.false
+            expect(value.isJust).to.be.false
         })
     }) // END describe 'get'
 

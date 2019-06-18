@@ -1,4 +1,16 @@
 /// <reference path="./global.d.ts" />
+declare module '@micro-fleet/microservice/dist/app/constants/Module' {
+	export enum Module {
+	    CONFIG_CONTROL = "configControl"
+	}
+
+}
+declare module '@micro-fleet/microservice/dist/app/constants/Action' {
+	export enum Action {
+	    GET_SETTINGS = "getSettings"
+	}
+
+}
 declare module '@micro-fleet/microservice/dist/app/addons/ConfigurationProvider' {
 	import * as cm from '@micro-fleet/common';
 	/**
@@ -98,5 +110,29 @@ declare module '@micro-fleet/microservice' {
 	export * from '@micro-fleet/microservice/dist/app/addons/ConfigurationProvider';
 	export * from '@micro-fleet/microservice/dist/app/constants/Types';
 	export * from '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase';
+
+}
+declare module '@micro-fleet/microservice/dist/app/configs/appconfig' {
+	 const D: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/database").DbSettingKeys; const M: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/message-broker").MbSettingKeys; const S: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/service").SvcSettingKeys; const _default: {
+	    D: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/database").DbSettingKeys;
+	    M: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/message-broker").MbSettingKeys;
+	    S: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/service").SvcSettingKeys;
+	    [S.ADDONS_DEADLETTER_TIMEOUT]: number;
+	    [S.SERVICE_SLUG]: string;
+	    [S.SETTINGS_REFETCH_INTERVAL]: string[];
+	    [D.DB_ENGINE]: import("@micro-fleet/common/dist/app/constants/DbClient").DbClient;
+	    [D.DB_ADDRESS]: string;
+	    [D.DB_USER]: string;
+	    [D.DB_PASSWORD]: string;
+	    [D.DB_NAME]: string;
+	    [M.MSG_BROKER_HOST]: string;
+	    [M.MSG_BROKER_RECONN_TIMEOUT]: number;
+	    [M.MSG_BROKER_USERNAME]: string;
+	    [M.MSG_BROKER_PASSWORD]: string;
+	    [M.MSG_BROKER_EXCHANGE]: string;
+	    [M.MSG_BROKER_QUEUE]: string;
+	    [M.MSG_BROKER_MSG_EXPIRE]: number;
+	};
+	export = _default;
 
 }

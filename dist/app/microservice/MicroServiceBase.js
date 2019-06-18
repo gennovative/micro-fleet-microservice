@@ -1,5 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/// <reference types="debug" />
+const debug = require('debug')('mcft:microservice:MicroserviceBase');
 const cm = require("@micro-fleet/common");
 const cfg = require("../addons/ConfigurationProvider");
 const { SvcSettingKeys: SvcS } = cm.constants;
@@ -24,7 +26,6 @@ class MicroServiceBase {
         catch (ex) {
             this.onError(ex);
             console.error('An error occured on starting, the application has to stop now.');
-            // this.stop();
             this.exitProcess();
             return;
         }
@@ -44,7 +45,7 @@ class MicroServiceBase {
      * Gracefully stops this application and exit
      */
     stop(exitProcess = true) {
-        setTimeout(() => process.exit(), this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).TryGetValue(10000));
+        setTimeout(() => process.exit(), this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(10000));
         (async () => {
             try {
                 this.onStopping();
@@ -100,29 +101,31 @@ class MicroServiceBase {
      * Invoked after registering dependencies, but before all other initializations.
      */
     onStarting() {
-        // Empty
+        debug('On starting');
     }
     /**
      * Invoked after all initializations. At this stage, the application is considered
      * started successfully.
      */
     onStarted() {
+        debug('On started');
         console.log('Microservice started successfully with %d addons', this._addons.length);
     }
     /**
      * Invoked when `stop` method is called, before any other actions take place.
      */
     onStopping() {
-        // Empty
+        debug('On stopping');
     }
     /**
      * Invoked after all finalizations have finished. At this stage, the application is
      * considered stopped successfully. The process will be killed after this.
      */
     onStopped() {
-        // Empty
+        debug('On stopped');
     }
     async initAddOns() {
+        debug('Initialzing add-ons');
         const cfgPrvd = this._configProvider;
         // Configuration provider must be initialized first, because all other add-ons
         // depend on it.
@@ -131,7 +134,10 @@ class MicroServiceBase {
         // if remote config is enanbed and fetching successfully.
         let initPromises;
         if (!cfgPrvd.enableRemote || await cfgPrvd.fetch()) {
-            initPromises = this._addons.map(adt => adt.init());
+            initPromises = this._addons.map(addon => {
+                debug(`Init add-on: ${addon.name}`);
+                return addon.init();
+            });
         }
         else {
             throw new cm.CriticalException('Fail to fetch configuration!');
@@ -139,10 +145,9 @@ class MicroServiceBase {
         await Promise.all(initPromises);
     }
     disposeAddOns() {
-        const disposePromises = this._addons.map(adt => {
-            // let adtName = adt.constructor.toString().substring(0, 20);
-            // console.log('DISPOSING: ' + adtName);
-            return adt.dispose();
+        const disposePromises = this._addons.map(addon => {
+            debug(`Disposing: ${addon.name}`);
+            return addon.dispose();
         });
         return Promise.all(disposePromises);
     }
@@ -184,9 +189,13 @@ class MicroServiceBase {
         }
     }
     sendDeadLetters() {
+        debug('Sending dead letters');
         return new Promise(resolve => {
-            let timer = setTimeout(resolve, this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).TryGetValue(5000));
-            const promises = this._addons.map(adt => adt.deadLetter());
+            let timer = setTimeout(resolve, this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(5000));
+            const promises = this._addons.map(addon => {
+                debug(`Dead letter to: ${addon.name}`);
+                return addon.deadLetter();
+            });
             Promise.all(promises).then(() => {
                 if (timer) {
                     clearTimeout(timer);

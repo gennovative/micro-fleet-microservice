@@ -86,8 +86,8 @@ class MockConfigProvider implements IConfigurationProvider {
 
     public get(key: string): Maybe<number | boolean | string> {
         switch (key) {
-            case SvcS.ADDONS_DEADLETTER_TIMEOUT: return new Maybe(1000)
-            default: return new Maybe
+            case SvcS.ADDONS_DEADLETTER_TIMEOUT: return Maybe.Just(1000)
+            default: return Maybe.Nothing()
         }
     }
 

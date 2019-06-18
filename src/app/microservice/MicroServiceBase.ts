@@ -1,3 +1,6 @@
+/// <reference types="debug" />
+const debug: debug.IDebugger = require('debug')('mcft:microservice:MicroserviceBase')
+
 import * as cm from '@micro-fleet/common'
 
 import * as cfg from '../addons/ConfigurationProvider'
@@ -32,7 +35,6 @@ export abstract class MicroServiceBase {
         } catch (ex) {
             this.onError(ex)
             console.error('An error occured on starting, the application has to stop now.')
-            // this.stop();
             this.exitProcess()
             return
         }
@@ -56,7 +58,7 @@ export abstract class MicroServiceBase {
     public stop(exitProcess: boolean = true): void {
         setTimeout(
             () => process.exit(),
-            this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).TryGetValue(10000) as number
+            this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(10000) as number
         );
 
         (async () => {
@@ -119,7 +121,7 @@ export abstract class MicroServiceBase {
      * Invoked after registering dependencies, but before all other initializations.
      */
     protected onStarting(): void {
-        // Empty
+        debug('On starting')
     }
 
     /**
@@ -127,6 +129,7 @@ export abstract class MicroServiceBase {
      * started successfully.
      */
     protected onStarted(): void {
+        debug('On started')
         console.log('Microservice started successfully with %d addons', this._addons.length)
     }
 
@@ -134,7 +137,7 @@ export abstract class MicroServiceBase {
      * Invoked when `stop` method is called, before any other actions take place.
      */
     protected onStopping(): void {
-        // Empty
+        debug('On stopping')
     }
 
     /**
@@ -142,11 +145,12 @@ export abstract class MicroServiceBase {
      * considered stopped successfully. The process will be killed after this.
      */
     protected onStopped(): void {
-        // Empty
+        debug('On stopped')
     }
 
 
     private async initAddOns(): Promise<void> {
+        debug('Initialzing add-ons')
         const cfgPrvd = this._configProvider
 
         // Configuration provider must be initialized first, because all other add-ons
@@ -157,7 +161,10 @@ export abstract class MicroServiceBase {
         // if remote config is enanbed and fetching successfully.
         let initPromises
         if (!cfgPrvd.enableRemote || await cfgPrvd.fetch()) {
-            initPromises = this._addons.map(adt => adt.init())
+            initPromises = this._addons.map(addon => {
+                debug(`Init add-on: ${addon.name}`)
+                return addon.init()
+            })
         } else {
             throw new cm.CriticalException('Fail to fetch configuration!')
         }
@@ -166,10 +173,9 @@ export abstract class MicroServiceBase {
     }
 
     private disposeAddOns(): Promise<void[]> {
-        const disposePromises = this._addons.map(adt => {
-            // let adtName = adt.constructor.toString().substring(0, 20);
-            // console.log('DISPOSING: ' + adtName);
-            return adt.dispose()
+        const disposePromises = this._addons.map(addon => {
+            debug(`Disposing: ${addon.name}`)
+            return addon.dispose()
         })
         return Promise.all(disposePromises)
     }
@@ -218,13 +224,17 @@ export abstract class MicroServiceBase {
     }
 
     private sendDeadLetters(): Promise<void> {
+        debug('Sending dead letters')
         return new Promise<void>(resolve => {
             let timer = setTimeout(
                     resolve,
-                    this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).TryGetValue(5000) as number
+                    this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(5000) as number
                 )
 
-            const promises = this._addons.map(adt => adt.deadLetter())
+            const promises = this._addons.map(addon => {
+                debug(`Dead letter to: ${addon.name}`)
+                return addon.deadLetter()
+            })
 
             Promise.all(promises).then(() => {
                 if (timer) {

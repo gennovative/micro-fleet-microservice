@@ -5,5 +5,4 @@ if (!Reflect || typeof Reflect['hasOwnMetadata'] !== 'function') {
 
 export * from './addons/ConfigurationProvider'
 export * from './constants/Types'
-// export * from './controllers/InternalControllerBase';
 export * from './microservice/MicroServiceBase'

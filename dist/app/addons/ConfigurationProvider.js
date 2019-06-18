@@ -9,16 +9,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
 const events_1 = require("events");
 const cm = require("@micro-fleet/common");
-const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants;
+const Module_1 = require("../constants/Module");
+const Action_1 = require("../constants/Action");
+const { SvcSettingKeys: S } = cm.constants;
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
 let ConfigurationProvider = class ConfigurationProvider {
     constructor() {
         this.name = 'ConfigurationProvider';
-        this._configFilePath = `${process.cwd()}/appconfig.json`;
+        this._configFilePath = path.resolve(process.cwd(), './dist/app/configs/appconfig');
         this._remoteSettings = this._fileSettings = {};
         this._enableRemote = false;
         this._eventEmitter = new events_1.EventEmitter();
@@ -64,7 +67,7 @@ let ConfigurationProvider = class ConfigurationProvider {
         if (this.enableRemote) {
             this._rpcCaller.name = this.name;
             const addresses = this.applySettings();
-            if (!addresses.hasValue) {
+            if (!addresses.isJust) {
                 return Promise.reject(new cm.CriticalException('No address for Settings Service!'));
             }
             this._addresses = addresses.value;
@@ -102,7 +105,7 @@ let ConfigurationProvider = class ConfigurationProvider {
         else if (value === undefined) {
             value = process.env[key] || this._fileSettings[key];
         }
-        return (value ? new cm.Maybe(value) : new cm.Maybe());
+        return (value ? cm.Maybe.Just(value) : cm.Maybe.Nothing());
     }
     /**
      * @see IConfigurationProvider.fetch
@@ -141,20 +144,20 @@ let ConfigurationProvider = class ConfigurationProvider {
         this._eventEmitter.on('updated', listener);
     }
     applySettings() {
-        this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).TryGetValue(5 * 60000); // Default 5 mins
+        this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).tryGetValue(5 * 60000); // Default 5 mins
         try {
             const addresses = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES).value);
-            return (addresses && addresses.length) ? new cm.Maybe(addresses) : new cm.Maybe;
+            return (addresses && addresses.length) ? cm.Maybe.Just(addresses) : cm.Maybe.Nothing();
         }
         catch (err) {
-            return new cm.Maybe;
+            return cm.Maybe.Nothing();
         }
     }
     updateSelf() {
         this._eventEmitter.prependListener('updated', (changedKeys) => {
             if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
                 const addresses = this.applySettings();
-                if (addresses.hasValue) {
+                if (addresses.isJust) {
                     this._addresses = addresses.value;
                 }
                 else {
@@ -179,7 +182,7 @@ let ConfigurationProvider = class ConfigurationProvider {
                 slug: serviceName.value,
                 ipAddress,
             });
-            const res = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req);
+            const res = await this._rpcCaller.call(Module_1.Module.CONFIG_CONTROL, Action_1.Action.GET_SETTINGS, req);
             if (res.isSuccess) {
                 this._remoteSettings = this.parseSettings(res.payload);
                 return true;
@@ -219,7 +222,7 @@ let ConfigurationProvider = class ConfigurationProvider {
         if (!raw) {
             return {};
         }
-        const map = {}, settings = cm.SettingItem.translator.whole(raw);
+        const map = {}, settings = cm.SettingItem.translator.wholeMany(raw);
         for (const st of settings) {
             map[st.name] = this.parseValue(st.value, st.dataType);
         }

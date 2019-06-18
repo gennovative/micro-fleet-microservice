@@ -1,11 +1,16 @@
+import * as path from 'path'
 import { EventEmitter } from 'events'
-
 import * as cm from '@micro-fleet/common'
 
-const { SvcSettingKeys: S, ModuleNames: M, ActionNames: A } = cm.constants
+import { Module } from '../constants/Module'
+import { Action } from '../constants/Action'
+
+
+const { SvcSettingKeys: S } = cm.constants
 
 type IDirectRpcCaller = import('@micro-fleet/service-communication').IDirectRpcCaller
-type IRpcResponse = import('@micro-fleet/service-communication').IRpcResponse
+type RpcResponse = import('@micro-fleet/service-communication').RpcResponse
+
 
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
@@ -30,7 +35,7 @@ export class ConfigurationProvider
     private _rpcCaller: IDirectRpcCaller
 
     constructor() {
-        this._configFilePath = `${process.cwd()}/appconfig.json`
+        this._configFilePath = path.resolve(process.cwd(), './dist/app/configs/appconfig')
         this._remoteSettings = this._fileSettings = {}
         this._enableRemote = false
         this._eventEmitter = new EventEmitter()
@@ -86,7 +91,7 @@ export class ConfigurationProvider
         if (this.enableRemote) {
             this._rpcCaller.name = this.name
             const addresses = this.applySettings()
-            if (!addresses.hasValue) {
+            if (!addresses.isJust) {
                 return Promise.reject(new cm.CriticalException('No address for Settings Service!'))
             }
             this._addresses = addresses.value
@@ -127,7 +132,7 @@ export class ConfigurationProvider
         } else if (value === undefined) {
             value = process.env[key] || this._fileSettings[key]
         }
-        return (value ? new cm.Maybe(value) : new cm.Maybe())
+        return (value ? cm.Maybe.Just(value) : cm.Maybe.Nothing())
     }
 
     /**
@@ -173,12 +178,12 @@ export class ConfigurationProvider
     }
 
     private applySettings(): cm.Maybe<string[]> {
-        this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).TryGetValue(5 * 60000) as number // Default 5 mins
+        this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).tryGetValue(5 * 60000) as number // Default 5 mins
         try {
             const addresses: string[] = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES).value as any)
-            return (addresses && addresses.length) ? new cm.Maybe(addresses) : new cm.Maybe
+            return (addresses && addresses.length) ? cm.Maybe.Just(addresses) : cm.Maybe.Nothing()
         } catch (err) {
-            return new cm.Maybe
+            return cm.Maybe.Nothing()
         }
     }
 
@@ -186,7 +191,7 @@ export class ConfigurationProvider
         this._eventEmitter.prependListener('updated', (changedKeys: string[]) => {
             if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
                 const addresses = this.applySettings()
-                if (addresses.hasValue) {
+                if (addresses.isJust) {
                     this._addresses = addresses.value
                 } else {
                     console.warn('New SettingService addresses are useless!')
@@ -217,7 +222,7 @@ export class ConfigurationProvider
                 ipAddress,
             })
 
-            const res: IRpcResponse = await this._rpcCaller.call(M.PROGRAM_CONFIGURATION, A.GET_SETTINGS, req)
+            const res: RpcResponse = await this._rpcCaller.call(Module.CONFIG_CONTROL, Action.GET_SETTINGS, req)
             if (res.isSuccess) {
                 this._remoteSettings = this.parseSettings(res.payload)
                 return true
@@ -259,7 +264,7 @@ export class ConfigurationProvider
         if (!raw) { return {} }
 
         const map = {},
-            settings = cm.SettingItem.translator.whole(raw) as cm.SettingItem[]
+            settings: cm.SettingItem[] = cm.SettingItem.translator.wholeMany(raw)
         for (const st of settings) {
             map[st.name] = this.parseValue(st.value, st.dataType)
         }

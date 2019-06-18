@@ -1,6 +1,10 @@
 
 ## VERSIONS
 
+### 1.3.0
+- Moved default config file location.
+- Added debug messages using package `debug`.
+
 ### 1.2.4
 - Remove script "postinstall" from `package.json`.
 
