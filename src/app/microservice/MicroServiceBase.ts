@@ -12,10 +12,11 @@ export abstract class MicroServiceBase {
     protected _depContainer: cm.IDependencyContainer
     protected _addons: IServiceAddOn[]
     protected _isStarted: boolean
+    protected _isStopping: boolean
 
     constructor() {
         this._addons = []
-        this._isStarted = false
+        this._isStarted = this._isStopping = false
     }
 
     public get isStarted(): boolean {
@@ -56,8 +57,12 @@ export abstract class MicroServiceBase {
      * Gracefully stops this application and exit
      */
     public stop(exitProcess: boolean = true): void {
+        if (this._isStopping) { return }
+        this._isStopping = true;
+
         setTimeout(
             () => process.exit(),
+            // TODO: Should be MAX_STOP_TIMEOUT
             this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(10000) as number
         );
 
@@ -65,8 +70,8 @@ export abstract class MicroServiceBase {
             try {
                 this.onStopping()
                 await this.sendDeadLetters()
-                this._depContainer.dispose()
                 await this.disposeAddOns()
+                this._depContainer.dispose()
                 this._isStarted = false
                 this.onStopped()
             } catch (ex) {
@@ -115,6 +120,10 @@ export abstract class MicroServiceBase {
         /* istanbul ignore next */
         const msg = (error.toString ? error.toString() : error + '')
         console.error(msg) // Should log to file.
+
+        if (error instanceof CriticalException) {
+            this.stop(true)
+        }
     }
 
     /**
