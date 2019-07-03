@@ -18,11 +18,15 @@ declare module '@micro-fleet/microservice/dist/app/addons/ConfigurationProvider'
 	 */
 	export class ConfigurationProvider implements cm.IConfigurationProvider {
 	    readonly name: string;
-	    	    	    	    	    	    	    	    	    	    	    constructor();
 	    /**
 	     * @see IConfigurationProvider.enableRemote
 	     */
 	    enableRemote: boolean;
+	    /**
+	     * @see IConfigurationProvider.configFilePath
+	     */
+	    configFilePath: string;
+	    	    	    	    	    	    	    	    	    constructor();
 	    	    /**
 	     * @see IServiceAddOn.init
 	     */
@@ -72,32 +76,32 @@ declare module '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase
 	    /**
 	     * @return Total number of add-ons that have been added so far.
 	     */
-	    protected attachAddOn(addon: IServiceAddOn): number;
-	    protected attachConfigProvider(): cm.IConfigurationProvider;
-	    protected registerConfigProvider(): void;
-	    protected registerDependencies(): void;
+	    attachAddOn(addon: IServiceAddOn): number;
+	    protected _attachConfigProvider(): cm.IConfigurationProvider;
+	    protected _registerConfigProvider(): void;
+	    registerDependencies(): void;
 	    /**
 	     * Invoked whenever any error occurs in the application.
 	     */
-	    protected onError(error: any): void;
+	    onError(error: any): void;
 	    /**
 	     * Invoked after registering dependencies, but before all other initializations.
 	     */
-	    protected onStarting(): void;
+	    onStarting(): void;
 	    /**
 	     * Invoked after all initializations. At this stage, the application is considered
 	     * started successfully.
 	     */
-	    protected onStarted(): void;
+	    onStarted(): void;
 	    /**
 	     * Invoked when `stop` method is called, before any other actions take place.
 	     */
-	    protected onStopping(): void;
+	    onStopping(): void;
 	    /**
 	     * Invoked after all finalizations have finished. At this stage, the application is
 	     * considered stopped successfully. The process will be killed after this.
 	     */
-	    protected onStopped(): void;
+	    onStopped(): void;
 	    	    	    	    /**
 	     * Gracefully shutdown the application when user presses Ctrl-C in Console/Terminal,
 	     * or when the OS is trying to stop the service process.
@@ -117,7 +121,7 @@ declare module '@micro-fleet/microservice/dist/app/configs/appconfig' {
 	    D: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/database").DbSettingKeys;
 	    M: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/message-broker").MbSettingKeys;
 	    S: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/service").SvcSettingKeys;
-	    [S.ADDONS_DEADLETTER_TIMEOUT]: number;
+	    [S.DEADLETTER_TIMEOUT]: number;
 	    [S.SERVICE_SLUG]: string;
 	    [S.SETTINGS_REFETCH_INTERVAL]: string[];
 	    [D.DB_ENGINE]: import("@micro-fleet/common/dist/app/constants/DbClient").DbClient;

@@ -22,12 +22,13 @@ export abstract class MicroServiceBase {
         return this._isStarted
     }
 
+
     /**
      * Bootstraps this service application.
      */
     public start(): void {
         this.registerDependencies()
-        this.attachConfigProvider()
+        this._attachConfigProvider()
 
         try {
             // A chance for derived class to add more add-ons or do some customizations.
@@ -39,7 +40,7 @@ export abstract class MicroServiceBase {
             return
         }
 
-        this.initAddOns()
+        this._initAddOns()
             .then(() => {
                 this._isStarted = true
                 this.handleGracefulShutdown()
@@ -58,7 +59,7 @@ export abstract class MicroServiceBase {
     public stop(exitProcess: boolean = true): void {
         setTimeout(
             () => process.exit(),
-            this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(10000) as number
+            this._configProvider.get(SvcS.DEADLETTER_TIMEOUT).tryGetValue(10000) as number
         );
 
         (async () => {
@@ -83,31 +84,31 @@ export abstract class MicroServiceBase {
     /**
      * @return Total number of add-ons that have been added so far.
      */
-    protected attachAddOn(addon: IServiceAddOn): number {
+    public attachAddOn(addon: IServiceAddOn): number {
         return this._addons.push(addon)
     }
 
-    protected attachConfigProvider(): cm.IConfigurationProvider {
+    protected _attachConfigProvider(): cm.IConfigurationProvider {
         const cfgProd = this._configProvider = this._depContainer.resolve<cm.IConfigurationProvider>(cm.Types.CONFIG_PROVIDER)
         this.attachAddOn(cfgProd)
         return cfgProd
     }
 
-    protected registerConfigProvider(): void {
+    protected _registerConfigProvider(): void {
         this._depContainer.bind<cm.IConfigurationProvider>(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton()
     }
 
-    protected registerDependencies(): void {
+    public registerDependencies(): void {
         const depCon: cm.IDependencyContainer = this._depContainer = new cm.DependencyContainer()
         cm.serviceContext.setDependencyContainer(depCon)
         depCon.bindConstant<cm.IDependencyContainer>(cm.Types.DEPENDENCY_CONTAINER, depCon)
-        this.registerConfigProvider()
+        this._registerConfigProvider()
     }
 
     /**
      * Invoked whenever any error occurs in the application.
      */
-    protected onError(error: any): void {
+    public onError(error: any): void {
         /* istanbul ignore next */
         if (error.stack) {
             return console.error(error.stack)
@@ -120,7 +121,7 @@ export abstract class MicroServiceBase {
     /**
      * Invoked after registering dependencies, but before all other initializations.
      */
-    protected onStarting(): void {
+    public onStarting(): void {
         debug('On starting')
     }
 
@@ -128,7 +129,7 @@ export abstract class MicroServiceBase {
      * Invoked after all initializations. At this stage, the application is considered
      * started successfully.
      */
-    protected onStarted(): void {
+    public onStarted(): void {
         debug('On started')
         console.log('Microservice started successfully with %d addons', this._addons.length)
     }
@@ -136,7 +137,7 @@ export abstract class MicroServiceBase {
     /**
      * Invoked when `stop` method is called, before any other actions take place.
      */
-    protected onStopping(): void {
+    public onStopping(): void {
         debug('On stopping')
     }
 
@@ -144,12 +145,12 @@ export abstract class MicroServiceBase {
      * Invoked after all finalizations have finished. At this stage, the application is
      * considered stopped successfully. The process will be killed after this.
      */
-    protected onStopped(): void {
+    public onStopped(): void {
         debug('On stopped')
     }
 
 
-    private async initAddOns(): Promise<void> {
+    private async _initAddOns(): Promise<void> {
         debug('Initialzing add-ons')
         const cfgPrvd = this._configProvider
 
@@ -228,7 +229,7 @@ export abstract class MicroServiceBase {
         return new Promise<void>(resolve => {
             let timer = setTimeout(
                     resolve,
-                    this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(5000) as number
+                    this._configProvider.get(SvcS.DEADLETTER_TIMEOUT).tryGetValue(5000) as number
                 )
 
             const promises = this._addons.map(addon => {

@@ -63,6 +63,7 @@ class MockConfigProvider implements IConfigurationProvider {
     public readonly name: string = 'MockConfigProvider'
 
     public behavior: string
+    public configFilePath: string
 
     get enableRemote(): boolean {
         return true
@@ -86,7 +87,7 @@ class MockConfigProvider implements IConfigurationProvider {
 
     public get(key: string): Maybe<number | boolean | string> {
         switch (key) {
-            case SvcS.ADDONS_DEADLETTER_TIMEOUT: return Maybe.Just(1000)
+            case SvcS.DEADLETTER_TIMEOUT: return Maybe.Just(1000)
             default: return Maybe.Nothing()
         }
     }
@@ -110,7 +111,7 @@ class TestMarketingService extends MicroServiceBase {
     /**
      * @override
      */
-    protected registerDependencies(): void {
+    public registerDependencies(): void {
         super.registerDependencies()
         this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility)
         this._depContainer.bind<ICustomAddOn>(CUSTOM_ADT, CustomAddOn)
@@ -143,7 +144,7 @@ class TestMarketingService extends MicroServiceBase {
     /**
      * @override
      */
-    protected onStarting(): void {
+    public onStarting(): void {
         // Call this if your service works directly with database.
         // this.attachDbAddOn();
 
@@ -159,7 +160,7 @@ class TestMarketingService extends MicroServiceBase {
     /**
      * @override
      */
-    protected onError(error: any): void {
+    public onError(error: any): void {
         super.onError(error)
     }
 }

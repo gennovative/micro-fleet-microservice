@@ -12,6 +12,10 @@
             "args": [
                 "./dist/test/**/*.js"
             ],
+            "env": {
+                "DEBUG": "mcft:microsvc:*",
+                "DEBUG_HIDE_DATE": "true"
+            },
             // Automatically stop program after launch.
             "stopOnEntry": false,
             // Workspace relative or absolute path to the runtime executable to be used. Default is the runtime executable on the PATH.

@@ -3,7 +3,7 @@ import * as chai from 'chai'
 import * as spies from 'chai-spies'
 import * as _ from 'lodash'
 import { CriticalException, SettingItem, SettingItemDataType,
-    IConfigurationProvider, constants } from '@micro-fleet/common'
+    IConfigurationProvider, constants, Maybe } from '@micro-fleet/common'
 const { RpcSettingKeys: RpcS, SvcSettingKeys: SvcS, MbSettingKeys: MbS } = constants
 
 import { IDirectRpcCaller, RpcResponse } from '@micro-fleet/service-communication'
@@ -137,35 +137,35 @@ describe('ConfigurationProvider', function () {
     this.timeout(5000)
     // this.timeout(60000); // For debugging
 
-    let globalConfigPrvd: IConfigurationProvider
+    let configProvider: IConfigurationProvider
 
     beforeEach(() => {
-        globalConfigPrvd = new app.ConfigurationProvider()
-        globalConfigPrvd['_rpcCaller'] = new MockDirectRpcCaller()
+        configProvider = new app.ConfigurationProvider()
+        configProvider['_rpcCaller'] = new MockDirectRpcCaller()
     })
 
     afterEach(async () => {
-        await globalConfigPrvd.dispose()
+        await configProvider.dispose()
     })
 
     describe('init', () => {
         it('should load file config', async () => {
             // Act
-            await globalConfigPrvd.init()
+            await configProvider.init()
 
             // Assert
-            expect(globalConfigPrvd['_fileSettings']).to.be.not.null
+            expect(configProvider['_fileSettings']).to.be.not.null
         })
 
         it('should not load file settings if cannot load file', async () => {
             // Arrange
-            globalConfigPrvd['_configFilePath'] = 'dummy.json'
+            configProvider.configFilePath = 'dummy.json'
 
             // Act
-            await globalConfigPrvd.init()
+            await configProvider.init()
 
             // Assert
-            expect(globalConfigPrvd['_fileSettings']).to.be.empty
+            expect(configProvider['_fileSettings']).to.be.empty
         })
 
         it('should throw error if there is no address for Settings Service', async () => {
@@ -173,14 +173,14 @@ describe('ConfigurationProvider', function () {
             let isSuccess = false
 
             // Make it no way to accidentially get a meaningful address.
-            globalConfigPrvd['_configFilePath'] = 'dummy.json'
-            globalConfigPrvd['_remoteSettings'] = {}
+            configProvider.configFilePath = 'dummy.json'
+            configProvider['_remoteSettings'] = {}
             process.env[SvcS.SETTINGS_SERVICE_ADDRESSES] = ''
 
             // Act then assert
             try {
-                globalConfigPrvd.enableRemote = true
-                await globalConfigPrvd.init()
+                configProvider.enableRemote = true
+                await configProvider.init()
                 isSuccess = true
             } catch (err) {
                 expect(err).to.be.instanceOf(CriticalException)
@@ -189,30 +189,6 @@ describe('ConfigurationProvider', function () {
             expect(isSuccess).to.be.false
         })
     }) // END describe 'init'
-
-    describe('get enableRemote', () => {
-        it('should return value of `enableRemote`', () => {
-            // Act and assert
-            globalConfigPrvd['_enableRemote'] = false
-            expect(globalConfigPrvd.enableRemote).to.be.false
-
-            globalConfigPrvd['_enableRemote'] = true
-            expect(globalConfigPrvd.enableRemote).to.be.true
-
-        })
-    }) // END describe 'get enableRemote'
-
-    describe('set enableRemote', () => {
-        it('should set value for `enableRemote`', () => {
-            // Act and assert
-            globalConfigPrvd.enableRemote = false
-            expect(globalConfigPrvd['_enableRemote']).to.be.false
-
-            globalConfigPrvd.enableRemote = true
-            expect(globalConfigPrvd['_enableRemote']).to.be.true
-
-        })
-    }) // END describe 'set enableRemote'
 
     describe('get', () => {
         it('should read appconfig file and return value', async () => {
@@ -223,22 +199,22 @@ describe('ConfigurationProvider', function () {
             let value
 
             // Act
-            await globalConfigPrvd.init()
-            value = globalConfigPrvd.get(SvcS.ADDONS_DEADLETTER_TIMEOUT)
+            await configProvider.init()
+            value = configProvider.get(SvcS.DEADLETTER_TIMEOUT)
 
             // Assert
             expect(value.isJust).to.be.true
-            expect(value.value).to.equals(appConfigs[SvcS.ADDONS_DEADLETTER_TIMEOUT])
+            expect(value.value).to.equals(appConfigs[SvcS.DEADLETTER_TIMEOUT])
         })
 
         it('should read settings from environment variable', async () => {
             // Arrange
             process.env[SvcS.SETTINGS_SERVICE_ADDRESSES] = '127.0.0.1'
-            globalConfigPrvd['_configFilePath'] = 'dummy.json'
+            configProvider.configFilePath = 'dummy.json'
 
             // Act
-            await globalConfigPrvd.init()
-            const value = globalConfigPrvd.get(SvcS.SETTINGS_SERVICE_ADDRESSES)
+            await configProvider.init()
+            const value = configProvider.get(SvcS.SETTINGS_SERVICE_ADDRESSES)
 
             // Assert
             expect(value.isJust).to.be.true
@@ -250,34 +226,34 @@ describe('ConfigurationProvider', function () {
             const settings = { // Mock fetched config
                     [MbS.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq',
                 }
-            let value
+            let settingMb: Maybe<PrimitiveType | any[]>
 
-            globalConfigPrvd['_remoteSettings'] = settings
+            configProvider['_remoteSettings'] = settings
 
             // Act
-            await globalConfigPrvd.init()
-            value = globalConfigPrvd.get(MbS.MSG_BROKER_HOST)
+            await configProvider.init()
+            settingMb = configProvider.get(MbS.MSG_BROKER_HOST)
 
             // Assert
-            expect(value.isJust).to.be.true
-            expect(value.value).to.equals(settings[MbS.MSG_BROKER_HOST])
+            expect(settingMb.isJust).to.be.true
+            expect(settingMb.value).to.equals(settings[MbS.MSG_BROKER_HOST])
         })
 
         it('should return empty Maybe if cannot find setting for specified key', async () => {
             // Arrange
             const NO_EXIST_KEY = 'imaginary-key'
-            let value
+            let settingMb: Maybe<PrimitiveType | any[]>
 
             // Act
-            await globalConfigPrvd.init()
-            value = globalConfigPrvd.get(NO_EXIST_KEY)
+            await configProvider.init()
+            settingMb = configProvider.get(NO_EXIST_KEY)
 
             // Assert
-            expect(value.isJust).to.be.false
+            expect(settingMb.isNothing).to.be.true
         })
     }) // END describe 'get'
 
-    /* Disable untile finish refactoring service-communication
+    /* Disable until finish refactoring service-communication
     describe('fetch', () => {
 
         it('should try each address in the list until success', async () => {

@@ -18,7 +18,7 @@ class MicroServiceBase {
      */
     start() {
         this.registerDependencies();
-        this.attachConfigProvider();
+        this._attachConfigProvider();
         try {
             // A chance for derived class to add more add-ons or do some customizations.
             this.onStarting();
@@ -29,7 +29,7 @@ class MicroServiceBase {
             this.exitProcess();
             return;
         }
-        this.initAddOns()
+        this._initAddOns()
             .then(() => {
             this._isStarted = true;
             this.handleGracefulShutdown();
@@ -45,7 +45,7 @@ class MicroServiceBase {
      * Gracefully stops this application and exit
      */
     stop(exitProcess = true) {
-        setTimeout(() => process.exit(), this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(10000));
+        setTimeout(() => process.exit(), this._configProvider.get(SvcS.DEADLETTER_TIMEOUT).tryGetValue(10000));
         (async () => {
             try {
                 this.onStopping();
@@ -71,19 +71,19 @@ class MicroServiceBase {
     attachAddOn(addon) {
         return this._addons.push(addon);
     }
-    attachConfigProvider() {
+    _attachConfigProvider() {
         const cfgProd = this._configProvider = this._depContainer.resolve(cm.Types.CONFIG_PROVIDER);
         this.attachAddOn(cfgProd);
         return cfgProd;
     }
-    registerConfigProvider() {
+    _registerConfigProvider() {
         this._depContainer.bind(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
     }
     registerDependencies() {
         const depCon = this._depContainer = new cm.DependencyContainer();
         cm.serviceContext.setDependencyContainer(depCon);
         depCon.bindConstant(cm.Types.DEPENDENCY_CONTAINER, depCon);
-        this.registerConfigProvider();
+        this._registerConfigProvider();
     }
     /**
      * Invoked whenever any error occurs in the application.
@@ -124,7 +124,7 @@ class MicroServiceBase {
     onStopped() {
         debug('On stopped');
     }
-    async initAddOns() {
+    async _initAddOns() {
         debug('Initialzing add-ons');
         const cfgPrvd = this._configProvider;
         // Configuration provider must be initialized first, because all other add-ons
@@ -191,7 +191,7 @@ class MicroServiceBase {
     sendDeadLetters() {
         debug('Sending dead letters');
         return new Promise(resolve => {
-            let timer = setTimeout(resolve, this._configProvider.get(SvcS.ADDONS_DEADLETTER_TIMEOUT).tryGetValue(5000));
+            let timer = setTimeout(resolve, this._configProvider.get(SvcS.DEADLETTER_TIMEOUT).tryGetValue(5000));
             const promises = this._addons.map(addon => {
                 debug(`Dead letter to: ${addon.name}`);
                 return addon.deadLetter();

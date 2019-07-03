@@ -20,12 +20,20 @@ export class ConfigurationProvider
         implements cm.IConfigurationProvider {
     public readonly name: string = 'ConfigurationProvider'
 
+    /**
+     * @see IConfigurationProvider.enableRemote
+     */
+    public enableRemote: boolean
+
+    /**
+     * @see IConfigurationProvider.configFilePath
+     */
+    public configFilePath: string
+
     private _addresses: string[]
-    private _configFilePath: string
-    private _enableRemote: boolean
     private _eventEmitter: EventEmitter
-    private _fileSettings: any
-    private _remoteSettings: any
+    private _fileSettings: object
+    private _remoteSettings: object
     private _refetchTimer: NodeJS.Timer
     private _refetchInterval: number
     private _isInit: boolean
@@ -35,26 +43,14 @@ export class ConfigurationProvider
     private _rpcCaller: IDirectRpcCaller
 
     constructor() {
-        this._configFilePath = path.resolve(process.cwd(), './dist/app/configs/appconfig')
+        this.configFilePath = path.resolve(process.cwd(), './dist/app/configs/appconfig')
         this._remoteSettings = this._fileSettings = {}
-        this._enableRemote = false
+        this.enableRemote = false
         this._eventEmitter = new EventEmitter()
         this._isInit = false
     }
 
     //#region Getters & Setters
-
-    /**
-     * @see IConfigurationProvider.enableRemote
-     */
-    public get enableRemote(): boolean {
-        return this._enableRemote
-    }
-
-    public set enableRemote(val: boolean) {
-        this._enableRemote = val
-    }
-
 
     private get refetchInterval(): number {
         return this._refetchInterval
@@ -63,8 +59,8 @@ export class ConfigurationProvider
     private set refetchInterval(val: number) {
         this._refetchInterval = val
         if (this._refetchTimer) {
-            this.stopRefetch()
-            this.repeatFetch()
+            this._stopRefetch()
+            this._repeatFetch()
         }
     }
 
@@ -81,7 +77,7 @@ export class ConfigurationProvider
         this._isInit = true
 
         try {
-            this._fileSettings = require(this._configFilePath)
+            this._fileSettings = require(this.configFilePath)
         } catch (ex) {
             // TODO: Should use logger
             // console.warn(ex);
@@ -90,11 +86,9 @@ export class ConfigurationProvider
 
         if (this.enableRemote) {
             this._rpcCaller.name = this.name
-            const addresses = this.applySettings()
-            if (!addresses.isJust) {
-                return Promise.reject(new cm.CriticalException('No address for Settings Service!'))
-            }
-            this._addresses = addresses.value
+            this._applySettings().orElse(() => {
+                throw new cm.CriticalException('No address for Settings Service!')
+            })
         }
 
         return Promise.resolve()
@@ -111,11 +105,11 @@ export class ConfigurationProvider
      * @see IServiceAddOn.dispose
      */
     public dispose(): Promise<void> {
-        this.stopRefetch()
-        this._configFilePath = null
+        this._stopRefetch()
+        this.configFilePath = null
         this._fileSettings = null
         this._remoteSettings = null
-        this._enableRemote = null
+        this.enableRemote = null
         this._rpcCaller = null
         this._eventEmitter = null
         this._isInit = null
@@ -127,37 +121,48 @@ export class ConfigurationProvider
      */
     public get(key: string, dataType?: cm.SettingItemDataType): cm.Maybe<number | boolean | string> {
         let value = this._remoteSettings[key]
-        if (value === undefined && dataType) {
-            value = this.parseValue(process.env[key] || this._fileSettings[key], dataType)
-        } else if (value === undefined) {
-            value = process.env[key] || this._fileSettings[key]
+        if (value == null) {
+            value = Boolean(dataType)
+                ? this._parseValue(this._getEnvOrFile(key), dataType)
+                : this._getEnvOrFile(key)
         }
-        return (value ? cm.Maybe.Just(value) : cm.Maybe.Nothing())
+        return (value != null ? cm.Maybe.Just(value) : cm.Maybe.Nothing())
+    }
+
+    private _getEnvOrFile(key: string): any {
+        if (process.env[key] != null) {
+            return process.env[key]
+        }
+        return this._fileSettings[key]
     }
 
     /**
      * @see IConfigurationProvider.fetch
      */
     public async fetch(): Promise<boolean> { // TODO: Should be privately called.
-        const addresses: string[] = Array.from(this._addresses),
+        if (!this.enableRemote) { return false }
+
+        const allAddr = this._addresses,
+            addrToTry: string[] = [...allAddr],
             oldSettings = this._remoteSettings
 
         // Manual loop with "JS label"
         tryFetch: {
-            const addr = addresses.shift()
+            const addr = addrToTry.shift()
             if (addr) {
-                if (await this.attemptFetch(addr)) {
+                this._remoteSettings = await this._attemptFetch(addr)
+                if (this._remoteSettings) {
                     // Move this address onto top of list
-                    const pos = addresses.indexOf(addr)
+                    const pos = allAddr.indexOf(addr)
                     if (pos != 0) {
-                        addresses.splice(pos, 1)
-                        addresses.unshift(addr)
+                        allAddr.splice(pos, 1)
+                        allAddr.unshift(addr)
                     }
 
-                    this.broadCastChanges(oldSettings, this._remoteSettings)
+                    this._broadCastChanges(oldSettings, this._remoteSettings)
                     if (this._refetchTimer === undefined) {
-                        this.updateSelf()
-                        this.repeatFetch()
+                        this._updateSelf()
+                        this._repeatFetch()
                     }
                     // Stop trying if success
                     return true
@@ -177,40 +182,42 @@ export class ConfigurationProvider
         this._eventEmitter.on('updated', listener)
     }
 
-    private applySettings(): cm.Maybe<string[]> {
-        this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).tryGetValue(5 * 60000) as number // Default 5 mins
+
+    private _applySettings(): cm.Maybe<string[]> {
+        this.refetchInterval = this.get(S.CONFIG_REFETCH_INTERVAL).tryGetValue(5 * 60000) as number // Default 5 mins
         try {
-            const addresses: string[] = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES).value as any)
-            return (addresses && addresses.length) ? cm.Maybe.Just(addresses) : cm.Maybe.Nothing()
+            const addresses: string[] = JSON.parse(this.get(S.CONFIG_SERVICE_ADDRESSES).value as any)
+            if (addresses && addresses.length) {
+                this._addresses = addresses
+                return cm.Maybe.Just(addresses)
+            }
         } catch (err) {
-            return cm.Maybe.Nothing()
+            console.warn(err)
         }
+        return cm.Maybe.Nothing()
     }
 
-    private updateSelf(): void {
+    private _updateSelf(): void {
         this._eventEmitter.prependListener('updated', (changedKeys: string[]) => {
-            if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
-                const addresses = this.applySettings()
-                if (addresses.isJust) {
-                    this._addresses = addresses.value
-                } else {
+            if (changedKeys.includes(S.CONFIG_REFETCH_INTERVAL) || changedKeys.includes(S.CONFIG_SERVICE_ADDRESSES)) {
+                this._applySettings().orElse(() => {
                     console.warn('New SettingService addresses are useless!')
-                }
+                })
             }
         })
     }
 
-    private repeatFetch(): void {
+    private _repeatFetch(): void {
         this._refetchTimer = setInterval(() => this.fetch(), this.refetchInterval)
     }
 
-    private stopRefetch(): void {
+    private _stopRefetch(): void {
         clearInterval(this._refetchTimer)
         this._refetchTimer = null
     }
 
 
-    private async attemptFetch(address: string): Promise<boolean> {
+    private async _attemptFetch(address: string): Promise<object> {
         try {
             const serviceName = this.get(S.SERVICE_SLUG),
                 ipAddress = '0.0.0.0' // If this service runs inside a Docker container,
@@ -224,26 +231,23 @@ export class ConfigurationProvider
 
             const res: RpcResponse = await this._rpcCaller.call(Module.CONFIG_CONTROL, Action.GET_SETTINGS, req)
             if (res.isSuccess) {
-                this._remoteSettings = this.parseSettings(res.payload)
-                return true
+                return this._parseSettings(res.payload)
             }
         } catch (err) {
             console.warn(err)
         }
-        return false
+        return null
     }
 
-    private broadCastChanges(oldSettings: any, newSettings: any): void {
+    private _broadCastChanges(oldSettings: any, newSettings: any): void {
         if (!newSettings) { return }
         const oldKeys = Object.getOwnPropertyNames(oldSettings)
         const newKeys = Object.getOwnPropertyNames(newSettings)
         const changedKeys: string[] = []
-        let val
 
         // Update existing values or add new keys
         for (const key of newKeys) {
-            val = newSettings[key]
-            if (val !== oldSettings[key]) {
+            if (newSettings[key] !== oldSettings[key]) {
                 changedKeys.push(key)
             }
         }
@@ -260,18 +264,18 @@ export class ConfigurationProvider
         }
     }
 
-    private parseSettings(raw: any) {
+    private _parseSettings(raw: any) {
         if (!raw) { return {} }
 
         const map = {},
             settings: cm.SettingItem[] = cm.SettingItem.translator.wholeMany(raw)
         for (const st of settings) {
-            map[st.name] = this.parseValue(st.value, st.dataType)
+            map[st.name] = this._parseValue(st.value, st.dataType)
         }
         return map
     }
 
-    private parseValue(val: any, type: any) {
+    private _parseValue(val: any, type: any) {
         if (val === undefined) { return null }
 
         if (type == cm.SettingItemDataType.String) {
