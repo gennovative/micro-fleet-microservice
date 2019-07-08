@@ -16,8 +16,8 @@ type RpcResponse = import('@micro-fleet/service-communication').RpcResponse
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
 @cm.injectable()
-export class ConfigurationProvider
-        implements cm.IConfigurationProvider {
+export class ConfigurationProviderAddOn
+        implements cm.IConfigurationProvider, IServiceAddOn {
     public readonly name: string = 'ConfigurationProvider'
 
     /**

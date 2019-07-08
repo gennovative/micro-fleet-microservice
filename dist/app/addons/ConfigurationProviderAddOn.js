@@ -18,7 +18,7 @@ const { SvcSettingKeys: S } = cm.constants;
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
-let ConfigurationProvider = class ConfigurationProvider {
+let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
     constructor() {
         this.name = 'ConfigurationProvider';
         this.configFilePath = path.resolve(process.cwd(), './dist/app/configs/appconfig');
@@ -142,9 +142,9 @@ let ConfigurationProvider = class ConfigurationProvider {
         this._eventEmitter.on('updated', listener);
     }
     _applySettings() {
-        this.refetchInterval = this.get(S.SETTINGS_REFETCH_INTERVAL).tryGetValue(5 * 60000); // Default 5 mins
+        this.refetchInterval = this.get(S.CONFIG_REFETCH_INTERVAL).tryGetValue(5 * 60000); // Default 5 mins
         try {
-            const addresses = JSON.parse(this.get(S.SETTINGS_SERVICE_ADDRESSES).value);
+            const addresses = JSON.parse(this.get(S.CONFIG_SERVICE_ADDRESSES).value);
             if (addresses && addresses.length) {
                 this._addresses = addresses;
                 return cm.Maybe.Just(addresses);
@@ -157,7 +157,7 @@ let ConfigurationProvider = class ConfigurationProvider {
     }
     _updateSelf() {
         this._eventEmitter.prependListener('updated', (changedKeys) => {
-            if (changedKeys.includes(S.SETTINGS_REFETCH_INTERVAL) || changedKeys.includes(S.SETTINGS_SERVICE_ADDRESSES)) {
+            if (changedKeys.includes(S.CONFIG_REFETCH_INTERVAL) || changedKeys.includes(S.CONFIG_SERVICE_ADDRESSES)) {
                 this._applySettings().orElse(() => {
                     console.warn('New SettingService addresses are useless!');
                 });
@@ -238,10 +238,10 @@ let ConfigurationProvider = class ConfigurationProvider {
 __decorate([
     cm.lazyInject('service-communication.IDirectRpcCaller'),
     __metadata("design:type", Object)
-], ConfigurationProvider.prototype, "_rpcCaller", void 0);
-ConfigurationProvider = __decorate([
+], ConfigurationProviderAddOn.prototype, "_rpcCaller", void 0);
+ConfigurationProviderAddOn = __decorate([
     cm.injectable(),
     __metadata("design:paramtypes", [])
-], ConfigurationProvider);
-exports.ConfigurationProvider = ConfigurationProvider;
-//# sourceMappingURL=ConfigurationProvider.js.map
+], ConfigurationProviderAddOn);
+exports.ConfigurationProviderAddOn = ConfigurationProviderAddOn;
+//# sourceMappingURL=ConfigurationProviderAddOn.js.map

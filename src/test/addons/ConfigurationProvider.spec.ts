@@ -3,12 +3,13 @@ import * as chai from 'chai'
 import * as spies from 'chai-spies'
 import * as _ from 'lodash'
 import { CriticalException, SettingItem, SettingItemDataType,
-    IConfigurationProvider, constants, Maybe } from '@micro-fleet/common'
+    constants, Maybe } from '@micro-fleet/common'
 const { RpcSettingKeys: RpcS, SvcSettingKeys: SvcS, MbSettingKeys: MbS } = constants
 
 import { IDirectRpcCaller, RpcResponse } from '@micro-fleet/service-communication'
 
 import * as app from '../../app'
+import { ConfigurationProviderAddOn } from '../../app/addons/ConfigurationProviderAddOn'
 
 
 chai.use(spies)
@@ -20,7 +21,7 @@ const CONFIG_SVC_ADDRESSES = ['127.0.0.1', '127.0.0.2', '127.0.0.3'],
     BROKER_PASSWORD = 'secret',
     SUCCESS_CONFIG: SettingItem[] = [
         {
-            name: SvcS.SETTINGS_SERVICE_ADDRESSES,
+            name: SvcS.CONFIG_SERVICE_ADDRESSES,
             dataType: SettingItemDataType.String,
             value: JSON.stringify(CONFIG_SVC_ADDRESSES),
         },
@@ -35,7 +36,7 @@ const CONFIG_SVC_ADDRESSES = ['127.0.0.1', '127.0.0.2', '127.0.0.3'],
             value: '1000',
         },
         {
-            name: SvcS.SETTINGS_REFETCH_INTERVAL,
+            name: SvcS.CONFIG_REFETCH_INTERVAL,
             dataType: SettingItemDataType.Number,
             value: '1000',
         },
@@ -91,7 +92,7 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
                     })
                 } else if (repeatCount == 5) {
                     SUCCESS_CONFIG.push({
-                        name: SvcS.SETTINGS_SERVICE_ADDRESSES,
+                        name: SvcS.CONFIG_SERVICE_ADDRESSES,
                         dataType: SettingItemDataType.String,
                         value: JSON.stringify(['127.0.0.4']),
                     })
@@ -137,10 +138,10 @@ describe('ConfigurationProvider', function () {
     this.timeout(5000)
     // this.timeout(60000); // For debugging
 
-    let configProvider: IConfigurationProvider
+    let configProvider: ConfigurationProviderAddOn
 
     beforeEach(() => {
-        configProvider = new app.ConfigurationProvider()
+        configProvider = new app.ConfigurationProviderAddOn()
         configProvider['_rpcCaller'] = new MockDirectRpcCaller()
     })
 
@@ -175,7 +176,7 @@ describe('ConfigurationProvider', function () {
             // Make it no way to accidentially get a meaningful address.
             configProvider.configFilePath = 'dummy.json'
             configProvider['_remoteSettings'] = {}
-            process.env[SvcS.SETTINGS_SERVICE_ADDRESSES] = ''
+            process.env[SvcS.CONFIG_SERVICE_ADDRESSES] = ''
 
             // Act then assert
             try {
@@ -209,16 +210,16 @@ describe('ConfigurationProvider', function () {
 
         it('should read settings from environment variable', async () => {
             // Arrange
-            process.env[SvcS.SETTINGS_SERVICE_ADDRESSES] = '127.0.0.1'
+            process.env[SvcS.CONFIG_SERVICE_ADDRESSES] = '127.0.0.1'
             configProvider.configFilePath = 'dummy.json'
 
             // Act
             await configProvider.init()
-            const value = configProvider.get(SvcS.SETTINGS_SERVICE_ADDRESSES)
+            const value = configProvider.get(SvcS.CONFIG_SERVICE_ADDRESSES)
 
             // Assert
             expect(value.isJust).to.be.true
-            expect(value.value).to.equals(process.env[SvcS.SETTINGS_SERVICE_ADDRESSES])
+            expect(value.value).to.equals(process.env[SvcS.CONFIG_SERVICE_ADDRESSES])
         })
 
         it('should read settings from fetched Configuration Service', async () => {
@@ -259,7 +260,7 @@ describe('ConfigurationProvider', function () {
         it('should try each address in the list until success', async () => {
             // Arrange
             // Mock config service addresses
-            process.env[SvcS.SETTINGS_SERVICE_ADDRESSES] = JSON.stringify(CONFIG_SVC_ADDRESSES);
+            process.env[SvcS.CONFIG_SERVICE_ADDRESSES] = JSON.stringify(CONFIG_SVC_ADDRESSES);
 
             let value;
 
@@ -276,7 +277,7 @@ describe('ConfigurationProvider', function () {
             // Arrange
             // Mock config service addresses
             let addresses = ['127.0.0.1', '127.0.0.2'];
-            process.env[SvcS.SETTINGS_SERVICE_ADDRESSES] = JSON.stringify(addresses);
+            process.env[SvcS.CONFIG_SERVICE_ADDRESSES] = JSON.stringify(addresses);
 
             // Mock function to make request to config service.
             let requestFn = function() {
@@ -312,7 +313,7 @@ describe('ConfigurationProvider', function () {
                 value;
 
             // Mock config service addresses
-            process.env[SvcS.SETTINGS_SERVICE_ADDRESSES] = JSON.stringify(CONFIG_SVC_ADDRESSES);
+            process.env[SvcS.CONFIG_SERVICE_ADDRESSES] = JSON.stringify(CONFIG_SVC_ADDRESSES);
 
             // Act then assert
             configPrvd.enableRemote = true;
@@ -337,14 +338,14 @@ describe('ConfigurationProvider', function () {
                             expect(value).to.equal(BROKER_PASSWORD);
                             callSpy();
                         } else if (repeatCount == 5) { // Not connectable new service addresses
-                            expect(changedKeys).to.include(SvcS.SETTINGS_SERVICE_ADDRESSES);
+                            expect(changedKeys).to.include(SvcS.CONFIG_SERVICE_ADDRESSES);
                             value = configPrvd['_addresses'];
                             expect(value).to.be.instanceOf(Array);
                             expect(value.length).to.equal(1);
                             expect(value[0]).to.equal('127.0.0.4');
                             callSpy();
                         } else if (repeatCount == 6) { // Empty new service addresses
-                            expect(changedKeys).to.include(SvcS.SETTINGS_SERVICE_ADDRESSES);
+                            expect(changedKeys).to.include(SvcS.CONFIG_SERVICE_ADDRESSES);
                             value = configPrvd['_addresses'];
                             // Switched back to previous addresses (still not connectable)
                             expect(value).to.be.instanceOf(Array);
@@ -371,7 +372,7 @@ describe('ConfigurationProvider', function () {
     describe('dispose', () => {
         it('should release all resources', async () => {
             // Arrange
-            const configPrvd = new app.ConfigurationProvider(),
+            const configPrvd = new app.ConfigurationProviderAddOn(),
                 callMe = chai.spy()
             configPrvd['_rpcCaller'] = new MockDirectRpcCaller()
 

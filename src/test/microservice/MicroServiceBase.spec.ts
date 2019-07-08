@@ -171,8 +171,8 @@ class TestMarketingService extends MicroServiceBase {
 
 
 describe('MicroServiceBase', function() {
-    // this.timeout(10000);
-    this.timeout(60000) // For debugging
+    this.timeout(15000)
+    // this.timeout(60000) // For debugging
 
     describe('start', () => {
         it('should call events in specific order', () => {

@@ -3,7 +3,7 @@ const debug: debug.IDebugger = require('debug')('mcft:microservice:MicroserviceB
 
 import * as cm from '@micro-fleet/common'
 
-import * as cfg from '../addons/ConfigurationProvider'
+import * as cfg from '../addons/ConfigurationProviderAddOn'
 
 const { SvcSettingKeys: SvcS } = cm.constants
 
@@ -59,11 +59,11 @@ export abstract class MicroServiceBase {
      */
     public stop(exitProcess: boolean = true): void {
         if (this._isStopping) { return }
-        this._isStopping = true;
+        this._isStopping = true
 
         setTimeout(
             () => process.exit(),
-            this._configProvider.get(SvcS.DEADLETTER_TIMEOUT).tryGetValue(10000) as number
+            this._configProvider.get(SvcS.STOP_TIMEOUT).tryGetValue(10000) as number
         );
 
         (async () => {
@@ -93,13 +93,13 @@ export abstract class MicroServiceBase {
     }
 
     protected _attachConfigProvider(): cm.IConfigurationProvider {
-        const cfgProd = this._configProvider = this._depContainer.resolve<cm.IConfigurationProvider>(cm.Types.CONFIG_PROVIDER)
-        this.attachAddOn(cfgProd)
+        const cfgProd = this._configProvider = this._depContainer.resolve<cfg.ConfigurationProviderAddOn>(cm.Types.CONFIG_PROVIDER)
+        this.attachAddOn(cfgProd as IServiceAddOn)
         return cfgProd
     }
 
     protected _registerConfigProvider(): void {
-        this._depContainer.bind<cm.IConfigurationProvider>(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton()
+        this._depContainer.bind<cm.IConfigurationProvider>(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProviderAddOn).asSingleton()
     }
 
     public registerDependencies(): void {
@@ -160,7 +160,7 @@ export abstract class MicroServiceBase {
 
     private async _initAddOns(): Promise<void> {
         debug('Initialzing add-ons')
-        const cfgPrvd = this._configProvider
+        const cfgPrvd = this._configProvider as cfg.ConfigurationProviderAddOn
 
         // Configuration provider must be initialized first, because all other add-ons
         // depend on it.

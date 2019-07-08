@@ -3,12 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference types="debug" />
 const debug = require('debug')('mcft:microservice:MicroserviceBase');
 const cm = require("@micro-fleet/common");
-const cfg = require("../addons/ConfigurationProvider");
+const cfg = require("../addons/ConfigurationProviderAddOn");
 const { SvcSettingKeys: SvcS } = cm.constants;
 class MicroServiceBase {
     constructor() {
         this._addons = [];
-        this._isStarted = false;
+        this._isStarted = this._isStopping = false;
     }
     get isStarted() {
         return this._isStarted;
@@ -45,13 +45,17 @@ class MicroServiceBase {
      * Gracefully stops this application and exit
      */
     stop(exitProcess = true) {
-        setTimeout(() => process.exit(), this._configProvider.get(SvcS.DEADLETTER_TIMEOUT).tryGetValue(10000));
+        if (this._isStopping) {
+            return;
+        }
+        this._isStopping = true;
+        setTimeout(() => process.exit(), this._configProvider.get(SvcS.STOP_TIMEOUT).tryGetValue(10000));
         (async () => {
             try {
                 this.onStopping();
                 await this.sendDeadLetters();
-                this._depContainer.dispose();
                 await this.disposeAddOns();
+                this._depContainer.dispose();
                 this._isStarted = false;
                 this.onStopped();
             }
@@ -77,7 +81,7 @@ class MicroServiceBase {
         return cfgProd;
     }
     _registerConfigProvider() {
-        this._depContainer.bind(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProvider).asSingleton();
+        this._depContainer.bind(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProviderAddOn).asSingleton();
     }
     registerDependencies() {
         const depCon = this._depContainer = new cm.DependencyContainer();
@@ -96,6 +100,9 @@ class MicroServiceBase {
         /* istanbul ignore next */
         const msg = (error.toString ? error.toString() : error + '');
         console.error(msg); // Should log to file.
+        if (error instanceof cm.CriticalException) {
+            this.stop(true);
+        }
     }
     /**
      * Invoked after registering dependencies, but before all other initializations.

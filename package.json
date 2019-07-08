@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/microservice",
-    "version": "1.3.0",
+    "version": "1.3.0-rc1",
     "description": "Provides backbone and manage lifecycle for microservice.",
     "scripts": {
         "build": "npm run compile && npm run test",

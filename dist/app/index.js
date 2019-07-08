@@ -7,7 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 if (!Reflect || typeof Reflect['hasOwnMetadata'] !== 'function') {
     require('reflect-metadata');
 }
-__export(require("./addons/ConfigurationProvider"));
+__export(require("./addons/ConfigurationProviderAddOn"));
 __export(require("./constants/Types"));
 __export(require("./microservice/MicroServiceBase"));
 //# sourceMappingURL=index.js.map

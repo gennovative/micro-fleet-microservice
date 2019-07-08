@@ -11,12 +11,12 @@ declare module '@micro-fleet/microservice/dist/app/constants/Action' {
 	}
 
 }
-declare module '@micro-fleet/microservice/dist/app/addons/ConfigurationProvider' {
+declare module '@micro-fleet/microservice/dist/app/addons/ConfigurationProviderAddOn' {
 	import * as cm from '@micro-fleet/common';
 	/**
 	 * Provides settings from appconfig.json, environmental variables and remote settings service.
 	 */
-	export class ConfigurationProvider implements cm.IConfigurationProvider {
+	export class ConfigurationProviderAddOn implements cm.IConfigurationProvider, IServiceAddOn {
 	    readonly name: string;
 	    /**
 	     * @see IConfigurationProvider.enableRemote
@@ -43,7 +43,7 @@ declare module '@micro-fleet/microservice/dist/app/addons/ConfigurationProvider'
 	     * @see IConfigurationProvider.get
 	     */
 	    get(key: string, dataType?: cm.SettingItemDataType): cm.Maybe<number | boolean | string>;
-	    /**
+	    	    /**
 	     * @see IConfigurationProvider.fetch
 	     */
 	    fetch(): Promise<boolean>;
@@ -63,6 +63,7 @@ declare module '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase
 	    protected _depContainer: cm.IDependencyContainer;
 	    protected _addons: IServiceAddOn[];
 	    protected _isStarted: boolean;
+	    protected _isStopping: boolean;
 	    constructor();
 	    readonly isStarted: boolean;
 	    /**
@@ -111,7 +112,7 @@ declare module '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase
 
 }
 declare module '@micro-fleet/microservice' {
-	export * from '@micro-fleet/microservice/dist/app/addons/ConfigurationProvider';
+	export * from '@micro-fleet/microservice/dist/app/addons/ConfigurationProviderAddOn';
 	export * from '@micro-fleet/microservice/dist/app/constants/Types';
 	export * from '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase';
 
@@ -123,7 +124,7 @@ declare module '@micro-fleet/microservice/dist/app/configs/appconfig' {
 	    S: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/service").SvcSettingKeys;
 	    [S.DEADLETTER_TIMEOUT]: number;
 	    [S.SERVICE_SLUG]: string;
-	    [S.SETTINGS_REFETCH_INTERVAL]: string[];
+	    [S.CONFIG_REFETCH_INTERVAL]: string[];
 	    [D.DB_ENGINE]: import("@micro-fleet/common/dist/app/constants/DbClient").DbClient;
 	    [D.DB_ADDRESS]: string;
 	    [D.DB_USER]: string;
