@@ -195,7 +195,7 @@ describe('ConfigurationProvider', function () {
         it('should read appconfig file and return value', async () => {
             // Arrange
             const appConfigs = require(
-                path.resolve(process.cwd(), './dist/app/configs/appconfig')
+                path.resolve(process.cwd(), './dist/app/configs')
             )
             let value
 
@@ -227,7 +227,7 @@ describe('ConfigurationProvider', function () {
             const settings = { // Mock fetched config
                     [MbS.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq',
                 }
-            let settingMb: Maybe<PrimitiveType | any[]>
+            let settingMb: Maybe<any>
 
             configProvider['_remoteSettings'] = settings
 
@@ -243,7 +243,7 @@ describe('ConfigurationProvider', function () {
         it('should return empty Maybe if cannot find setting for specified key', async () => {
             // Arrange
             const NO_EXIST_KEY = 'imaginary-key'
-            let settingMb: Maybe<PrimitiveType | any[]>
+            let settingMb: Maybe<any>
 
             // Act
             await configProvider.init()

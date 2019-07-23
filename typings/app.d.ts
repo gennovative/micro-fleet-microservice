@@ -16,7 +16,7 @@ declare module '@micro-fleet/microservice/dist/app/addons/ConfigurationProviderA
 	/**
 	 * Provides settings from appconfig.json, environmental variables and remote settings service.
 	 */
-	export class ConfigurationProviderAddOn implements cm.IConfigurationProvider, IServiceAddOn {
+	export class ConfigurationProviderAddOn implements cm.IConfigurationProvider, cm.IServiceAddOn {
 	    readonly name: string;
 	    /**
 	     * @see IConfigurationProvider.enableRemote
@@ -61,7 +61,7 @@ declare module '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase
 	export abstract class MicroServiceBase {
 	    protected _configProvider: cm.IConfigurationProvider;
 	    protected _depContainer: cm.IDependencyContainer;
-	    protected _addons: IServiceAddOn[];
+	    protected _addons: cm.IServiceAddOn[];
 	    protected _isStarted: boolean;
 	    protected _isStopping: boolean;
 	    constructor();
@@ -77,7 +77,7 @@ declare module '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase
 	    /**
 	     * @return Total number of add-ons that have been added so far.
 	     */
-	    attachAddOn(addon: IServiceAddOn): number;
+	    attachAddOn(addon: cm.IServiceAddOn): number;
 	    protected _attachConfigProvider(): cm.IConfigurationProvider;
 	    protected _registerConfigProvider(): void;
 	    registerDependencies(): void;
@@ -117,14 +117,14 @@ declare module '@micro-fleet/microservice' {
 	export * from '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase';
 
 }
-declare module '@micro-fleet/microservice/dist/app/configs/appconfig' {
+declare module '@micro-fleet/microservice/dist/app/configs/index' {
 	 const D: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/database").DbSettingKeys; const M: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/message-broker").MbSettingKeys; const S: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/service").SvcSettingKeys; const _default: {
 	    D: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/database").DbSettingKeys;
 	    M: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/message-broker").MbSettingKeys;
 	    S: typeof import("@micro-fleet/common/dist/app/constants/setting-keys/service").SvcSettingKeys;
 	    [S.DEADLETTER_TIMEOUT]: number;
 	    [S.SERVICE_SLUG]: string;
-	    [S.CONFIG_REFETCH_INTERVAL]: string[];
+	    [S.CONFIG_SERVICE_ADDRESSES]: string[];
 	    [D.DB_ENGINE]: import("@micro-fleet/common/dist/app/constants/DbClient").DbClient;
 	    [D.DB_ADDRESS]: string;
 	    [D.DB_USER]: string;

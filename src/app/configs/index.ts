@@ -8,7 +8,7 @@ export = {
     D, M, S, // Dummy exports, just to avoid errors when generating definition
     [S.DEADLETTER_TIMEOUT]: 10000,
     [S.SERVICE_SLUG]: 'micro_service_great_grand_father',
-    [S.CONFIG_REFETCH_INTERVAL]: ['127.0.0.1', '127.0.0.2', '127.0.0.3'],
+    [S.CONFIG_SERVICE_ADDRESSES]: ['127.0.0.1', '127.0.0.2', '127.0.0.3'],
     [D.DB_ENGINE]: cm.constants.DbClient.POSTGRESQL,
     [D.DB_ADDRESS]: 'localhost',
     [D.DB_USER]: 'postgres',

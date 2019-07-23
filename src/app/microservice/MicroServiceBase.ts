@@ -10,7 +10,7 @@ const { SvcSettingKeys: SvcS } = cm.constants
 export abstract class MicroServiceBase {
     protected _configProvider: cm.IConfigurationProvider
     protected _depContainer: cm.IDependencyContainer
-    protected _addons: IServiceAddOn[]
+    protected _addons: cm.IServiceAddOn[]
     protected _isStarted: boolean
     protected _isStopping: boolean
 
@@ -88,13 +88,13 @@ export abstract class MicroServiceBase {
     /**
      * @return Total number of add-ons that have been added so far.
      */
-    public attachAddOn(addon: IServiceAddOn): number {
+    public attachAddOn(addon: cm.IServiceAddOn): number {
         return this._addons.push(addon)
     }
 
     protected _attachConfigProvider(): cm.IConfigurationProvider {
         const cfgProd = this._configProvider = this._depContainer.resolve<cfg.ConfigurationProviderAddOn>(cm.Types.CONFIG_PROVIDER)
-        this.attachAddOn(cfgProd as IServiceAddOn)
+        this.attachAddOn(cfgProd as cm.IServiceAddOn)
         return cfgProd
     }
 

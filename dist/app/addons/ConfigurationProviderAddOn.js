@@ -21,7 +21,7 @@ const { SvcSettingKeys: S } = cm.constants;
 let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
     constructor() {
         this.name = 'ConfigurationProvider';
-        this.configFilePath = path.resolve(process.cwd(), './dist/app/configs/appconfig');
+        this.configFilePath = path.resolve(process.cwd(), './dist/app/configs');
         this._remoteSettings = this._fileSettings = {};
         this.enableRemote = false;
         this._eventEmitter = new events_1.EventEmitter();
@@ -57,7 +57,7 @@ let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
         }
         if (this.enableRemote) {
             this._rpcCaller.name = this.name;
-            this._applySettings().orElse(() => {
+            this._applySettings().mapElse(() => {
                 throw new cm.CriticalException('No address for Settings Service!');
             });
         }
@@ -158,7 +158,7 @@ let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
     _updateSelf() {
         this._eventEmitter.prependListener('updated', (changedKeys) => {
             if (changedKeys.includes(S.CONFIG_REFETCH_INTERVAL) || changedKeys.includes(S.CONFIG_SERVICE_ADDRESSES)) {
-                this._applySettings().orElse(() => {
+                this._applySettings().mapElse(() => {
                     console.warn('New SettingService addresses are useless!');
                 });
             }

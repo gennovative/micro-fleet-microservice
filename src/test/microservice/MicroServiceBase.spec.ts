@@ -1,7 +1,7 @@
 import * as chai from 'chai'
 import * as spies from 'chai-spies'
 import { CriticalException, injectable, IConfigurationProvider,
-    Types, Maybe, constants } from '@micro-fleet/common'
+    Types, Maybe, constants, IServiceAddOn } from '@micro-fleet/common'
 const { DbClient, SvcSettingKeys: SvcS } = constants
 
 import { MicroServiceBase } from '../../app'

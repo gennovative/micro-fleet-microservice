@@ -17,7 +17,7 @@ type RpcResponse = import('@micro-fleet/service-communication').RpcResponse
  */
 @cm.injectable()
 export class ConfigurationProviderAddOn
-        implements cm.IConfigurationProvider, IServiceAddOn {
+        implements cm.IConfigurationProvider, cm.IServiceAddOn {
     public readonly name: string = 'ConfigurationProvider'
 
     /**
@@ -43,7 +43,7 @@ export class ConfigurationProviderAddOn
     private _rpcCaller: IDirectRpcCaller
 
     constructor() {
-        this.configFilePath = path.resolve(process.cwd(), './dist/app/configs/appconfig')
+        this.configFilePath = path.resolve(process.cwd(), './dist/app/configs')
         this._remoteSettings = this._fileSettings = {}
         this.enableRemote = false
         this._eventEmitter = new EventEmitter()
@@ -86,7 +86,7 @@ export class ConfigurationProviderAddOn
 
         if (this.enableRemote) {
             this._rpcCaller.name = this.name
-            this._applySettings().orElse(() => {
+            this._applySettings().mapElse(() => {
                 throw new cm.CriticalException('No address for Settings Service!')
             })
         }
@@ -200,7 +200,7 @@ export class ConfigurationProviderAddOn
     private _updateSelf(): void {
         this._eventEmitter.prependListener('updated', (changedKeys: string[]) => {
             if (changedKeys.includes(S.CONFIG_REFETCH_INTERVAL) || changedKeys.includes(S.CONFIG_SERVICE_ADDRESSES)) {
-                this._applySettings().orElse(() => {
+                this._applySettings().mapElse(() => {
                     console.warn('New SettingService addresses are useless!')
                 })
             }
