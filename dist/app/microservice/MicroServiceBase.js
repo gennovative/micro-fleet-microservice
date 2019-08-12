@@ -95,13 +95,19 @@ class MicroServiceBase {
     onError(error) {
         /* istanbul ignore next */
         if (error.stack) {
-            return console.error(error.stack);
+            console.error(error.stack);
         }
         /* istanbul ignore next */
-        const msg = (error.toString ? error.toString() : error + '');
-        console.error(msg); // Should log to file.
+        else {
+            const msg = (error.toString ? error.toString() : error + '');
+            console.error(msg); // Should log to file.
+        }
         if (error instanceof cm.CriticalException) {
+            console.warn('A CriticalException is caught by the Service trunk. The service is stopping.');
             this.stop(true);
+        }
+        else {
+            console.warn('A non-critical error is caught by the Service trunk. The service is still running.');
         }
     }
     /**

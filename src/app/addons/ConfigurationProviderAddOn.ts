@@ -229,7 +229,11 @@ export class ConfigurationProviderAddOn
                 ipAddress,
             })
 
-            const res: RpcResponse = await this._rpcCaller.call(Module.CONFIG_CONTROL, Action.GET_SETTINGS, req)
+            const res: RpcResponse = await this._rpcCaller.call({
+                moduleName: Module.CONFIG_CONTROL,
+                actionName: Action.GET_SETTINGS,
+                params: req,
+            })
             if (res.isSuccess) {
                 return this._parseSettings(res.payload)
             }

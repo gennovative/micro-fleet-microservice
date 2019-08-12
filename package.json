@@ -38,8 +38,8 @@
         "typescript": "~3.3"
     },
     "peerDependencies": {
-        "@micro-fleet/common": "~1.3",
-        "@micro-fleet/service-communication": "~0.2"
+        "@micro-fleet/common": "~1.4",
+        "@micro-fleet/service-communication": "~0.3"
     },
     "publishConfig": {
         "access": "public"

@@ -6,7 +6,7 @@ import { CriticalException, SettingItem, SettingItemDataType,
     constants, Maybe } from '@micro-fleet/common'
 const { RpcSettingKeys: RpcS, SvcSettingKeys: SvcS, MbSettingKeys: MbS } = constants
 
-import { IDirectRpcCaller, RpcResponse } from '@micro-fleet/service-communication'
+import { IDirectRpcCaller, RpcResponse, RpcCallerOptions } from '@micro-fleet/service-communication'
 
 import * as app from '../../app'
 import { ConfigurationProviderAddOn } from '../../app/addons/ConfigurationProviderAddOn'
@@ -59,7 +59,7 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
     public baseAddress: string
     public timeout: number
 
-    public call(moduleName: string, action: string, params: any): Promise<RpcResponse> {
+    public call({ moduleName, actionName, params, rawDest }: RpcCallerOptions): Promise<RpcResponse> {
         let s: any
         return new Promise((resolve, reject) => {
             const res: RpcResponse = {
@@ -119,6 +119,10 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
                 resolve(res)
             }
         })
+    }
+
+    public callImpatient({ moduleName, actionName, params, rawDest }: RpcCallerOptions): Promise<void> {
+        return Promise.resolve()
     }
 
     public init(param: any): Promise<void> {

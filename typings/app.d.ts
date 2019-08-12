@@ -135,7 +135,7 @@ declare module '@micro-fleet/microservice/dist/app/configs/index' {
 	    [M.MSG_BROKER_USERNAME]: string;
 	    [M.MSG_BROKER_PASSWORD]: string;
 	    [M.MSG_BROKER_EXCHANGE]: string;
-	    [M.MSG_BROKER_QUEUE]: string;
+	    [M.MSG_BROKER_HANDLER_QUEUE]: string;
 	    [M.MSG_BROKER_MSG_EXPIRE]: number;
 	};
 	export = _default;

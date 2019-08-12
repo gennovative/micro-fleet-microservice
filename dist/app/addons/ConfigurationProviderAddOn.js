@@ -180,7 +180,11 @@ let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
                 slug: serviceName.value,
                 ipAddress,
             });
-            const res = await this._rpcCaller.call(Module_1.Module.CONFIG_CONTROL, Action_1.Action.GET_SETTINGS, req);
+            const res = await this._rpcCaller.call({
+                moduleName: Module_1.Module.CONFIG_CONTROL,
+                actionName: Action_1.Action.GET_SETTINGS,
+                params: req,
+            });
             if (res.isSuccess) {
                 return this._parseSettings(res.payload);
             }

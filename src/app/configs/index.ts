@@ -19,6 +19,6 @@ export = {
     [M.MSG_BROKER_USERNAME]: 'firstidea',
     [M.MSG_BROKER_PASSWORD]: 'gennova',
     [M.MSG_BROKER_EXCHANGE]: 'first-infras',
-    [M.MSG_BROKER_QUEUE]: 'first-handler',
+    [M.MSG_BROKER_HANDLER_QUEUE]: 'first-handler',
     [M.MSG_BROKER_MSG_EXPIRE]: 5000,
 }
