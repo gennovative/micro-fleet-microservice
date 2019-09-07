@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference types="debug" />
 const debug = require('debug')('mcft:microservice:MicroserviceBase');
 const cm = require("@micro-fleet/common");
-const cfg = require("../addons/ConfigurationProviderAddOn");
-const { SvcSettingKeys: SvcS } = cm.constants;
+const cfg = require("../ConfigurationProviderAddOn");
+const { Service: S } = cm.constants;
 class MicroServiceBase {
     constructor() {
         this._addons = [];
@@ -17,26 +17,26 @@ class MicroServiceBase {
      * Bootstraps this service application.
      */
     start() {
-        this.registerDependencies();
+        this.$registerDependencies();
         this._attachConfigProvider();
         try {
             // A chance for derived class to add more add-ons or do some customizations.
-            this.onStarting();
+            this.$onStarting();
         }
         catch (ex) {
-            this.onError(ex);
+            this.$onError(ex);
             console.error('An error occured on starting, the application has to stop now.');
-            this.exitProcess();
+            this._exitProcess();
             return;
         }
         this._initAddOns()
             .then(() => {
             this._isStarted = true;
-            this.handleGracefulShutdown();
-            this.onStarted();
+            this._handleGracefulShutdown();
+            this.$onStarted();
         })
             .catch(err => {
-            this.onError(err);
+            this.$onError(err);
             console.error('An error occured on initializing add-ons, the application has to stop now.');
             this.stop();
         });
@@ -49,23 +49,23 @@ class MicroServiceBase {
             return;
         }
         this._isStopping = true;
-        setTimeout(() => process.exit(), this._configProvider.get(SvcS.STOP_TIMEOUT).tryGetValue(10000));
+        setTimeout(() => process.exit(), this._configProvider.get(S.STOP_TIMEOUT).tryGetValue(10000));
         (async () => {
             try {
-                this.onStopping();
-                await this.sendDeadLetters();
-                await this.disposeAddOns();
+                this.$onStopping();
+                await this._sendDeadLetters();
+                await this._disposeAddOns();
                 this._depContainer.dispose();
                 this._isStarted = false;
-                this.onStopped();
+                this.$onStopped();
             }
             catch (ex) {
-                this.onError(ex);
+                this.$onError(ex);
             }
             finally {
                 exitProcess &&
                     /* istanbul ignore next: only useful on production */
-                    this.exitProcess();
+                    this._exitProcess();
             }
         })();
     }
@@ -83,7 +83,7 @@ class MicroServiceBase {
     _registerConfigProvider() {
         this._depContainer.bind(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProviderAddOn).asSingleton();
     }
-    registerDependencies() {
+    $registerDependencies() {
         const depCon = this._depContainer = new cm.DependencyContainer();
         cm.serviceContext.setDependencyContainer(depCon);
         depCon.bindConstant(cm.Types.DEPENDENCY_CONTAINER, depCon);
@@ -92,7 +92,7 @@ class MicroServiceBase {
     /**
      * Invoked whenever any error occurs in the application.
      */
-    onError(error) {
+    $onError(error) {
         /* istanbul ignore next */
         if (error.stack) {
             console.error(error.stack);
@@ -113,28 +113,28 @@ class MicroServiceBase {
     /**
      * Invoked after registering dependencies, but before all other initializations.
      */
-    onStarting() {
+    $onStarting() {
         debug('On starting');
     }
     /**
      * Invoked after all initializations. At this stage, the application is considered
      * started successfully.
      */
-    onStarted() {
+    $onStarted() {
         debug('On started');
         console.log('Microservice started successfully with %d addons', this._addons.length);
     }
     /**
      * Invoked when `stop` method is called, before any other actions take place.
      */
-    onStopping() {
+    $onStopping() {
         debug('On stopping');
     }
     /**
      * Invoked after all finalizations have finished. At this stage, the application is
      * considered stopped successfully. The process will be killed after this.
      */
-    onStopped() {
+    $onStopped() {
         debug('On stopped');
     }
     async _initAddOns() {
@@ -157,14 +157,14 @@ class MicroServiceBase {
         }
         await Promise.all(initPromises);
     }
-    disposeAddOns() {
+    _disposeAddOns() {
         const disposePromises = this._addons.map(addon => {
             debug(`Disposing: ${addon.name}`);
             return addon.dispose();
         });
         return Promise.all(disposePromises);
     }
-    exitProcess() {
+    _exitProcess() {
         console.log('Application has been shutdown, the process exits now!');
         process.exit(); // TODO: Should emit an exit code to also stop Docker instance
     }
@@ -173,7 +173,7 @@ class MicroServiceBase {
      * or when the OS is trying to stop the service process.
      *
      */
-    handleGracefulShutdown() {
+    _handleGracefulShutdown() {
         const handler = () => {
             console.log('Gracefully shutdown...');
             this.stop();
@@ -201,10 +201,10 @@ class MicroServiceBase {
             });
         }
     }
-    sendDeadLetters() {
+    _sendDeadLetters() {
         debug('Sending dead letters');
         return new Promise(resolve => {
-            let timer = setTimeout(resolve, this._configProvider.get(SvcS.DEADLETTER_TIMEOUT).tryGetValue(5000));
+            let timer = setTimeout(resolve, this._configProvider.get(S.DEADLETTER_TIMEOUT).tryGetValue(5000));
             const promises = this._addons.map(addon => {
                 debug(`Dead letter to: ${addon.name}`);
                 return addon.deadLetter();
@@ -217,7 +217,7 @@ class MicroServiceBase {
                 resolve();
             });
         })
-            .catch(err => this.onError(err));
+            .catch(err => this.$onError(err));
     }
 }
 exports.MicroServiceBase = MicroServiceBase;

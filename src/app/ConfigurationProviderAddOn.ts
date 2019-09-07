@@ -2,11 +2,16 @@ import * as path from 'path'
 import { EventEmitter } from 'events'
 import * as cm from '@micro-fleet/common'
 
-import { Module } from '../constants/Module'
-import { Action } from '../constants/Action'
+import { Module } from './constants/Module'
+import { Action } from './constants/Action'
 
 
-const { SvcSettingKeys: S } = cm.constants
+const {
+    decorators: d,
+    constants: {
+        Service: S,
+    },
+} = cm
 
 type IDirectRpcCaller = import('@micro-fleet/service-communication').IDirectRpcCaller
 type RpcResponse = import('@micro-fleet/service-communication').RpcResponse
@@ -15,7 +20,7 @@ type RpcResponse = import('@micro-fleet/service-communication').RpcResponse
 /**
  * Provides settings from appconfig.json, environmental variables and remote settings service.
  */
-@cm.injectable()
+@d.injectable()
 export class ConfigurationProviderAddOn
         implements cm.IConfigurationProvider, cm.IServiceAddOn {
     public readonly name: string = 'ConfigurationProvider'
@@ -39,7 +44,7 @@ export class ConfigurationProviderAddOn
     private _isInit: boolean
 
     // @cm.lazyInject(require('@micro-fleet/service-communication').DIRECT_RPC_CALLER)
-    @cm.lazyInject('service-communication.IDirectRpcCaller')
+    @d.lazyInject('service-communication.IDirectRpcCaller')
     private _rpcCaller: IDirectRpcCaller
 
     constructor() {
@@ -224,7 +229,7 @@ export class ConfigurationProviderAddOn
                                 // this should be the host's IP address.
 
             this._rpcCaller.baseAddress = address
-            const req = cm.GetSettingRequest.translator.whole({
+            const req = cm.GetSettingRequest.from({
                 slug: serviceName.value,
                 ipAddress,
             })
@@ -272,7 +277,7 @@ export class ConfigurationProviderAddOn
         if (!raw) { return {} }
 
         const map = {},
-            settings: cm.SettingItem[] = cm.SettingItem.translator.wholeMany(raw)
+            settings: cm.SettingItem[] = cm.SettingItem.fromMany(raw)
         for (const st of settings) {
             map[st.name] = this._parseValue(st.value, st.dataType)
         }

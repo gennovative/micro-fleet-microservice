@@ -1,15 +1,14 @@
 import * as path from 'path'
 import * as chai from 'chai'
 import * as spies from 'chai-spies'
-import * as _ from 'lodash'
 import { CriticalException, SettingItem, SettingItemDataType,
     constants, Maybe } from '@micro-fleet/common'
-const { RpcSettingKeys: RpcS, SvcSettingKeys: SvcS, MbSettingKeys: MbS } = constants
+const { RPC: R, Service: S, MessageBroker: M } = constants
 
 import { IDirectRpcCaller, RpcResponse, RpcCallerOptions } from '@micro-fleet/service-communication'
 
 import * as app from '../../app'
-import { ConfigurationProviderAddOn } from '../../app/addons/ConfigurationProviderAddOn'
+import { ConfigurationProviderAddOn } from '../../app/ConfigurationProviderAddOn'
 
 
 chai.use(spies)
@@ -21,22 +20,22 @@ const CONFIG_SVC_ADDRESSES = ['127.0.0.1', '127.0.0.2', '127.0.0.3'],
     BROKER_PASSWORD = 'secret',
     SUCCESS_CONFIG: SettingItem[] = [
         {
-            name: SvcS.CONFIG_SERVICE_ADDRESSES,
+            name: S.CONFIG_SERVICE_ADDRESSES,
             dataType: SettingItemDataType.String,
             value: JSON.stringify(CONFIG_SVC_ADDRESSES),
         },
         {
-            name: MbS.MSG_BROKER_HOST,
+            name: M.MSG_BROKER_HOST,
             dataType: SettingItemDataType.String,
             value: '127.0.0.1/rabbitmq',
         },
         {
-            name: RpcS.RPC_CALLER_TIMEOUT,
+            name: R.RPC_CALLER_TIMEOUT,
             dataType: SettingItemDataType.Number,
             value: '1000',
         },
         {
-            name: SvcS.CONFIG_REFETCH_INTERVAL,
+            name: S.CONFIG_REFETCH_INTERVAL,
             dataType: SettingItemDataType.Number,
             value: '1000',
         },
@@ -86,13 +85,13 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
                     SUCCESS_CONFIG.splice(2, 1)
                 } else if (repeatCount == 4) {
                     SUCCESS_CONFIG.push({
-                        name: MbS.MSG_BROKER_PASSWORD,
+                        name: M.MSG_BROKER_PASSWORD,
                         dataType: SettingItemDataType.String,
                         value: BROKER_PASSWORD,
                     })
                 } else if (repeatCount == 5) {
                     SUCCESS_CONFIG.push({
-                        name: SvcS.CONFIG_SERVICE_ADDRESSES,
+                        name: S.CONFIG_SERVICE_ADDRESSES,
                         dataType: SettingItemDataType.String,
                         value: JSON.stringify(['127.0.0.4']),
                     })
@@ -180,7 +179,7 @@ describe('ConfigurationProvider', function () {
             // Make it no way to accidentially get a meaningful address.
             configProvider.configFilePath = 'dummy.json'
             configProvider['_remoteSettings'] = {}
-            process.env[SvcS.CONFIG_SERVICE_ADDRESSES] = ''
+            process.env[S.CONFIG_SERVICE_ADDRESSES] = ''
 
             // Act then assert
             try {
@@ -205,31 +204,31 @@ describe('ConfigurationProvider', function () {
 
             // Act
             await configProvider.init()
-            value = configProvider.get(SvcS.DEADLETTER_TIMEOUT)
+            value = configProvider.get(S.DEADLETTER_TIMEOUT)
 
             // Assert
             expect(value.isJust).to.be.true
-            expect(value.value).to.equals(appConfigs[SvcS.DEADLETTER_TIMEOUT])
+            expect(value.value).to.equals(appConfigs[S.DEADLETTER_TIMEOUT])
         })
 
         it('should read settings from environment variable', async () => {
             // Arrange
-            process.env[SvcS.CONFIG_SERVICE_ADDRESSES] = '127.0.0.1'
+            process.env[S.CONFIG_SERVICE_ADDRESSES] = '127.0.0.1'
             configProvider.configFilePath = 'dummy.json'
 
             // Act
             await configProvider.init()
-            const value = configProvider.get(SvcS.CONFIG_SERVICE_ADDRESSES)
+            const value = configProvider.get(S.CONFIG_SERVICE_ADDRESSES)
 
             // Assert
             expect(value.isJust).to.be.true
-            expect(value.value).to.equals(process.env[SvcS.CONFIG_SERVICE_ADDRESSES])
+            expect(value.value).to.equals(process.env[S.CONFIG_SERVICE_ADDRESSES])
         })
 
         it('should read settings from fetched Configuration Service', async () => {
             // Arrange
             const settings = { // Mock fetched config
-                    [MbS.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq',
+                    [M.MSG_BROKER_HOST]: '127.0.0.1/rabbitmq',
                 }
             let settingMb: Maybe<any>
 
@@ -237,11 +236,11 @@ describe('ConfigurationProvider', function () {
 
             // Act
             await configProvider.init()
-            settingMb = configProvider.get(MbS.MSG_BROKER_HOST)
+            settingMb = configProvider.get(M.MSG_BROKER_HOST)
 
             // Assert
             expect(settingMb.isJust).to.be.true
-            expect(settingMb.value).to.equals(settings[MbS.MSG_BROKER_HOST])
+            expect(settingMb.value).to.equals(settings[M.MSG_BROKER_HOST])
         })
 
         it('should return empty Maybe if cannot find setting for specified key', async () => {
@@ -384,11 +383,12 @@ describe('ConfigurationProvider', function () {
             await configPrvd.dispose()
 
             // Assert
-            _.forOwn(configPrvd, (value: any, key: string) => {
-                if (key == 'name') { return }
+            // tslint:disable-next-line:prefer-const
+            for (let key in configPrvd) {
+                if (key == 'name') { continue }
                 callMe()
                 expect(configPrvd[key], key).to.be.null
-            })
+            }
             expect(callMe).to.be.called
         })
     }) // END describe 'dispose'

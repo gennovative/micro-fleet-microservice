@@ -1,12 +1,10 @@
 import * as chai from 'chai'
 import * as spies from 'chai-spies'
-import { CriticalException, injectable, IConfigurationProvider,
+import { CriticalException, IConfigurationProvider, decorators as d,
     Types, Maybe, constants, IServiceAddOn } from '@micro-fleet/common'
-const { DbClient, SvcSettingKeys: SvcS } = constants
+const { DbClient, Service: SvcS } = constants
 
 import { MicroServiceBase } from '../../app'
-// import rabbitOpts from '../rabbit-options';
-// import DB_DETAILS from '../database-details';
 
 
 chai.use(spies)
@@ -20,13 +18,13 @@ const EXAMPLE_SVC = Symbol('IDummyService'),
 
 
 interface IExampleUtility { }
-@injectable()
+@d.injectable()
 class ExampleUtility implements IExampleUtility { }
 
 
 interface ICustomAddOn extends IServiceAddOn { }
 
-@injectable()
+@d.injectable()
 class CustomAddOn implements ICustomAddOn {
 
     public readonly name: string = 'CustomAddOn'
@@ -57,7 +55,7 @@ const BEHAV_FALSE = 'behav_false',
     ERROR_RANDOM = new CriticalException('A random error!'),
     ERROR_FAIL = new CriticalException('Fail to fetch configuration!')
 
-@injectable()
+@d.injectable()
 class MockConfigProvider implements IConfigurationProvider {
 
     public readonly name: string = 'MockConfigProvider'
@@ -111,8 +109,8 @@ class TestMarketingService extends MicroServiceBase {
     /**
      * @override
      */
-    public registerDependencies(): void {
-        super.registerDependencies()
+    public $registerDependencies(): void {
+        super.$registerDependencies()
         this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility)
         this._depContainer.bind<ICustomAddOn>(CUSTOM_ADT, CustomAddOn)
 
@@ -144,7 +142,7 @@ class TestMarketingService extends MicroServiceBase {
     /**
      * @override
      */
-    public onStarting(): void {
+    public $onStarting(): void {
         // Call this if your service works directly with database.
         // this.attachDbAddOn();
 
@@ -160,8 +158,8 @@ class TestMarketingService extends MicroServiceBase {
     /**
      * @override
      */
-    public onError(error: any): void {
-        super.onError(error)
+    public $onError(error: any): void {
+        super.$onError(error)
     }
 }
 
@@ -181,12 +179,12 @@ describe('MicroServiceBase', function() {
             const service = new PlainService()
             let i = 0
 
-            service['onStarting'] = () => {
+            service['$onStarting'] = () => {
                 i++
                 expect(i).to.equal(<number>EventOrder.BeforeStart)
             }
 
-            service['onStarted'] = () => {
+            service['$onStarted'] = () => {
                 i++
                 expect(i).to.equal(<number>EventOrder.AfterStart)
                 expect(service.isStarted, 'Service should be started by now').to.be.true
@@ -195,12 +193,12 @@ describe('MicroServiceBase', function() {
                 service.stop(false)
             }
 
-            service['onStopping']  = () => {
+            service['$onStopping']  = () => {
                 i++
                 expect(i).to.equal(<number>EventOrder.BeforeStop)
             }
 
-            service['onStopped'] = () => {
+            service['$onStopped'] = () => {
                 i++
                 expect(i).to.equal(<number>EventOrder.AfterStop)
                 expect(service.isStarted, 'Service should be stopped by now').to.be.false
@@ -213,17 +211,17 @@ describe('MicroServiceBase', function() {
             // Arrange
             const service = new TestMarketingService()
 
-            service['onError'] = function(err: CriticalException) {
-                expect(service['onError']).to.be.spy
-                expect(service['onError']).to.be.called.once
+            service['$onError'] = function(err: CriticalException) {
+                expect(service['$onError']).to.be.spy
+                expect(service['$onError']).to.be.called.once
                 expect(err.message).to.equal(ERROR_FAIL.message)
                 done()
             }
 
-            chai.spy.on(service, 'onError')
-            service['exitProcess'] = () => { /* Empty */ }
+            chai.spy.on(service, '$onError')
+            service['_exitProcess'] = () => { /* Empty */ }
 
-            service['onStarting'] = function() {
+            service['$onStarting'] = function() {
                 const cfgAdt = <MockConfigProvider>this['_depContainer'].resolve(Types.CONFIG_PROVIDER)
                 cfgAdt.behavior = BEHAV_FALSE
             }
@@ -236,18 +234,18 @@ describe('MicroServiceBase', function() {
             // Arrange
             const service = new TestMarketingService()
 
-            service['onError'] = function() {
+            service['$onError'] = function() {
                 // Assert
-                expect(service['onError']).to.be.spy
-                expect(service['onError']).to.be.called.once
-                expect(service['onError']).to.be.called.with(ERROR_RANDOM)
+                expect(service['$onError']).to.be.spy
+                expect(service['$onError']).to.be.called.once
+                expect(service['$onError']).to.be.called.with(ERROR_RANDOM)
                 done()
             }
 
-            chai.spy.on(service, 'onError')
-            service['exitProcess'] = () => { /* Empty */ }
+            chai.spy.on(service, '$onError')
+            service['_exitProcess'] = () => { /* Empty */ }
 
-            service['onStarting'] = function() {
+            service['$onStarting'] = function() {
                 const cfgAdt = <MockConfigProvider>this['_depContainer'].resolve(Types.CONFIG_PROVIDER)
                 cfgAdt.behavior = BEHAV_THROW
             }
@@ -262,32 +260,32 @@ describe('MicroServiceBase', function() {
             // Arrange
             const service = new PlainService()
 
-            service['onError'] = (function(original) {
+            service['$onError'] = (function(original) {
                 return (error: any) => {
                     // Save and execute original `onError` method,
                     // to make it covered.
                     original.call(service, error)
 
                     // Assert
-                    expect(service['onError']).to.be.spy
-                    expect(service['onError']).to.be.called.once
-                    expect(service['onError']).to.be.called.with(ERROR_RANDOM)
+                    expect(service['$onError']).to.be.spy
+                    expect(service['$onError']).to.be.called.once
+                    expect(service['$onError']).to.be.called.with(ERROR_RANDOM)
                     done()
                 }
-            })(service['onError'])
+            })(service['$onError'])
 
-            service['exitProcess'] = () => { /* Empty */ }
+            service['_exitProcess'] = () => { /* Empty */ }
 
-            chai.spy.on(service, 'onError')
+            chai.spy.on(service, '$onError')
 
-            service['onStarting'] = (function(original) {
+            service['$onStarting'] = (function(original) {
                 return () => {
                     // Save and execute original `onStarting` method,
                     // to make it covered.
                     original.call(service)
                     throw ERROR_RANDOM
                 }
-            })(service['onStarting'])
+            })(service['$onStarting'])
 
             // Act
             service.start()
@@ -299,18 +297,18 @@ describe('MicroServiceBase', function() {
             // Arrange
             const service = new TestMarketingService()
 
-            service['onError'] = function() {
+            service['$onError'] = function() {
                 // Assert
-                expect(service['onError']).to.be.spy
-                expect(service['onError']).to.be.called.once
-                expect(service['onError']).to.be.called.with(ERROR_RANDOM)
+                expect(service['$onError']).to.be.spy
+                expect(service['$onError']).to.be.called.once
+                expect(service['$onError']).to.be.called.with(ERROR_RANDOM)
                 done()
             }
 
-            chai.spy.on(service, 'onError')
-            service['exitProcess'] = () => { /* Empty */ }
+            chai.spy.on(service, '$onError')
+            service['_exitProcess'] = () => { /* Empty */ }
 
-            service['onStarting'] = () => {
+            service['$onStarting'] = () => {
                 service['_addons'].forEach((adt: IServiceAddOn, idx) => {
                     if (adt['clientName']) {
                         // Search for database add-on and
@@ -320,22 +318,22 @@ describe('MicroServiceBase', function() {
                 })
             }
 
-            service['onStarted'] = (function(original) {
+            service['$onStarted'] = (function(original) {
                 return () => {
                     original.apply(service)
                     service.stop(false)
                 }
-            })(service['onStarted'])
+            })(service['$onStarted'])
 
 
-            service['onStopping'] = (function(original) {
+            service['$onStopping'] = (function(original) {
                 return () => {
                     // Save and execute original `onStarting` method,
                     // to make it covered.
                     original.apply(service)
                     throw ERROR_RANDOM
                 }
-            })(service['onStopping'])
+            })(service['$onStopping'])
 
             // Act
             service.start()
@@ -349,17 +347,17 @@ describe('MicroServiceBase', function() {
                 callMe = chai.spy()
 
 
-            service['onError'] = function() {
+            service['$onError'] = function() {
                 callMe()
             }
 
-            service['exitProcess'] = () => { /* Empty */ }
+            service['_exitProcess'] = () => { /* Empty */ }
 
-            service['onStarted'] = function() {
+            service['$onStarted'] = function() {
                 throw ERROR_RANDOM
             }
 
-            service['onStopped'] = function() {
+            service['$onStopped'] = function() {
                 // Assert
                 expect(callMe).to.be.called.once
                 done()
@@ -376,7 +374,7 @@ describe('MicroServiceBase', function() {
             const service = new TestMarketingService()
             let adpArr: any[] = []
 
-            service['onStarting'] = (function(original) {
+            service['$onStarting'] = (function(original) {
                 return () => {
                     // Save and execute original `onStarting` method,
                     // to make it covered.
@@ -391,9 +389,9 @@ describe('MicroServiceBase', function() {
                         }
                     })
                 }
-            })(service['onStarting'])
+            })(service['$onStarting'])
 
-            service['onStarted'] = () => {
+            service['$onStarted'] = () => {
                 // Transform all dispose functions to spies
                 adpArr.forEach((adt: IServiceAddOn, idx) => {
                     // console.log(`SPY ${idx}:` + adt.constructor.toString().substring(0, 20));
@@ -405,7 +403,7 @@ describe('MicroServiceBase', function() {
                 service.stop(false)
             }
 
-            service['onStopped'] = () => {
+            service['$onStopped'] = () => {
                 expect(service.isStarted, 'Service should be stopped by now').to.be.false
                 adpArr.forEach((adt, idx) => {
                     const adtName = adt.constructor.toString().substring(0, 20)
@@ -434,18 +432,18 @@ describe('MicroServiceBase', function() {
                 done()
             })
 
-            service['onError'] = chai.spy(() => {
+            service['$onError'] = chai.spy(() => {
                 // Assert
-                expect(service['onError']).to.be.spy
-                expect(service['onError']).to.be.called.once
-                expect(service['onError']).to.be.called.with(ERROR_RANDOM)
+                expect(service['$onError']).to.be.spy
+                expect(service['$onError']).to.be.called.once
+                expect(service['$onError']).to.be.called.with(ERROR_RANDOM)
             })
 
-            service['onStarted'] = () => {
+            service['$onStarted'] = () => {
                 service.stop()
             }
 
-            service['disposeAddOns'] = () => {
+            service['_disposeAddOns'] = () => {
                 return new Promise<void[]>((resolve, reject) => {
                     reject(ERROR_RANDOM)
                 })
@@ -470,7 +468,7 @@ describe('MicroServiceBase', function() {
                 done()
             })
 
-            service['onStarted'] = () => {
+            service['$onStarted'] = () => {
                 process.emit('SIGTERM' as any)
             }
 

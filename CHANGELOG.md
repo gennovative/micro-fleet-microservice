@@ -1,6 +1,10 @@
 
 ## VERSIONS
 
+
+### 2.3.0
+- Sync version with other packages.
+
 ### 1.3.0
 - Moved default config file location.
 - Added debug messages using package `debug`.
