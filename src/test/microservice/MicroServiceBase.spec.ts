@@ -96,8 +96,9 @@ class MockConfigProvider implements IConfigurationProvider {
                 return Promise.resolve(false)
             case BEHAV_THROW:
                 throw ERROR_RANDOM
+            default:
+                return Promise.resolve(true)
         }
-        return Promise.resolve(true)
     }
 }
 
@@ -163,10 +164,8 @@ class TestMarketingService extends MicroServiceBase {
     }
 }
 
-// This code should be in file index.ts, located at root project folder, and executed by `npm start`.
-//        let service = new DummyMarketingService();
-//        service.start();
-
+// tslint:disable: no-invalid-this
+// tslint:disable: no-unbound-method
 
 describe('MicroServiceBase', function() {
     this.timeout(15000)
@@ -190,7 +189,7 @@ describe('MicroServiceBase', function() {
                 expect(service.isStarted, 'Service should be started by now').to.be.true
 
                 // When the service is fully started, stop it.
-                service.stop(false)
+                service.stop(false).catch(err => console.log(err))
             }
 
             service['$onStopping']  = () => {
@@ -204,7 +203,7 @@ describe('MicroServiceBase', function() {
                 expect(service.isStarted, 'Service should be stopped by now').to.be.false
             }
 
-            service.start()
+            service.start().catch(err => console.log(err))
         })
 
         it('should throw exception and catch with onError event if fetching configuration fails', (done) => {
@@ -227,7 +226,7 @@ describe('MicroServiceBase', function() {
             }
 
             // Act
-            service.start()
+            service.start().catch(err => console.log(err))
         })
 
         it('should catch all errors with onError event', (done) => {
@@ -251,7 +250,7 @@ describe('MicroServiceBase', function() {
             }
 
             // Act
-            service.start()
+            service.start().catch(err => console.log(err))
         })
     }) // describe 'MicroServiceBase'
 
@@ -288,7 +287,7 @@ describe('MicroServiceBase', function() {
             })(service['$onStarting'])
 
             // Act
-            service.start()
+            service.start().catch(err => console.log(err))
         })
     }) // describe 'onStarting'
 
@@ -321,7 +320,7 @@ describe('MicroServiceBase', function() {
             service['$onStarted'] = (function(original) {
                 return () => {
                     original.apply(service)
-                    service.stop(false)
+                    service.stop(false).catch(err => console.log(err))
                 }
             })(service['$onStarted'])
 
@@ -336,7 +335,7 @@ describe('MicroServiceBase', function() {
             })(service['$onStopping'])
 
             // Act
-            service.start()
+            service.start().catch(err => console.log(err))
         })
     }) // describe 'onStopping'
 
@@ -364,7 +363,7 @@ describe('MicroServiceBase', function() {
             }
 
             // Act
-            service.start()
+            service.start().catch(err => console.log(err))
         })
     }) // describe 'onStopped'
 
@@ -400,7 +399,7 @@ describe('MicroServiceBase', function() {
 
                 expect(service.isStarted, 'Service should be started by now').to.be.true
                 // When the service is fully started, stop it.
-                service.stop(false)
+                service.stop(false).catch(err => console.log(err))
             }
 
             service['$onStopped'] = () => {
@@ -413,7 +412,7 @@ describe('MicroServiceBase', function() {
                 done()
             }
 
-            service.start()
+            service.start().catch(err => console.log(err))
 
         })
 
@@ -440,7 +439,7 @@ describe('MicroServiceBase', function() {
             })
 
             service['$onStarted'] = () => {
-                service.stop()
+                service.stop().catch(err => console.log(err))
             }
 
             service['_disposeAddOns'] = () => {
@@ -450,7 +449,7 @@ describe('MicroServiceBase', function() {
             }
 
             // Act
-            service.start()
+            service.start().catch(err => console.log(err))
         })
 
         it.skip('should gracefully shutdown on SIGTERM', (done) => {
@@ -473,7 +472,7 @@ describe('MicroServiceBase', function() {
             }
 
             // Act
-            service.start()
+            service.start().catch(err => console.log(err))
         })
     }) // describe 'stop'
 })

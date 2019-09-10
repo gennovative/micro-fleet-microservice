@@ -289,8 +289,7 @@ export class ConfigurationProviderAddOn
 
         if (type == cm.SettingItemDataType.String) {
             return val
-        } else {
-            return JSON.parse(val)
         }
+        return JSON.parse(val)
     }
 }

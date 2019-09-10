@@ -27,9 +27,9 @@ class MicroServiceBase {
             this.$onError(ex);
             console.error('An error occured on starting, the application has to stop now.');
             this._exitProcess();
-            return;
+            return Promise.resolve();
         }
-        this._initAddOns()
+        return this._initAddOns()
             .then(() => {
             this._isStarted = true;
             this._handleGracefulShutdown();
@@ -38,36 +38,34 @@ class MicroServiceBase {
             .catch(err => {
             this.$onError(err);
             console.error('An error occured on initializing add-ons, the application has to stop now.');
-            this.stop();
+            return this.stop();
         });
     }
     /**
      * Gracefully stops this application and exit
      */
-    stop(exitProcess = true) {
+    async stop(exitProcess = true) {
         if (this._isStopping) {
             return;
         }
         this._isStopping = true;
         setTimeout(() => process.exit(), this._configProvider.get(S.STOP_TIMEOUT).tryGetValue(10000));
-        (async () => {
-            try {
-                this.$onStopping();
-                await this._sendDeadLetters();
-                await this._disposeAddOns();
-                this._depContainer.dispose();
-                this._isStarted = false;
-                this.$onStopped();
-            }
-            catch (ex) {
-                this.$onError(ex);
-            }
-            finally {
-                exitProcess &&
-                    /* istanbul ignore next: only useful on production */
-                    this._exitProcess();
-            }
-        })();
+        try {
+            this.$onStopping();
+            await this._sendDeadLetters();
+            await this._disposeAddOns();
+            this._depContainer.dispose();
+            this._isStarted = false;
+            this.$onStopped();
+        }
+        catch (ex) {
+            this.$onError(ex);
+        }
+        finally {
+            exitProcess &&
+                /* istanbul ignore next: only useful on production */
+                this._exitProcess();
+        }
     }
     /**
      * @return Total number of add-ons that have been added so far.
@@ -99,11 +97,11 @@ class MicroServiceBase {
         }
         /* istanbul ignore next */
         else {
-            const msg = (error.toString ? error.toString() : error + '');
-            console.error(msg); // Should log to file.
+            console.error(error.toString()); // Should log to file.
         }
         if (error instanceof cm.CriticalException) {
             console.warn('A CriticalException is caught by the Service trunk. The service is stopping.');
+            // tslint:disable-next-line: no-floating-promises
             this.stop(true);
         }
         else {
@@ -176,6 +174,7 @@ class MicroServiceBase {
     _handleGracefulShutdown() {
         const handler = () => {
             console.log('Gracefully shutdown...');
+            // tslint:disable-next-line: no-floating-promises
             this.stop();
         };
         // SIGINT is the interrupt signal.
@@ -203,19 +202,21 @@ class MicroServiceBase {
     }
     _sendDeadLetters() {
         debug('Sending dead letters');
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             let timer = setTimeout(resolve, this._configProvider.get(S.DEADLETTER_TIMEOUT).tryGetValue(5000));
             const promises = this._addons.map(addon => {
                 debug(`Dead letter to: ${addon.name}`);
                 return addon.deadLetter();
             });
-            Promise.all(promises).then(() => {
+            Promise.all(promises)
+                .then(() => {
                 if (timer) {
                     clearTimeout(timer);
                     timer = null;
                 }
                 resolve();
-            });
+            })
+                .catch(reject);
         })
             .catch(err => this.$onError(err));
     }

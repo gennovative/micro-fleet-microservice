@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/microservice",
-    "version": "2.3.0-rc1",
+    "version": "2.3.0-rc3",
     "description": "Provides backbone and manage lifecycle for microservice.",
     "scripts": {
         "build": "npm run compile && npm run test",
@@ -9,8 +9,8 @@
         "dedup": "rimraf node_modules/**/node_modules/**/typings",
         "compile": "npm run clean && npm run lint && tsc --pretty",
         "release": "npm run build && npm run definition",
-        "test": "nyc --reporter=json --reporter=html --include dist/app/**/*.js mocha --recursive dist/test",
-        "lint": "tslint --fix 'src/**/*.ts'",
+        "test": "nyc --extension=.ts --reporter=json --reporter=html --include dist/app/**/*.js --include src/app/**/*.ts mocha --recursive dist/test",
+        "lint": "tslint --fix -p tsconfig.json --exclude '**/*.d.ts'",
         "watch": "npm run clean && npm run lint && tsc --watch --pretty",
         "prepublishOnly": "npm run release"
     },
@@ -18,25 +18,24 @@
         "debug": "~4.1"
     },
     "devDependencies": {
-        "@types/chai": "~4.1",
-        "@types/chai-spies": "~0.0.1",
-        "@types/cors": "~2.8",
+        "@hapi/joi": "~15.1",
+        "@types/chai": "~4.2",
+        "@types/chai-spies": "~1.0",
         "@types/debug": "~4.1",
         "@types/mocha": "~5.2",
         "@types/node": "~10.14",
-        "chai": "~4.1",
-        "chai-spies": "git://github.com/chaijs/chai-spies.git#b11aeebf",
-        "joi": "~13.0",
-        "mocha": "~5.2",
-        "nyc": "~13.3",
-        "rimraf": "~2.6",
-        "ts-declarator": "~1.0",
-        "tslint": "~5.11",
-        "typescript": "~3.3"
+        "chai": "~4.2",
+        "chai-spies": "~1.0",
+        "mocha": "~6.2",
+        "nyc": "~14.1",
+        "rimraf": "~3.0",
+        "ts-generator": "0.0.8",
+        "tslint": "~5.19",
+        "typescript": "~3.6"
     },
     "peerDependencies": {
-        "@micro-fleet/common": "=2.3.0-rc1",
-        "@micro-fleet/service-communication": "=2.3.0-rc1"
+        "@micro-fleet/common": "=2.3.0-rc3",
+        "@micro-fleet/service-communication": "=2.3.0-rc3"
     },
     "publishConfig": {
         "access": "public"

@@ -27,7 +27,7 @@ export abstract class MicroServiceBase {
     /**
      * Bootstraps this service application.
      */
-    public start(): void {
+    public start(): Promise<void> {
         this.$registerDependencies()
         this._attachConfigProvider()
 
@@ -38,10 +38,10 @@ export abstract class MicroServiceBase {
             this.$onError(ex)
             console.error('An error occured on starting, the application has to stop now.')
             this._exitProcess()
-            return
+            return Promise.resolve()
         }
 
-        this._initAddOns()
+        return this._initAddOns()
             .then(() => {
                 this._isStarted = true
                 this._handleGracefulShutdown()
@@ -50,38 +50,38 @@ export abstract class MicroServiceBase {
             .catch(err => {
                 this.$onError(err)
                 console.error('An error occured on initializing add-ons, the application has to stop now.')
-                this.stop()
+                return this.stop()
             })
     }
 
     /**
      * Gracefully stops this application and exit
      */
-    public stop(exitProcess: boolean = true): void {
+    public async stop(exitProcess: boolean = true): Promise<void> {
         if (this._isStopping) { return }
         this._isStopping = true
 
         setTimeout(
             () => process.exit(),
             this._configProvider.get(S.STOP_TIMEOUT).tryGetValue(10000) as number
-        );
+        )
 
-        (async () => {
-            try {
-                this.$onStopping()
-                await this._sendDeadLetters()
-                await this._disposeAddOns()
-                this._depContainer.dispose()
-                this._isStarted = false
-                this.$onStopped()
-            } catch (ex) {
-                this.$onError(ex)
-            } finally {
-                exitProcess &&
-                    /* istanbul ignore next: only useful on production */
-                    this._exitProcess()
-            }
-        })()
+        try {
+            this.$onStopping()
+            await this._sendDeadLetters()
+            await this._disposeAddOns()
+            this._depContainer.dispose()
+            this._isStarted = false
+            this.$onStopped()
+        }
+        catch (ex) {
+            this.$onError(ex)
+        }
+        finally {
+            exitProcess &&
+                /* istanbul ignore next: only useful on production */
+                this._exitProcess()
+        }
     }
 
 
@@ -119,12 +119,12 @@ export abstract class MicroServiceBase {
         }
         /* istanbul ignore next */
         else {
-            const msg = (error.toString ? error.toString() : error + '')
-            console.error(msg) // Should log to file.
+            console.error(error.toString()) // Should log to file.
         }
 
         if (error instanceof cm.CriticalException) {
             console.warn('A CriticalException is caught by the Service trunk. The service is stopping.')
+            // tslint:disable-next-line: no-floating-promises
             this.stop(true)
         }
         else {
@@ -208,6 +208,7 @@ export abstract class MicroServiceBase {
     private _handleGracefulShutdown() {
         const handler = () => {
             console.log('Gracefully shutdown...')
+            // tslint:disable-next-line: no-floating-promises
             this.stop()
         }
 
@@ -240,7 +241,7 @@ export abstract class MicroServiceBase {
 
     private _sendDeadLetters(): Promise<void> {
         debug('Sending dead letters')
-        return new Promise<void>(resolve => {
+        return new Promise<void>((resolve, reject) => {
             let timer = setTimeout(
                     resolve,
                     this._configProvider.get(S.DEADLETTER_TIMEOUT).tryGetValue(5000) as number
@@ -251,13 +252,15 @@ export abstract class MicroServiceBase {
                 return addon.deadLetter()
             })
 
-            Promise.all(promises).then(() => {
-                if (timer) {
-                    clearTimeout(timer)
-                    timer = null
-                }
-                resolve()
-            })
+            Promise.all(promises)
+                .then(() => {
+                    if (timer) {
+                        clearTimeout(timer)
+                        timer = null
+                    }
+                    resolve()
+                })
+                .catch(reject)
         })
         .catch(err => this.$onError(err))
     }

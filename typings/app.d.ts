@@ -76,11 +76,11 @@ declare module '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase
         /**
          * Bootstraps this service application.
          */
-        start(): void;
+        start(): Promise<void>;
         /**
          * Gracefully stops this application and exit
          */
-        stop(exitProcess?: boolean): void;
+        stop(exitProcess?: boolean): Promise<void>;
         /**
          * @return Total number of add-ons that have been added so far.
          */
@@ -129,7 +129,7 @@ declare module '@micro-fleet/microservice/dist/app/configs/index' {
         S: typeof import("@micro-fleet/common/dist/app/setting-keys/service").Service;
         [S.DEADLETTER_TIMEOUT]: number;
         [S.SERVICE_SLUG]: string;
-        [S.CONFIG_SERVICE_ADDRESSES]: string[];
+        svc_config_service_addresses: string[];
         [D.DB_ENGINE]: import("@micro-fleet/common/dist/app/setting-keys/DbClient").DbClient;
         [D.DB_HOST]: string;
         [D.DB_USER]: string;

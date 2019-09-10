@@ -138,6 +138,7 @@ class MockDirectRpcCaller implements IDirectRpcCaller {
 }
 
 describe('ConfigurationProvider', function () {
+    // tslint:disable-next-line: no-invalid-this
     this.timeout(5000)
     // this.timeout(60000); // For debugging
 
