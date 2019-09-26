@@ -112,12 +112,12 @@ class TestMarketingService extends MicroServiceBase {
      */
     public $registerDependencies(): void {
         super.$registerDependencies()
-        this._depContainer.bind<IExampleUtility>(EXAMPLE_SVC, ExampleUtility)
-        this._depContainer.bind<ICustomAddOn>(CUSTOM_ADT, CustomAddOn)
+        this._depContainer.bindConstructor<IExampleUtility>(EXAMPLE_SVC, ExampleUtility)
+        this._depContainer.bindConstructor<ICustomAddOn>(CUSTOM_ADT, CustomAddOn)
 
         // `registerConfigProvider()` is already called by MicroServiceBase.
         // However, in this case, we want to override with our mock instance.
-        this._depContainer.bind<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigProvider).asSingleton()
+        this._depContainer.bindConstructor<IConfigurationProvider>(Types.CONFIG_PROVIDER, MockConfigProvider).asSingleton()
 
         // Call this if your service works directly with database.
         // this.registerDbAddOn();

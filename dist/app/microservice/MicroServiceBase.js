@@ -79,7 +79,9 @@ class MicroServiceBase {
         return cfgProd;
     }
     _registerConfigProvider() {
-        this._depContainer.bind(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProviderAddOn).asSingleton();
+        this._depContainer
+            .bindConstructor(cm.Types.CONFIG_PROVIDER, cfg.ConfigurationProviderAddOn)
+            .asSingleton();
     }
     $registerDependencies() {
         const depCon = this._depContainer = new cm.DependencyContainer();
@@ -93,6 +95,7 @@ class MicroServiceBase {
     $onError(error) {
         /* istanbul ignore next */
         if (error.stack) {
+            error.message && console.error(error.message);
             console.error(error.stack);
         }
         /* istanbul ignore next */
@@ -100,12 +103,17 @@ class MicroServiceBase {
             console.error(error.toString()); // Should log to file.
         }
         if (error instanceof cm.CriticalException) {
-            console.warn('A CriticalException is caught by the Service trunk. The service is stopping.');
+            console.error('A CriticalException is caught by the Service trunk. The service is stopping.');
             // tslint:disable-next-line: no-floating-promises
             this.stop(true);
         }
-        else {
+        else if (error instanceof cm.CriticalException) {
             console.warn('A non-critical error is caught by the Service trunk. The service is still running.');
+        }
+        else {
+            console.error('An unhandled error is caught by the Service trunk. The service is stopping.');
+            // tslint:disable-next-line: no-floating-promises
+            this.stop(true);
         }
     }
     /**
@@ -177,13 +185,16 @@ class MicroServiceBase {
             // tslint:disable-next-line: no-floating-promises
             this.stop();
         };
-        // SIGINT is the interrupt signal.
-        // The Terminal/Console sends it to the foreground process when the user presses Ctrl-C.
-        process.on('SIGINT', handler);
-        // SIGTERM is the termination signal.
-        // Sent by `kill` command, or Upstart, or Heroku dynos, or Docker to shutdown the process.
-        // After a period (~10 sec), if the process is still running, SIGKILL will be sent to force immediate termination.
-        process.on('SIGTERM', handler);
+        process
+            // SIGINT is the interrupt signal.
+            // The Terminal/Console sends it to the foreground process when the user presses Ctrl-C.
+            .on('SIGINT', handler)
+            // SIGTERM is the termination signal.
+            // Sent by `kill` command, or Upstart, or Heroku dynos, or Docker to shutdown the process.
+            // After a period (~10 sec), if the process is still running, SIGKILL will be sent to force immediate termination.
+            .on('SIGTERM', handler)
+            .on('unhandledRejection', (err) => this.$onError(err))
+            .on('uncaughtException', (err) => this.$onError(err));
         // Windows has no such signals, so we need to fake SIGINT:
         /* istanbul ignore else */
         if (process.platform === 'win32') {
