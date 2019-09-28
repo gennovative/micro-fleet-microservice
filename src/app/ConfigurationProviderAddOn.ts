@@ -131,7 +131,7 @@ export class ConfigurationProviderAddOn
                 ? this._parseValue(this._getEnvOrFile(key), dataType)
                 : this._getEnvOrFile(key)
         }
-        return (value != null ? cm.Maybe.Just(value) : cm.Maybe.Nothing())
+        return (value != null ? cm.Maybe.Just(value, key) : cm.Maybe.Nothing(key))
     }
 
     private _getEnvOrFile(key: string): any {
