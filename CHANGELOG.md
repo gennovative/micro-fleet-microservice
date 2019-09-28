@@ -4,6 +4,7 @@
 
 ### 2.3.0
 - Sync version with other packages.
+- Added global handler for uncaught exception and Promise rejection.
 
 ### 1.3.0
 - Moved default config file location.

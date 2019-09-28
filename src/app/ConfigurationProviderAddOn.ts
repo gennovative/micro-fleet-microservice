@@ -90,7 +90,6 @@ export class ConfigurationProviderAddOn
         }
 
         if (this.enableRemote) {
-            this._rpcCaller.name = this.name
             this._applySettings().mapElse(() => {
                 throw new cm.CriticalException('No address for Settings Service!')
             })
@@ -228,7 +227,6 @@ export class ConfigurationProviderAddOn
                 ipAddress = '0.0.0.0' // If this service runs inside a Docker container,
                                 // this should be the host's IP address.
 
-            this._rpcCaller.baseAddress = address
             const req = cm.GetSettingRequest.from({
                 slug: serviceName.value,
                 ipAddress,

@@ -56,7 +56,6 @@ let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
             this._fileSettings = {};
         }
         if (this.enableRemote) {
-            this._rpcCaller.name = this.name;
             this._applySettings().mapElse(() => {
                 throw new cm.CriticalException('No address for Settings Service!');
             });
@@ -93,7 +92,7 @@ let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
                 ? this._parseValue(this._getEnvOrFile(key), dataType)
                 : this._getEnvOrFile(key);
         }
-        return (value != null ? cm.Maybe.Just(value) : cm.Maybe.Nothing());
+        return (value != null ? cm.Maybe.Just(value, key) : cm.Maybe.Nothing(key));
     }
     _getEnvOrFile(key) {
         if (process.env[key] != null) {
@@ -175,7 +174,6 @@ let ConfigurationProviderAddOn = class ConfigurationProviderAddOn {
         try {
             const serviceName = this.get(S.SERVICE_SLUG), ipAddress = '0.0.0.0'; // If this service runs inside a Docker container,
             // this should be the host's IP address.
-            this._rpcCaller.baseAddress = address;
             const req = cm.GetSettingRequest.from({
                 slug: serviceName.value,
                 ipAddress,
