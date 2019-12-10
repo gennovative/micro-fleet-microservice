@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/microservice",
-    "version": "2.3.0-rc5",
+    "version": "2.4.0-rc1",
     "description": "Provides backbone and manage lifecycle for microservice.",
     "scripts": {
         "build": "npm run compile && npm run test",
@@ -34,8 +34,8 @@
         "typescript": "~3.6"
     },
     "peerDependencies": {
-        "@micro-fleet/common": "=2.3.0-rc5",
-        "@micro-fleet/service-communication": "=2.3.0-rc5"
+        "@micro-fleet/common": "=2.4.0-rc1",
+        "@micro-fleet/service-communication": "=2.4.0-rc1"
     },
     "publishConfig": {
         "access": "public"
