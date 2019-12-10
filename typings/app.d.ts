@@ -88,8 +88,10 @@ declare module '@micro-fleet/microservice/dist/app/microservice/MicroServiceBase
                         protected $registerDependencies(): void;
         /**
          * Invoked whenever any error occurs in the application.
+         * @param {boolean} logOnly If `true`, will stop service if the error is critical.
+         *    Otherwise, will only log the errror without taking any action.
          */
-        protected $onError(error: any): void;
+        protected $onError(error: any, logOnly?: boolean): void;
         /**
          * Invoked after registering dependencies, but before all other initializations.
          */

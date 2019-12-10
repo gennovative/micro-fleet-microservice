@@ -91,8 +91,10 @@ class MicroServiceBase {
     }
     /**
      * Invoked whenever any error occurs in the application.
+     * @param {boolean} logOnly If `true`, will stop service if the error is critical.
+     *    Otherwise, will only log the errror without taking any action.
      */
-    $onError(error) {
+    $onError(error, logOnly = false) {
         /* istanbul ignore next */
         if (error.stack) {
             error.message && console.error(error.message);
@@ -102,12 +104,15 @@ class MicroServiceBase {
         else {
             console.error(error.toString()); // Should log to file.
         }
+        if (logOnly) {
+            return;
+        }
         if (error instanceof cm.CriticalException) {
             console.error('A CriticalException is caught by the Service trunk. The service is stopping.');
             // tslint:disable-next-line: no-floating-promises
             this.stop(true);
         }
-        else if (error instanceof cm.CriticalException) {
+        else if (error instanceof cm.Exception) {
             console.warn('A non-critical error is caught by the Service trunk. The service is still running.');
         }
         else {
@@ -164,9 +169,10 @@ class MicroServiceBase {
         await Promise.all(initPromises);
     }
     _disposeAddOns() {
+        const logError = (err) => this.$onError(err, true);
         const disposePromises = this._addons.map(addon => {
             debug(`Disposing: ${addon.name}`);
-            return addon.dispose();
+            return addon.dispose().catch(logError);
         });
         return Promise.all(disposePromises);
     }
@@ -213,12 +219,14 @@ class MicroServiceBase {
     }
     _sendDeadLetters() {
         debug('Sending dead letters');
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
+            const logError = (err) => this.$onError(err, true);
             let timer = setTimeout(resolve, this._configProvider.get(S.DEADLETTER_TIMEOUT).tryGetValue(5000));
             const promises = this._addons.map(addon => {
                 debug(`Dead letter to: ${addon.name}`);
-                return addon.deadLetter();
+                return addon.deadLetter().catch(logError);
             });
+            // tslint:disable-next-line: no-floating-promises
             Promise.all(promises)
                 .then(() => {
                 if (timer) {
@@ -226,10 +234,8 @@ class MicroServiceBase {
                     timer = null;
                 }
                 resolve();
-            })
-                .catch(reject);
-        })
-            .catch(err => this.$onError(err));
+            });
+        });
     }
 }
 exports.MicroServiceBase = MicroServiceBase;
